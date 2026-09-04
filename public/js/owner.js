@@ -60,8 +60,9 @@ function toTemplate(kind, f, ev, preset = {}) {
   if (!f.content?.trim()) throw new Error('empty note'); return { kind: K.note, content: f.content.trim() };
 }
 export async function deleteEvent(ev) {
-  const tags = [['k', String(ev.kind)]]; if (!ev.draft) tags.push(['e', ev.id]); if (ev.kind >= 30000 || ev.kind === 0) tags.push(['a', addrOf(ev)]);
-  await publishTemplate({ kind: K.del, tags, content: 'removed from ronishbhatt.com' }, env.RELAYS); store.events.delete(keyOf(ev)); notify();
+  const tags = [['k', String(ev.kind)]]; if (!ev.draft) tags.push(['e', ev.id]); if (ev.kind >= 30000) tags.push(['a', addrOf(ev)]);
+  await publishTemplate({ kind: K.del, tags, content: 'removed from ronishbhatt.com' }, env.RELAYS); // apply() drops the event and restores its draft, if any
+  if (ev.draft) { store.events.delete(keyOf(ev)); notify(); }
 }
 // Recall: one deletion event naming every signed event of the site key, sent to every relay.
 // Relays that honour NIP-09 (mine does, the big public ones do) drop them; the page falls back to its baked drafts.
@@ -69,9 +70,8 @@ export async function recallAll() {
   const evs = [...store.events.values()].filter(e => !e.draft && e.kind !== K.del);
   if (!evs.length) return toast('nothing signed to recall');
   const tags = [];
-  for (const e of evs) { tags.push(['e', e.id]); if (e.kind >= 30000 || e.kind === 0) tags.push(['a', addrOf(e)]); tags.push(['k', String(e.kind)]); }
-  const { res } = await publishTemplate({ kind: K.del, tags, content: 'recalled from ronishbhatt.com' }, env.RELAYS);
-  for (const e of evs) store.events.delete(keyOf(e));
+  for (const e of evs) { tags.push(['e', e.id]); if (e.kind >= 30000) tags.push(['a', addrOf(e)]); tags.push(['k', String(e.kind)]); }
+  const { res } = await publishTemplate({ kind: K.del, tags, content: 'recalled from ronishbhatt.com' }, env.RELAYS); // apply() drops them and the seed drafts take over
   notify(); toast(`recalled ${evs.length} events; accepted by ${res.filter(r => r.ok).length}/${res.length} relays`);
 }
 export async function publishDrafts() {

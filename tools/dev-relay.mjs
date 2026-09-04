@@ -39,7 +39,7 @@ wss.on('connection', ws => {
       if (!verifyEvent(ev)) return ws.send(JSON.stringify(['OK', ev.id, false, 'invalid: bad signature']));
       const [ok, msg] = policy(ev);
       if (!ok) return ws.send(JSON.stringify(['OK', ev.id, false, msg]));
-      if (ev.kind === 5) for (const t of ev.tags) { if (t[0] === 'e') events.delete(t[1]); if (t[0] === 'a') for (const [k, e] of events) if (k === t[1] && e.created_at <= ev.created_at) events.delete(k); }
+      if (ev.kind === 5) for (const t of ev.tags) { for (const [k, e] of events) { if ((t[0] === 'e' && e.id === t[1]) || (t[0] === 'a' && k === t[1] && e.created_at <= ev.created_at)) events.delete(k); } }
       const k = keyOf(ev), cur = events.get(k);
       if (cur && cur.created_at > ev.created_at) return ws.send(JSON.stringify(['OK', ev.id, true, 'duplicate: older than the stored version']));
       events.set(k, ev);
