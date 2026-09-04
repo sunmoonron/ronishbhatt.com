@@ -84,7 +84,7 @@ export function Page({ Chat, chatProps, edit, onUnlock, ownerOn, children }) {
     return html`<section class="c" id=${id} key=${id}><${Label} text=${tag(ev, 'title') || id} ev=${ev}>${edit ? edit(30023, ev) : null}</${Label}><${Markdown} src=${ev.content} /></section>`;
   });
   return html`${children}
-    <header class="me"><img src="/favicon.svg" alt="" width="56" height="56" /><div class="who"><h1>${p.name || 'Ronish Bhatt'}</h1><p class="line">${p.about || ''}<${Draft} ev=${profile} /></p>
+    <header class="me"><img src="/favicon.svg?k=0bfcddd3" alt="" width="56" height="56" /><div class="who"><h1>${p.name || 'Ronish Bhatt'}</h1><p class="line">${p.about || ''}<${Draft} ev=${profile} /></p>
       <div class="pills">${(cfg.links || []).map(l => html`<a key=${l.url} class="pill" href=${l.url} target=${/^https?:/.test(l.url) ? '_blank' : null} rel="noopener">${l.label}</a>`)}<a class="pill" href=${'https://njump.me/' + npub(env.SITE)} target="_blank" rel="noopener" title="the key that signs this page">${npub(env.SITE).slice(0, 13)}…</a>${ownerOn ? null : html`<button class="pill lnk" onClick=${onUnlock}>unlock</button>`}</div></div>${edit ? edit(0, profile) : null}</header>
     ${blocks}
     <footer>
