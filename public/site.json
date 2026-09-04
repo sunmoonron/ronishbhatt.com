@@ -1,7 +1,44 @@
 {
  "site": "0bfcddd3f832913d00075f9246f2f45c362d5467546e593ec8e2f1d87a9e5a3d",
- "baked_at": 0,
- "events": [],
+ "baked_at": 1788543774,
+ "events": [
+  {
+   "content": "today i learn balance",
+   "created_at": 1787501571,
+   "id": "328f1f33cfdf6844da8f1777d019235f1528d492cb10dd207f1d04bbf20200b8",
+   "kind": 1,
+   "pubkey": "0bfcddd3f832913d00075f9246f2f45c362d5467546e593ec8e2f1d87a9e5a3d",
+   "sig": "3d030d30dfc3c395ab7bbd81c30d0ee70e776e487a162bf528c38db313fe6a33d02d9419ffe8e0a6ff5a67c19dd31a973df287810ad863a886a1b503b3e6a056",
+   "tags": []
+  },
+  {
+   "content": "earthly shit this works",
+   "created_at": 1787499958,
+   "id": "c4bdc3ead8b655be61dff7b8991c5baa1c9d503bff80501ff2d015d5b15020ba",
+   "kind": 1,
+   "pubkey": "0bfcddd3f832913d00075f9246f2f45c362d5467546e593ec8e2f1d87a9e5a3d",
+   "sig": "46d14adb4bb4597d0753b34e86848996c66e34df44984e4054c0537b9afa6ee9df0619dc0d6689b79c0322220db50aeea5454d7a0cfe92bbacb730cd2b9e8d8b",
+   "tags": []
+  },
+  {
+   "content": "",
+   "created_at": 1787350644,
+   "id": "f2dcd327b3b01dd2982b1e88172fd7a0174519e2b9e01487b7a986c124f7e148",
+   "kind": 5,
+   "pubkey": "0bfcddd3f832913d00075f9246f2f45c362d5467546e593ec8e2f1d87a9e5a3d",
+   "sig": "a0ec02f2f0c94478655b13d5d83aa9cf0d1ab87f37b768df2900263a75a931cdd3913466f97d10a68912d056dbd19d0b9cbd456e0067a53355b74348899b066f",
+   "tags": [
+    [
+     "e",
+     "cc84476f50f744279cf5606305eb7121a865837e95a34e0eb4d79517137dc7f6"
+    ],
+    [
+     "k",
+     "5"
+    ]
+   ]
+  }
+ ],
  "drafts": [
   {
    "kind": 0,

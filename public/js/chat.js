@@ -51,7 +51,7 @@ function addMsg(peer, m) {
   save(); notify();
 }
 function save() { try { localStorage.setItem(CACHE(), JSON.stringify([...chat.threads.values()].map(t => ({ ...t, unread: 0 })))); } catch {} }
-function load() { try { for (const t of JSON.parse(localStorage.getItem(CACHE()) || '[]')) { chat.threads.set(t.peer, t); t.msgs.forEach(m => seen.add(m.id)); } } catch {} }
+function load() { try { for (const t of JSON.parse(localStorage.getItem(CACHE()) || '[]')) { chat.threads.set(t.peer, t); t.msgs.forEach(m => { seen.add(m.id); if (m.pending) { m.pending = false; m.failed = [{ msg: 'interrupted' }]; } }); } } catch {} }
 
 function onWrap(wrap) {
   if (seen.has(wrap.id)) return; seen.add(wrap.id);

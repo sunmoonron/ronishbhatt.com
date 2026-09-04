@@ -136,15 +136,22 @@ export async function publish(ev, relays = RELAYS) {
     msg: results[i].status === 'fulfilled' ? (results[i].value || 'ok') : String(results[i].reason?.message || results[i].reason || 'failed') }));
 }
 
-// NIP-13 proof of work, mined off the main thread. The worker never sees a key.
-let worker, wid = 0; const pending = new Map();
+// NIP-13 proof of work, mined off the main thread on every core: each worker
+// walks its own stride of nonces, the first hit wins, the rest are killed.
+// The workers never see a key — they get an unsigned event and hand it back.
+const CORES = Math.min(navigator.hardwareConcurrency || 2, 8);
 export function mine(event, bits) {
   if (!bits) return Promise.resolve(event);
-  if (!worker) {
-    worker = new Worker('/js/pow-worker.js');
-    worker.onmessage = ({ data }) => { const p = pending.get(data.id); if (!p) return; pending.delete(data.id); data.error ? p.reject(new Error(data.error)) : p.resolve(data.event); };
-  }
-  return new Promise((resolve, reject) => { const id = ++wid; pending.set(id, { resolve, reject }); worker.postMessage({ id, event, bits }); });
+  return new Promise((resolve, reject) => {
+    const workers = []; let done = false;
+    const finish = (err, ev) => { if (done) return; done = true; workers.forEach(w => w.terminate()); err ? reject(err) : resolve(ev); };
+    for (let i = 0; i < CORES; i++) {
+      const w = new Worker('/js/pow-worker.js'); workers.push(w);
+      w.onmessage = ({ data }) => data.error ? finish(new Error(data.error)) : finish(null, data.event);
+      w.onerror = e => finish(new Error(e.message || 'worker failed'));
+      w.postMessage({ event: structuredClone(event), bits, start: i + 1, step: CORES });
+    }
+  });
 }
 
 // ---- the owner: one key, the same one the relay and the console trust --------
