@@ -1,6 +1,10 @@
-Self-hosted, pinned, byte-identical upstream builds (npm registry, 2026-09-04) with their source maps alongside. Bare names resolve through the import map in index.html.
+Self-hosted, pinned, byte-identical upstream builds (npm registry, 2026-09-04) with their source maps alongside. File names carry a content hash: NEVER edit a vendor file in place (they are cached as immutable) — add a new file and repoint the import map in tools/bake.mjs.
 preact 10.29.8        dist/preact.mjs, hooks/dist/hooks.mjs   (ESM)                     MIT
 htm 3.1.1             dist/htm.mjs                            (ESM)                     Apache-2.0
 marked 18.0.11        lib/marked.esm.js                       (ESM)                     MIT
 DOMPurify 3.4.14      dist/purify.min.js                      (UMD, loaded lazily)      Apache-2.0 / MPL-2.0
 nostr-tools 2.25.2    lib/nostr.bundle.js                     (IIFE, loaded lazily)     MIT
+preact-10.29.8.mjs -> preact-10.29.8.c30e721e.mjs
+preact-hooks-10.29.8.mjs -> preact-hooks-10.29.8.a6ee626f.mjs
+marked-18.0.11.mjs -> marked-18.0.11.05e41134.mjs
+dompurify-3.4.14.min.js -> dompurify-3.4.14.min.c2f26ea4.js

@@ -39,7 +39,7 @@ function App() {
   hydrate(html`<${App} />`, document.getElementById('app'));
   loadCache(); keepCache(); notify();
   await script('/vendor/nostr-tools-2.25.2.bundle.js'); env.NT = window.NostrTools; reverify();
-  script('/vendor/dompurify-3.4.14.min.js').then(notify).catch(() => {});
+  script('/vendor/dompurify-3.4.14.min.c2f26ea4.js').then(notify).catch(() => {});
   connect(); live = true; chatConfigure(false); notify();
   if (storedKey()) { Owner = await import('/js/owner.js'); try { restore(); } catch {} notify(); }
 })();

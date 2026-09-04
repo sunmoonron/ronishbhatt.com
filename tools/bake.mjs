@@ -39,9 +39,9 @@ const sha = (algo, data) => crypto.createHash(algo).update(data).digest('base64'
 const sri = f => `sha384-${sha('sha384', fs.readFileSync(PUB + f))}`;
 // The import map: bare names -> pinned vendor files, plus subresource integrity
 // for every module the page can load (browsers that know the field verify it).
-const VENDOR = { preact: '/vendor/preact-10.29.8.mjs', 'preact/hooks': '/vendor/preact-hooks-10.29.8.mjs', htm: '/vendor/htm-3.1.1.mjs', marked: '/vendor/marked-18.0.11.mjs' };
+const VENDOR = { preact: '/vendor/preact-10.29.8.c30e721e.mjs', 'preact/hooks': '/vendor/preact-hooks-10.29.8.a6ee626f.mjs', htm: '/vendor/htm-3.1.1.mjs', marked: '/vendor/marked-18.0.11.05e41134.mjs' };
 const MODULES = [...Object.values(VENDOR), '/js/store.js', '/js/ui.js', '/js/chat.js', '/js/owner.js'];
-const LAZY = ['/vendor/nostr-tools-2.25.2.bundle.js', '/vendor/dompurify-3.4.14.min.js'];
+const LAZY = ['/vendor/nostr-tools-2.25.2.bundle.js', '/vendor/dompurify-3.4.14.min.c2f26ea4.js'];
 const importmap = JSON.stringify({ imports: VENDOR, integrity: Object.fromEntries(MODULES.map(f => [f, sri(f)])) });
 const app = `globalThis.SRI=${JSON.stringify(Object.fromEntries(LAZY.map(f => [f, sri(f)])))};\n` + fs.readFileSync(PUB + 'js/app.js', 'utf8').replace(/<\/script/gi, '<\\/script');
 let html_ = src
