@@ -114,8 +114,9 @@ export const seenOn = ev => [...(pool.seenOn.get(ev.id) || [])].map(r => r.url);
 function pollStatus() {
   let changed = false;
   for (const [url, open] of pool.listConnectionStatus()) {
+    const key = url.replace(/\/$/, ''); // the pool normalises URLs with a trailing slash
     const s = open ? 'open' : 'closed';
-    if (store.status.get(url) !== s) { store.status.set(url, s); changed = true; }
+    if (store.status.get(key) !== s) { store.status.set(key, s); changed = true; }
   }
   if (changed) notify();
 }
