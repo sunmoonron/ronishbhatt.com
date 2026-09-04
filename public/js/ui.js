@@ -77,7 +77,7 @@ export function Page({ Chat, chatProps, edit, onUnlock, ownerOn, children }) {
     if (id === 'projects' || id === 'writing') { const type = id === 'projects' ? 'project' : 'writing';
       return html`<${Items} key=${id} id=${id} items=${sel.articles(type)} edit=${edit && (e => edit(30023, e))} add=${edit && (() => edit(30023, null, { type }))} />`; }
     if (id === 'notes') return html`<${Notes} key="notes" notes=${sel.notes()} edit=${edit && (e => edit(1, e))} compose=${edit && (() => edit(1, null))} />`;
-    if (id === 'chat') return cfg.chat === false && !ownerOn ? null : html`<section class="c" id="chat" key="chat"><${Label} text=${ownerOn ? 'inbox' : 'say hi'} /><${Chat} ...${chatProps} /></section>`;
+    if (id === 'chat') return cfg.chat === false && !ownerOn ? null : html`<section class=${ownerOn ? 'c owner' : 'c'} id="chat" key="chat"><${Label} text=${ownerOn ? 'inbox' : 'say hi'} /><${Chat} ...${chatProps} /></section>`;
     const ev = sel.section(id);
     if (!ev) return ownerOn ? html`<section class="c" key=${id}><${Label} text=${id}>${edit(30023, null, { d: id, type: 'section', title: id })}</${Label}><p class="empty">no ${id} block on the relay yet</p></section>` : null;
     if (tag(ev, 'display') === 'details') return html`<details class="fold" id=${id} key=${id}><summary>${tag(ev, 'summary') || tag(ev, 'title') || id}<${Draft} ev=${ev} /><span class="grow"></span>${edit ? edit(30023, ev) : null}<${EvLink} ev=${ev} /></summary><${Markdown} src=${ev.content} /></details>`;
