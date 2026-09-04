@@ -1,0 +1,302 @@
+<meta charset="utf-8">
+<title>Plant a Thought</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap">
+<style>
+:root{
+  --ground:#eef3ff; --surface:#ffffff; --card:#f7f9ff; --line:#d5dcf5; --ink:#23264a; --muted:#6b70a0;
+  --robot:#5b5bd6; --robot-soft:#e3e3ff; --star:#ffb703; --star-soft:#fff1c9; --mem:#ff5d8f; --mem-soft:#ffe1ea; --ok:#2ec27e;
+  --shadow:0 2px 0 rgba(35,38,74,.08), 0 14px 30px -16px rgba(35,38,74,.35);
+  --display:"Fredoka","Nunito","Arial Rounded MT Bold","Helvetica Neue",Arial,sans-serif;
+  --body:"Nunito","Helvetica Neue",Arial,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#141633; --surface:#1e2149; --card:#262a5c; --line:#3a3f7a; --ink:#eef0ff; --muted:#a9aed6;
+    --robot:#8c8cff; --robot-soft:#2c2f6b; --star:#ffc53d; --star-soft:#4a3a0f; --mem:#ff7aa5; --mem-soft:#4d2236; --ok:#4fd69a;
+    --shadow:0 2px 0 rgba(0,0,0,.35), 0 14px 30px -16px rgba(0,0,0,.8);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#141633; --surface:#1e2149; --card:#262a5c; --line:#3a3f7a; --ink:#eef0ff; --muted:#a9aed6;
+  --robot:#8c8cff; --robot-soft:#2c2f6b; --star:#ffc53d; --star-soft:#4a3a0f; --mem:#ff7aa5; --mem-soft:#4d2236; --ok:#4fd69a;
+  --shadow:0 2px 0 rgba(0,0,0,.35), 0 14px 30px -16px rgba(0,0,0,.8);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.4;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+.app{max-width:720px;margin:0 auto;padding:12px 12px 40px;display:grid;gap:12px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+h1{font-family:var(--display);font-weight:700;font-size:28px;margin:0;letter-spacing:-.01em}
+h1 small{font-size:14px;color:var(--muted);font-weight:600;margin-left:6px}
+.badge{font-size:12.5px;font-weight:700;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:5px 11px}
+.badge b{color:var(--robot)}
+.lvl{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.lvl .name{font-family:var(--display);font-size:20px;font-weight:600}
+.lvl .goal{font-size:15px;color:var(--muted);font-weight:700}
+.secrets{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px}
+.secret{background:var(--surface);border:2px solid var(--line);border-radius:18px;padding:10px 8px;text-align:center;font-family:var(--display);font-size:22px;font-weight:600;box-shadow:var(--shadow);position:relative;transition:transform .3s,background .3s,border-color .3s}
+.secret .ico{display:block;font-size:34px;line-height:1.1}
+.secret.hit{background:var(--star-soft);border-color:var(--star);transform:scale(1.04)}
+.secret .st{position:absolute;top:-10px;right:-6px;font-size:26px;opacity:0;transform:scale(.3) rotate(-30deg);transition:transform .45s cubic-bezier(.2,1.6,.4,1),opacity .2s}
+.secret.hit .st{opacity:1;transform:scale(1) rotate(0)}
+.stage{background:var(--surface);border:2px solid var(--line);border-radius:22px;box-shadow:var(--shadow);padding:12px;display:grid;gap:10px}
+.robotrow{display:grid;grid-template-columns:78px 1fr;gap:10px;align-items:start}
+.robot{width:78px;display:grid;justify-items:center;gap:4px}
+.head{width:70px;height:60px;border-radius:20px;background:var(--robot);position:relative;box-shadow:inset 0 -6px 0 rgba(0,0,0,.15);transition:transform .2s}
+.head::before,.head::after{content:"";position:absolute;top:20px;width:14px;height:16px;border-radius:50%;background:#fff}
+.head::before{left:14px}.head::after{right:14px}
+.head .pupil{position:absolute;top:26px;width:7px;height:7px;border-radius:50%;background:#23264a;transition:transform .3s}
+.head .pupil.l{left:18px}.head .pupil.r{right:18px}
+.robot.thinking .pupil{transform:translateY(-5px)}
+.robot.happy .head{transform:rotate(-6deg) scale(1.06)}
+.robot.happy .pupil{transform:scaleY(.4) translateY(2px)}
+.head .mouth{position:absolute;left:50%;bottom:9px;width:22px;height:8px;margin-left:-11px;border-radius:0 0 12px 12px;background:#fff;transition:height .15s,width .2s}
+.robot.talking .mouth{height:13px}
+.robot.happy .mouth{height:14px;width:30px;margin-left:-15px}
+.antenna{width:4px;height:10px;background:var(--robot);border-radius:2px;position:relative}
+.antenna::after{content:"";position:absolute;top:-9px;left:-4px;width:12px;height:12px;border-radius:50%;background:var(--star)}
+.robot .name{font-family:var(--display);font-size:13px;color:var(--muted)}
+.thoughts{display:flex;flex-wrap:wrap;gap:6px;min-height:32px;align-content:flex-start}
+.thought{font-family:var(--display);font-size:15px;font-weight:600;background:var(--mem-soft);color:var(--mem);border:2px solid var(--mem);border-radius:999px;padding:3px 10px;cursor:pointer;animation:pop .4s cubic-bezier(.2,1.6,.4,1)}
+.thought.glow{box-shadow:0 0 0 4px var(--mem-soft)}
+.thought .x{opacity:.6;margin-left:4px;font-size:12px}
+.thoughts .hint{font-size:13px;color:var(--muted);font-weight:700;align-self:center}
+@keyframes pop{from{transform:scale(.2);opacity:0}to{transform:scale(1);opacity:1}}
+.bubble{position:relative;background:var(--card);border:2px solid var(--line);border-radius:18px;padding:12px 14px;min-height:112px;font-size:19px;line-height:1.5;font-weight:700}
+.bubble::before{content:"";position:absolute;left:-12px;top:20px;border:8px solid transparent;border-right-color:var(--line)}
+.bubble .w.mem{color:var(--mem)}
+.bubble .w.hit{background:var(--star-soft);color:#7a5200;border-radius:8px;padding:0 4px;box-shadow:0 0 0 2px var(--star)}
+:root[data-theme="dark"] .bubble .w.hit{color:#ffd76a}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .bubble .w.hit{color:#ffd76a}}
+.bubble .cur{display:inline-block;width:.5em;height:1em;background:var(--robot);vertical-align:-2px;margin-left:3px;border-radius:2px;animation:blink 1s steps(2) infinite}
+.bubble .end{color:var(--muted)}
+@keyframes blink{50%{opacity:0}}
+.progress{height:10px;border-radius:6px;background:var(--card);border:1px solid var(--line);overflow:hidden}
+.progress i{display:block;height:100%;width:0;background:var(--robot);transition:width .2s}
+.status{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;font-size:14px;color:var(--muted);font-weight:700}
+.toast{position:fixed;left:50%;top:14px;transform:translateX(-50%) translateY(-30px);background:var(--ink);color:var(--ground);font-family:var(--display);font-size:20px;font-weight:600;padding:10px 18px;border-radius:999px;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;z-index:5;box-shadow:var(--shadow)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.handwrap{display:grid;gap:6px}
+.handhead{display:flex;justify-content:space-between;align-items:center;font-size:15px;color:var(--muted);font-weight:700}
+.hand{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.cardbtn{font-family:var(--display);font-size:20px;font-weight:600;color:var(--ink);background:var(--surface);border:2px solid var(--line);border-radius:18px;padding:12px 6px 10px;cursor:pointer;box-shadow:var(--shadow);display:grid;justify-items:center;gap:2px;transition:transform .15s,border-color .2s,opacity .2s;position:relative;min-height:96px}
+.cardbtn .ico{font-size:34px;line-height:1.1}
+.cardbtn:hover{transform:translateY(-3px);border-color:var(--mem)}
+.cardbtn:active{transform:scale(.96)}
+.cardbtn:focus-visible{outline:3px solid var(--mem);outline-offset:2px}
+.cardbtn.pulse{animation:pulse 1.1s ease-in-out infinite;border-color:var(--mem)}
+@keyframes pulse{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.cardbtn[disabled]{opacity:.4;cursor:default;transform:none;animation:none}
+.cardbtn .tag{position:absolute;top:6px;right:8px;font-size:12px;color:var(--mem);font-weight:700}
+.result{display:none;background:var(--star-soft);border:2px solid var(--star);border-radius:18px;padding:14px;text-align:center;font-family:var(--display);font-size:22px;font-weight:600;line-height:1.35}
+.result.show{display:block;animation:pop .5s cubic-bezier(.2,1.6,.4,1)}
+.result .sub{font-family:var(--body);font-size:15px;font-weight:700;color:var(--muted);margin-top:4px}
+.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+.btn{font:700 16px var(--body);color:var(--ink);background:var(--surface);border:2px solid var(--line);border-radius:999px;padding:9px 16px;cursor:pointer}
+.btn:hover{border-color:var(--robot)}
+.btn.primary{background:var(--robot);border-color:var(--robot);color:#fff}
+.btn.big{font-size:19px;padding:12px 22px}
+.btn:focus-visible{outline:3px solid var(--robot);outline-offset:2px}
+.score{font-family:var(--display);font-size:18px;font-weight:600;display:flex;gap:14px;flex-wrap:wrap}
+.score b{color:var(--star)}
+.fine{font-size:13.5px;color:var(--muted);line-height:1.45}
+.fine b{color:var(--ink)}
+.confetti{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:4}
+.confetti i{position:absolute;top:-12px;width:10px;height:14px;border-radius:2px;animation:fall 1.8s linear forwards}
+@keyframes fall{to{transform:translateY(105vh) rotate(720deg);opacity:.2}}
+@media (prefers-reduced-motion:reduce){.thought,.result.show,.cardbtn.pulse{animation:none}.bubble .cur{animation:none}.confetti i{animation:none;display:none}}
+@media (max-width:520px){h1{font-size:24px}.secret{font-size:19px}.cardbtn{font-size:16px;padding:10px 4px}.bubble{font-size:17px}.hand{gap:8px}}
+</style>
+
+<div class="app">
+  <div class="top">
+    <h1>Plant a Thought <small>2.0</small></h1>
+    <div class="badge" id="badge">waking the robot up…</div>
+  </div>
+  <div class="lvl"><span class="name" id="lvlname">Story 1</span><span class="goal" id="goal">Make Bip say the secret word!</span></div>
+  <div class="secrets" id="secrets"></div>
+  <div class="stage">
+    <div class="robotrow">
+      <div class="robot" id="robot"><div class="antenna"></div><div class="head"><span class="pupil l"></span><span class="pupil r"></span><span class="mouth"></span></div><div class="name">Bip</div></div>
+      <div style="display:grid;gap:8px"><div class="thoughts" id="thoughts"><span class="hint">Bip's head is empty. Tap a card below.</span></div><div class="bubble" id="bubble"><span class="cur"></span></div></div>
+    </div>
+    <div class="progress" aria-hidden="true"><i id="prog"></i></div>
+    <div class="status"><span id="stat">Bip is starting a story.</span><span id="speed"></span></div>
+  </div>
+  <div class="handwrap">
+    <div class="handhead"><span>Thought cards</span><span id="budget"></span></div>
+    <div class="hand" id="hand"></div>
+  </div>
+  <div class="result" id="result"></div>
+  <div class="controls">
+    <div class="score" id="score"><span>Stars: <b>0</b></span><span>Best streak: <b>0</b></span></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><label class="fine" style="display:flex;gap:6px;align-items:center">story length <select id="len" class="btn" style="padding:6px 10px"><option value="35">short</option><option value="55" selected>medium</option><option value="90">long</option><option value="150">epic</option></select></label><button class="btn" id="copy">Copy story</button><button class="btn primary" id="newstory">Skip story</button></div>
+  </div>
+  <p class="fine"><b>How it works:</b> Bip is a 7-million-parameter language model that lives entirely inside this page; there is no server. It was <b>trained from scratch</b> for this game: a word-level GPT (6 layers, 256 wide, an 8,192-word vocabulary) trained on TinyStories for 36,000 steps in 444 seconds on one A100, then quantised to int8 and inlined here (9.4 MB of weights). A card is a real memory, not a hint, and planting <b>never changes the weights</b>: the two words are run through the model on their own, and the keys and values its attention wrote for them are spliced into Bip's memory ahead of the story, at no position at all, so every later word can look at them while it decides what to say. Two copies are planted per card because one is easy to ignore. Taking a thought out deletes exactly those entries, and the rest of the memory closes over the gap. The engine is hand-written JavaScript with a key/value cache; the story-length dial sets how many words Bip writes before stopping.</p>
+</div>
+<div class="toast" id="toast"></div>
+<div class="confetti" id="confetti"></div>
+
+<script>
+__ENGINE__
+</script>
+<script>
+const MODEL = __MODEL__;
+</script>
+<script>
+(function () {
+  const q = s => document.querySelector(s);
+  const DECK = [["cat", "a cat", "🐱"], ["dog", "a dog", "🐶"], ["moon", "the moon", "🌙"], ["cake", "a cake", "🎂"], ["ball", "a ball", "⚽"], ["tree", "a tree", "🌳"], ["fish", "a fish", "🐟"], ["boat", "a boat", "⛵"], ["car", "a car", "🚗"], ["bird", "a bird", "🐦"], ["frog", "a frog", "🐸"], ["hat", "a hat", "🎩"], ["star", "a star", "⭐"], ["apple", "an apple", "🍎"], ["bear", "a bear", "🐻"], ["cookie", "a cookie", "🍪"], ["kite", "a kite", "🪁"], ["flower", "a flower", "🌸"], ["dragon", "a dragon", "🐉"], ["robot", "a robot", "🤖"]];
+  const COPIES = __COPIES__;
+  let MAXWORDS = 55; const TEMP = 0.85, TOPK = 40, TICK = 170;
+  const PUNCT = new Set([".", ",", "!", "?", ";", ":", "\"", "(", ")", "-", "\n"]);
+  let eng, deck, targets, hand, planted, story, hits, running = false, ended = false, pos = 0, prev = 1, tagSeq = 1000, totalStars = 0, streak = 0, best = 0, round = 0, level = 1, budget = 0, msAvg = null, lastStep = 0, busy = false, seed = Date.now() % 1e6;
+  function rand() { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; }
+  try { best = +localStorage.getItem("pat_best") || 0; } catch (e) { }
+
+  function levelSpec() {                              // level -> secrets, decoys, taps allowed
+    if (level === 1) return { n: 1, decoys: 2, taps: 2 };
+    if (level === 2) return { n: 2, decoys: 2, taps: 3 };
+    return { n: 3, decoys: 3, taps: 4 };
+  }
+  function pickRound() {
+    const spec = levelSpec();
+    deck = DECK.filter(d => eng.wid.has(d[0]) && eng.encode(d[1]).every(i => i !== 2));
+    const shuffled = deck.slice().sort(() => rand() - 0.5);
+    targets = shuffled.slice(0, spec.n);
+    hand = targets.concat(shuffled.slice(spec.n, spec.n + spec.decoys)).sort(() => rand() - 0.5);
+    budget = spec.taps; planted = []; hits = new Set();
+  }
+  function renderSecrets() {
+    q("#secrets").innerHTML = targets.map(t => `<div class="secret${hits.has(t[0]) ? " hit" : ""}"><span class="ico">${t[2]}</span>${t[0]}<span class="st">⭐</span></div>`).join("");
+    const spec = levelSpec();
+    q("#lvlname").textContent = `Story ${round}`;
+    q("#goal").textContent = spec.n === 1 ? "Make Bip say the secret word!" : `Make Bip say all ${spec.n} secret words!`;
+  }
+  function renderHand() {
+    q("#hand").innerHTML = hand.map((c, i) => {
+      const done = planted.some(p => p.word === c[0]);
+      const pulse = level === 1 && !done && targets.some(t => t[0] === c[0]) && running;
+      return `<button class="cardbtn${pulse ? " pulse" : ""}" data-i="${i}" ${(done || budget <= 0 || !running) ? "disabled" : ""}><span class="ico">${c[2]}</span>${c[1]}${done ? `<span class="tag">in Bip's head</span>` : (pulse ? `<span class="tag">tap me!</span>` : "")}</button>`;
+    }).join("");
+    q("#budget").textContent = running ? `${budget} thought${budget === 1 ? "" : "s"} left` : "";
+  }
+  function renderThoughts() {
+    q("#thoughts").innerHTML = planted.length ? planted.map(p => `<span class="thought${p.glow ? " glow" : ""}" data-id="${p.id}" title="tap to take it out">${p.ico} ${p.phrase}<span class="x">✕</span></span>`).join("") : `<span class="hint">${running ? "Bip's head is empty. Tap a card below." : ""}</span>`;
+  }
+  function layout(words) {
+    let out = [], capNext = true, text = "";
+    for (const w of words) {
+      const t = w.text; if (t === "\n") continue;
+      let piece = t;
+      if (capNext && /^[a-z]/.test(t)) { piece = t[0].toUpperCase() + t.slice(1); capNext = false; }
+      if (/^[.!?]$/.test(t)) capNext = true;
+      const space = (/^[.,!?;:)]$/.test(t) || !text) ? "" : " ";
+      text += space + piece; out.push({ w, piece, space });
+    }
+    return { out, text };
+  }
+  function renderStory() {
+    const { out } = layout(story);
+    q("#bubble").innerHTML = out.map(({ w, piece, space }) => `${space}<span class="w${w.hit ? " hit" : (w.mem ? " mem" : "")}">${piece}</span>`).join("") + (running ? `<span class="cur"></span>` : (ended ? `<span class="end"> The end.</span>` : ""));
+    q("#prog").style.width = `${Math.min(100, (story.filter(w => w.text !== "\n").length / MAXWORDS) * 100)}%`;
+  }
+  function toast(msg, ms) { const t = q("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("show"), ms || 1400); }
+
+  function startRound() {
+    round++; pickRound(); story = []; pos = 1; prev = 1; running = true; ended = false; msAvg = null;
+    eng.reset(); eng.forward(1, 0, eng.cache, 0);
+    q("#result").className = "result"; q("#newstory").textContent = "Skip story";
+    q("#stat").textContent = "Bip is telling a story…";
+    renderSecrets(); renderHand(); renderThoughts(); renderStory();
+    q("#robot").className = "robot talking";
+    lastStep = performance.now();
+  }
+  function adjust(logits) {                          // light repetition control: no immediate repeats, cool recent content words
+    const recent = story.slice(-10).map(w => w.id).filter(id => id !== undefined && !PUNCT.has(eng.vocab[id]));
+    for (const id of recent) logits[id] -= 1.2;
+    if (story.length) { const lastId = story[story.length - 1].id; if (lastId !== undefined && !PUNCT.has(eng.vocab[lastId])) logits[lastId] -= 4; }
+    return logits;
+  }
+  function step() {
+    if (!running || busy) return; busy = true;
+    try {
+      const t0 = performance.now();
+      const logits = adjust(eng.forward(prev, Math.min(pos, eng.ctx - 1), eng.cache, pos));
+      const id = eng.sample(logits, TEMP, TOPK, rand);
+      const dt = performance.now() - t0; msAvg = msAvg === null ? dt : msAvg * 0.9 + dt * 0.1;
+      q("#speed").textContent = `${msAvg.toFixed(1)} ms per word · no server`;
+      const nWords = story.filter(w => w.text !== "\n").length;
+      if (id === 1 || nWords >= MAXWORDS) { endRound(); return; }
+      const text = eng.vocab[id] === "<unk>" ? "…" : eng.vocab[id];
+      const w = { text, id, tag: pos, hit: false, mem: false };
+      const p = planted.find(pl => text === pl.word || text === pl.word + "s");
+      if (p) { w.mem = true; p.glow = true; renderThoughts(); }
+      for (const t of targets) if (!hits.has(t[0]) && (text === t[0] || text === t[0] + "s")) { hits.add(t[0]); w.hit = true; cheer(t); }
+      story.push(w); prev = id; pos++;
+      renderStory();
+      if (hits.size === targets.length) endRound();
+    } finally { busy = false; }
+  }
+  function cheer(t) {
+    renderSecrets(); toast(`Bip said ${t[0]}! ${t[2]}`, 1600);
+    q("#robot").classList.add("happy"); setTimeout(() => q("#robot").classList.remove("happy"), 900);
+    if (hits.size === targets.length) confetti();
+  }
+  function endRound() {
+    running = false; ended = true; renderStory(); renderHand(); renderThoughts();
+    q("#robot").className = "robot";
+    const n = targets.length, got = hits.size, all = got === n;
+    totalStars += got; streak = all ? streak + 1 : 0; if (streak > best) { best = streak; try { localStorage.setItem("pat_best", String(best)); } catch (e) { } }
+    q("#score").innerHTML = `<span>Stars: <b>${totalStars}</b></span><span>Best streak: <b>${best}</b></span>`;
+    const r = q("#result");
+    r.innerHTML = (all ? `${"⭐".repeat(got)} ${n === 1 ? "You did it!" : "All the secrets!"}` : got ? `${"⭐".repeat(got)} ${got} of ${n} secrets` : "No secrets this time. Try planting earlier!") +
+      `<div class="sub">${planted.length} thought${planted.length === 1 ? "" : "s"} planted · ${story.filter(w => w.text !== "\n").length} words · ${msAvg ? msAvg.toFixed(1) : "?"} ms per word</div>`;
+    r.className = "result show";
+    if (all) level = Math.min(level + 1, 3); else if (level > 1 && got === 0) level--;
+    q("#newstory").textContent = "Next story ▶";
+    q("#stat").textContent = all ? "Bip finished. Ready for the next story?" : "The story is over. Press Next story.";
+  }
+  function plant(i) {
+    if (!running || budget <= 0) return;
+    const c = hand[i]; if (planted.some(p => p.word === c[0])) return;
+    const ids = eng.encode(c[1]), tags = [];
+    for (let k = 0; k < COPIES; k++) { const tag = tagSeq++; eng.plant(ids, tag); tags.push(tag); }
+    planted.push({ id: tags[0], tags, word: c[0], phrase: c[1], ico: c[2], glow: false }); budget--;
+    q("#robot").classList.add("thinking"); setTimeout(() => q("#robot").classList.remove("thinking"), 700);
+    renderHand(); renderThoughts();
+    q("#stat").textContent = `Bip now remembers ${c[1]}…`;
+  }
+  function unplant(id) {
+    const k = planted.findIndex(p => p.id === id); if (k < 0) return;
+    for (const tag of planted[k].tags) eng.erase(tag);
+    planted.splice(k, 1); renderThoughts(); renderHand(); toast("Poof! Bip forgot that.", 1100);
+  }
+  function confetti() {
+    const box = q("#confetti"), cols = ["var(--star)", "var(--mem)", "var(--robot)", "var(--ok)"];
+    box.innerHTML = Array.from({ length: 70 }, (_, i) => `<i style="left:${Math.random() * 100}%;background:${cols[i % 4]};animation-delay:${Math.random() * 0.6}s"></i>`).join("");
+    setTimeout(() => box.innerHTML = "", 2600);
+  }
+  // pacing: animation frames when visible, a timer as a fallback; never depends on either alone
+  function pump() { if (running && performance.now() - lastStep >= TICK) { lastStep = performance.now(); step(); } }
+  function rafLoop() { pump(); requestAnimationFrame(rafLoop); }
+  setInterval(pump, TICK);
+
+  q("#hand").addEventListener("click", e => { const b = e.target.closest(".cardbtn"); if (b && !b.disabled) plant(+b.dataset.i); });
+  q("#thoughts").addEventListener("click", e => { const t = e.target.closest(".thought"); if (t) unplant(+t.dataset.id); });
+  q("#newstory").addEventListener("click", startRound);
+  q("#len").addEventListener("change", e => { MAXWORDS = +e.target.value; renderStory(); toast(`Stories now run to about ${MAXWORDS} words.`, 1400); });
+  q("#copy").addEventListener("click", async () => {
+    const text = layout(story).text + (ended ? " The end." : "") + `\n\n— a story by Bip, a 7M-parameter robot that lives inside a web page. Stars: ${hits.size}/${targets.length}`;
+    try { await navigator.clipboard.writeText(text); toast("Story copied!", 1200); } catch (e) { toast("Select the story to copy it.", 1500); }
+  });
+  setTimeout(() => {
+    const t0 = performance.now();
+    eng = new TinyGPT(MODEL);
+    q("#badge").innerHTML = `robot loaded in <b>${Math.round(performance.now() - t0)} ms</b> · ${(MODEL.blob_b64.length * 0.75 / 1e6).toFixed(1)} MB`;
+    startRound(); requestAnimationFrame(rafLoop);
+  }, 30);
+})();
+</script>

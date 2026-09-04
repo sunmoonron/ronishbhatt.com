@@ -1,53 +1,48 @@
 #!/usr/bin/env node
-// bake.mjs — refresh the signed snapshot from the relays and inline it into
-// public/index.html (and public/site.json). deploy.sh runs it; it is safe to
-// run any time. Drafts survive until a signed event with the same address
-// exists on a relay (or a deletion covers it).
+// bake.mjs <public dir> — pull the site key's events from the relays, verify
+// them, pre-render the page with the same components the browser uses, and
+// write index.html (title, description, stylesheet, body, snapshot, CSP hash)
+// plus site.json. Drafts survive until a signed event with the same address
+// exists. An unreachable relay keeps the previous snapshot.
 import fs from 'node:fs';
-import { SimplePool } from 'nostr-tools/pool';
+import crypto from 'node:crypto';
+import { render } from 'preact-render-to-string';
 import { verifyEvent } from 'nostr-tools/pure';
+import { SimplePool } from 'nostr-tools/pool';
+import { init, env, store, apply, sel, keyOf, tagsOf, addrOf, K } from '../public/js/store.js';
+import { html, Page } from '../public/js/ui.js';
+import { Chat } from '../public/js/chat.js';
 
-const PUB = (process.env.SITE_DIR ? process.env.SITE_DIR.replace(/\/?$/, '/') : new URL('../public/', import.meta.url).pathname);
-const html = fs.readFileSync(PUB + 'index.html', 'utf8');
-const meta = n => html.match(new RegExp(`<meta name="${n}" content="([^"]*)"`))?.[1] || '';
-const SITE = meta('site-pubkey');
-const RELAYS = [meta('site-relay'), ...meta('site-backups').split(',').map(s => s.trim()).filter(Boolean)];
+const PUB = (process.argv[2] || new URL('../public', import.meta.url).pathname).replace(/\/$/, '') + '/';
+const src = fs.readFileSync(PUB + 'index.html', 'utf8');
+const meta = n => src.match(new RegExp(`<meta name="${n}" content="([^"]*)"`))?.[1] || '';
+init({ site: meta('site-pubkey'), relay: meta('site-relay'), backups: meta('site-backups').split(',').map(s => s.trim()).filter(Boolean), NT: { verifyEvent } });
 const snap = JSON.parse(fs.readFileSync(PUB + 'site.json', 'utf8'));
 
-const dTag = e => e.tags.find(t => t[0] === 'd')?.[1] ?? '';
-const addr = e => `${e.kind}:${e.pubkey}:${dTag(e)}`;
-const repl = k => k === 0 || k === 3 || (k >= 10000 && k < 20000) || (k >= 30000 && k < 40000);
-const keyOf = e => !repl(e.kind) ? e.id : e.kind >= 30000 ? addr(e) : `${e.kind}:${e.pubkey}`;
-const tags = (e, n) => e.tags.filter(t => t[0] === n).map(t => t[1]);
-
-const pool = new SimplePool();
-let fetched = [];
-try {
-  fetched = await pool.querySync(RELAYS, { authors: [SITE], kinds: [0, 1, 5, 30023, 30078], limit: 500 }, { maxWait: 8000 });
-} catch (e) { console.error('relay query failed:', e.message); }
+const pool = new SimplePool(); let fetched = [];
+try { fetched = await pool.querySync(env.RELAYS, { authors: [env.SITE], kinds: [0, 1, 5, 30023, 30078], limit: 500 }, { maxWait: 8000 }); } catch (e) { console.error('relay query failed:', e.message); }
 pool.destroy();
+const good = fetched.filter(e => e.pubkey === env.SITE && verifyEvent(e));
+const useNew = good.length > 0 || !(snap.events || []).length;
+for (const e of useNew ? good : snap.events) apply(e, { verified: true });
+for (const d of snap.drafts || []) { const ev = { ...d, pubkey: env.SITE, created_at: 0, sig: '' }; ev.id = 'draft:' + keyOf(ev); apply(ev, { draft: true }); }
 
-const good = fetched.filter(e => e.pubkey === SITE && verifyEvent(e));
-const dels = good.filter(e => e.kind === 5);
-const deleted = e => dels.some(d => tags(d, 'e').includes(e.id) || (e.kind >= 30000 && d.created_at >= e.created_at && tags(d, 'a').includes(addr(e))));
-const byKey = new Map();
-for (const e of good) {
-  if (e.kind === 5 || deleted(e)) continue;
-  const k = keyOf(e), cur = byKey.get(k);
-  if (!cur || cur.created_at < e.created_at || (cur.created_at === e.created_at && cur.id > e.id)) byKey.set(k, e);
-}
-const events = [...byKey.values(), ...dels].sort((a, b) => a.kind - b.kind || b.created_at - a.created_at);
-// Only re-bake if the relays actually answered: an outage must not wipe the last good snapshot.
-const previous = snap.events || [];
-const useNew = good.length > 0 || previous.length === 0;
-const finalEvents = useNew ? events : previous;
-const live = new Set(finalEvents.map(keyOf));
-const drafts = (snap.drafts || []).filter(d => { const e = { ...d, pubkey: SITE, created_at: 0, id: '' }; return !live.has(keyOf(e)) && !deleted(e); });
-
-const out = { site: SITE, baked_at: Math.floor(Date.now() / 1000), events: finalEvents, drafts };
+const events = [...store.events.values()].filter(e => !e.draft).concat(store.dels);
+const drafts = (snap.drafts || []).filter(d => { const ev = { ...d, pubkey: env.SITE, created_at: 0 }; return store.events.get(keyOf(ev))?.draft; });
+const out = { site: env.SITE, baked_at: Math.floor(Date.now() / 1000), events, drafts };
 fs.writeFileSync(PUB + 'site.json', JSON.stringify(out, null, 1));
-const inline = JSON.stringify(out).replace(/<\//g, '<\\/');
-const re = /(<script type="application\/json" id="snapshot">)[\s\S]*?(<\/script>)/;
-if (!re.test(html)) throw new Error('snapshot block not found in index.html');
-fs.writeFileSync(PUB + 'index.html', html.replace(re, `$1${inline}$2`));
-console.log(`baked: ${finalEvents.length} signed events (${good.length} fetched from ${RELAYS.length} relays${useNew ? '' : ', kept previous'}), ${drafts.length} drafts remaining`);
+
+const cfg = sel.config(), p = sel.profileData();
+const body = render(html`<${Page} Chat=${Chat} chatProps=${{ live: false }} />`);
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+const importmap = src.match(/<script type="importmap">([\s\S]*?)<\/script>/)[1];
+const hash = crypto.createHash('sha256').update(importmap).digest('base64');
+let html_ = src
+  .replace(/<title>[^<]*<\/title>/, `<title>${esc(cfg.title)}</title>`)
+  .replace(/<meta name="description" content="[^"]*">/, `<meta name="description" content="${esc(p.about || '')}">`)
+  .replace(/'sha256-[^']*'/, `'sha256-${hash}'`)
+  .replace(/<style id="theme">[\s\S]*?<\/style>/, `<style id="theme">${sel.css().replace(/<\/style/gi, '')}</style>`)
+  .replace(/<main id="app">[\s\S]*?<\/main>/, `<main id="app">${body}</main>`)
+  .replace(/(<script type="application\/json" id="snapshot">)[\s\S]*?(<\/script>)/, `$1${JSON.stringify(out).replace(/<\//g, '<\\/')}$2`);
+fs.writeFileSync(PUB + 'index.html', html_);
+console.log(`baked ${PUB}: ${events.length} signed events (${good.length} fetched from ${env.RELAYS.length} relays${useNew ? '' : ', kept previous'}), ${drafts.length} drafts, html ${(html_.length / 1024).toFixed(1)} KB`);

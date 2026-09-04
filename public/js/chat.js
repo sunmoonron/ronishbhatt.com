@@ -1,51 +1,37 @@
 // chat.js — "say hi": NIP-17 private messages to the site key, no account.
-//
-// A visitor gets a throwaway key in this browser. Each message is a kind-14
-// rumor, sealed (kind 13) and gift-wrapped (kind 1059, NIP-59) to the site
-// key with NIP-13 work on the wrap, then published to the personal relay and
-// the backups. The personal relay's write policy admits wraps addressed to
-// the owner at POW_IN bits and wraps addressed to anyone at POW_OUT bits
-// (dell-nix modules/strfry-node.nix) — so the owner's replies live on a relay
-// the owner controls, not only on public ones. Both sides also send a copy
-// wrapped to themselves, the NIP-17 way to keep one's own history.
-import { html, useState, useEffect, useRef } from '/vendor/htm-preact-3.1.1.standalone.mjs';
-import { NT, SITE, PRIMARY, BACKUPS, RELAYS, pool, owner, mine, publish, now, notify, tag } from './store.js';
-import { toast, fmtTime } from './ui.js';
+// A visitor's browser mints a key on first send; each message is a kind-14
+// rumor, sealed and gift-wrapped (NIP-59) with NIP-13 work on the wrap, then
+// published to the personal relay and the backups. The relay's write policy
+// (dell-nix modules/strfry-node.nix) admits wraps to the owner at POW_IN bits
+// and to anyone at POW_OUT (the owner's replies). Both sides keep a self-copy.
+import { useState, useEffect, useRef } from 'preact/hooks';
+import { store, env, pool, owner, mine, publish, now, notify, tag } from './store.js';
+import { html, toast, npub } from './ui.js';
 
-export const POW_IN = 16, POW_OUT = 20;  // must match the relay's write policy
+export const POW_IN = 16, POW_OUT = 20; // must match the relay's write policy
 const randomPast = () => now() - Math.floor(Math.random() * 2 * 86400);
-const short = pk => { try { return NT.nip19.npubEncode(pk).slice(0, 12) + '…'; } catch { return pk.slice(0, 8); } };
-
-export const chat = { mode: 'visitor', sk: null, me: null, nick: '', threads: new Map(), busy: '', sub: null, active: null, unread: 0 };
-const seen = new Set();
+const short = pk => npub(pk).slice(0, 12) + '…';
 const VISITOR_KEY = 'rb.visitor.nsec', NICK = 'rb.nick', CACHE = () => `rb.chat.${chat.mode}.v1`;
+export const chat = { mode: 'visitor', sk: null, me: null, nick: '', threads: new Map(), busy: '', sub: null, active: null, unread: 0, live: false };
+const seen = new Set();
 
-// ---- NIP-17 plumbing ------------------------------------------------------------
-function makeRumor(sk, to, text, subject) {
-  const tags = [['p', to, PRIMARY]]; if (subject) tags.push(['subject', subject]);
-  return NT.nip59.createRumor({ kind: 14, content: text, tags }, sk);
-}
+function makeRumor(sk, to, text, subject) { const tags = [['p', to, env.PRIMARY]]; if (subject) tags.push(['subject', subject]); return env.NT.nip59.createRumor({ kind: 14, content: text, tags }, sk); }
 async function wrapRumor(rumor, sk, to, bits) {
-  const seal = NT.nip59.createSeal(rumor, sk, to);
-  const eph = NT.generateSecretKey();
-  const tmpl = { kind: 1059, pubkey: NT.getPublicKey(eph), created_at: randomPast(), tags: [['p', to]],
-    content: NT.nip44.encrypt(JSON.stringify(seal), NT.nip44.getConversationKey(eph, to)) };
+  const NT = env.NT, seal = NT.nip59.createSeal(rumor, sk, to), eph = NT.generateSecretKey();
+  const tmpl = { kind: 1059, pubkey: NT.getPublicKey(eph), created_at: randomPast(), tags: [['p', to]], content: NT.nip44.encrypt(JSON.stringify(seal), NT.nip44.getConversationKey(eph, to)) };
   return NT.finalizeEvent(await mine(tmpl, bits), eph);
 }
-// Unwrap with the checks nostr-tools' unwrapEvent leaves to the caller.
-function unwrapDM(wrap, sk) {
-  const seal = JSON.parse(NT.nip44.decrypt(wrap.content, NT.nip44.getConversationKey(sk, wrap.pubkey)));
+function unwrapDM(wrap, sk) { // with the checks nostr-tools' unwrapEvent leaves to the caller
+  const NT = env.NT, seal = JSON.parse(NT.nip44.decrypt(wrap.content, NT.nip44.getConversationKey(sk, wrap.pubkey)));
   if (seal.kind !== 13 || !NT.verifyEvent(seal)) throw new Error('bad seal');
   const rumor = JSON.parse(NT.nip44.decrypt(seal.content, NT.nip44.getConversationKey(sk, seal.pubkey)));
   if (rumor.kind !== 14 || rumor.pubkey !== seal.pubkey || NT.getEventHash(rumor) !== rumor.id) throw new Error('bad rumor');
   return rumor;
 }
 
-// ---- threads --------------------------------------------------------------------
 function thread(peer) { let t = chat.threads.get(peer); if (!t) { t = { peer, subject: '', msgs: [], unread: 0 }; chat.threads.set(peer, t); } return t; }
 function addMsg(peer, m) {
-  const t = thread(peer);
-  const i = t.msgs.findIndex(x => x.id === m.id);
+  const t = thread(peer), i = t.msgs.findIndex(x => x.id === m.id);
   if (i >= 0) t.msgs[i] = { ...t.msgs[i], ...m }; else { t.msgs.push(m); t.msgs.sort((a, b) => a.ts - b.ts); if (t.msgs.length > 300) t.msgs.splice(0, t.msgs.length - 300); }
   if (m.subject) t.subject = m.subject;
   save(); notify();
@@ -57,63 +43,45 @@ function onWrap(wrap) {
   if (seen.has(wrap.id)) return; seen.add(wrap.id);
   let rumor; try { rumor = unwrapDM(wrap, chat.sk); } catch { return; }
   if (seen.has(rumor.id)) return; seen.add(rumor.id);
-  const to = tag(rumor, 'p') || ''; const mine_ = rumor.pubkey === chat.me;
-  const peer = mine_ ? to : rumor.pubkey;
-  if (!/^[0-9a-f]{64}$/.test(peer)) return;
-  if (chat.mode === 'visitor' && peer !== SITE) return;           // only the site talks to a visitor here
+  const to = tag(rumor, 'p') || '', mine_ = rumor.pubkey === chat.me, peer = mine_ ? to : rumor.pubkey;
+  if (!/^[0-9a-f]{64}$/.test(peer) || (chat.mode === 'visitor' && peer !== env.SITE)) return;
   const text = String(rumor.content || '').slice(0, 5000);
   addMsg(peer, { id: rumor.id, from: rumor.pubkey, to, text, ts: rumor.created_at, mine: mine_, subject: mine_ ? '' : tag(rumor, 'subject') || '' });
-  if (!mine_ && rumor.created_at > now() - 3600 * 24 * 3) {
+  if (!mine_ && rumor.created_at > now() - 3 * 86400) {
     if (chat.mode === 'owner' && chat.active !== peer) { thread(peer).unread++; chat.unread++; notify(); }
-    if (document.hidden && Notification.permission === 'granted') try { new Notification(chat.mode === 'owner' ? `New message from ${thread(peer).subject || short(peer)}` : 'Ronish replied', { body: text.slice(0, 120) }); } catch {}
+    if (document.hidden && globalThis.Notification?.permission === 'granted') try { new Notification(chat.mode === 'owner' ? `New message from ${thread(peer).subject || short(peer)}` : 'Ronish replied', { body: text.slice(0, 120) }); } catch {}
   }
 }
+function subscribe() { chat.sub?.close(); chat.sub = chat.me && pool ? pool.subscribe(env.RELAYS, { kinds: [1059], '#p': [chat.me] }, { label: 'dm', onevent: onWrap }) : null; }
 
-function subscribe() {
-  chat.sub?.close(); chat.sub = null;
-  if (!chat.me) return;
-  chat.sub = pool.subscribe(RELAYS, { kinds: [1059], '#p': [chat.me] }, { label: 'dm', onevent: onWrap });
-}
-
-// ---- lifecycle -------------------------------------------------------------------
 export function chatConfigure(ownerMode) {
   const mode = ownerMode ? 'owner' : 'visitor';
-  if (chat.mode === mode && chat.sk) return;
-  chat.sub?.close(); chat.sub = null; chat.threads = new Map(); seen.clear(); chat.unread = 0; chat.active = null;
-  chat.mode = mode;
-  if (ownerMode) { chat.sk = owner.sk; chat.me = SITE; }
+  if (chat.live && chat.mode === mode) return;
+  chat.sub?.close(); chat.threads = new Map(); seen.clear(); chat.unread = 0; chat.active = null; chat.mode = mode; chat.live = true;
+  if (ownerMode) { chat.sk = owner.sk; chat.me = env.SITE; }
   else {
     let raw = localStorage.getItem(VISITOR_KEY) || localStorage.getItem('bottlechat_visitor_nsec'); // migrate the old chat's identity
     if (raw && !localStorage.getItem(VISITOR_KEY)) localStorage.setItem(VISITOR_KEY, raw);
     ['bottlechat_visitor_nsec', 'bottlechat_owner_nsec', 'bottlechat_messages', 'bottlechat_seen_ids', 'bottlechat_owner_conversations', 'bottlechat_welcome_shown', 'bottlechat_nick'].forEach(k => localStorage.removeItem(k));
-    try { chat.sk = raw ? NT.nip19.decode(raw).data : null; } catch { chat.sk = null; }
-    chat.me = chat.sk ? NT.getPublicKey(chat.sk) : null;
-    chat.nick = localStorage.getItem(NICK) || '';
+    try { chat.sk = raw ? env.NT.nip19.decode(raw).data : null; } catch { chat.sk = null; }
+    chat.me = chat.sk ? env.NT.getPublicKey(chat.sk) : null; chat.nick = localStorage.getItem(NICK) || '';
   }
   load(); subscribe(); notify();
 }
-function ensureKey() {
-  if (chat.sk) return;
-  chat.sk = NT.generateSecretKey(); chat.me = NT.getPublicKey(chat.sk);
-  localStorage.setItem(VISITOR_KEY, NT.nip19.nsecEncode(chat.sk));
-  subscribe();
-}
+function ensureKey() { if (chat.sk) return; chat.sk = env.NT.generateSecretKey(); chat.me = env.NT.getPublicKey(chat.sk); localStorage.setItem(VISITOR_KEY, env.NT.nip19.nsecEncode(chat.sk)); subscribe(); }
 
 async function send(peer, text) {
-  text = text.trim().slice(0, 5000); if (!text || chat.busy) return;
+  text = text.trim().slice(0, 5000); if (!text || chat.busy || !env.NT) return;
   const isOwner = chat.mode === 'owner';
   if (!isOwner) { ensureKey(); if (chat.nick) localStorage.setItem(NICK, chat.nick); }
-  const rumor = makeRumor(chat.sk, peer, text, isOwner ? '' : chat.nick);
-  seen.add(rumor.id);
+  const rumor = makeRumor(chat.sk, peer, text, isOwner ? '' : chat.nick); seen.add(rumor.id);
   addMsg(peer, { id: rumor.id, from: chat.me, to: peer, text, ts: rumor.created_at, mine: true, pending: true });
   chat.busy = 'sealing'; notify();
   try {
-    // to them: the personal relay wants work (16 bits when addressed to the owner, 20 otherwise)
-    const toPeer = await wrapRumor(rumor, chat.sk, peer, peer === SITE ? POW_IN : POW_OUT);
+    const toPeer = await wrapRumor(rumor, chat.sk, peer, peer === env.SITE ? POW_IN : POW_OUT);
     chat.busy = 'sending'; notify();
-    const res = await publish(toPeer, RELAYS);
-    // to self: the owner's copy goes on the personal relay too; a visitor's only fits the public ones
-    wrapRumor(rumor, chat.sk, chat.me, isOwner ? POW_IN : 0).then(w => publish(w, isOwner ? RELAYS : BACKUPS)).catch(() => {});
+    const res = await publish(toPeer, env.RELAYS);
+    wrapRumor(rumor, chat.sk, chat.me, isOwner ? POW_IN : 0).then(w => publish(w, isOwner ? env.RELAYS : env.BACKUPS)).catch(() => {});
     const ok = res.filter(r => r.ok);
     addMsg(peer, { id: rumor.id, pending: false, delivered: ok.map(r => r.url), failed: res.filter(r => !r.ok) });
     if (!ok.length) toast('no relay accepted the message: ' + res.map(r => r.msg).join('; '), 'err');
@@ -121,59 +89,45 @@ async function send(peer, text) {
   chat.busy = ''; notify();
 }
 
-export function chatInit() { chatConfigure(false); }
-
-// ---- component -------------------------------------------------------------------
+// ---- component (live=false renders the exact shell the bake pre-renders) ----------
+const fmtTime = ts => { const d = new Date(ts * 1000); return `${d.toISOString().slice(5, 10).replace('-', '/')} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`; };
 const Delivery = ({ m }) => m.pending ? html`<small>${chat.busy === 'sealing' ? 'sealing (proof of work)…' : 'sending…'}</small>`
-  : m.mine ? html`<small title=${(m.delivered || []).join('\n')}>${fmtTime(m.ts)} · ${m.delivered?.length ? `✓ ${m.delivered.length} relay${m.delivered.length > 1 ? 's' : ''}${m.delivered.includes(PRIMARY) ? ' incl. mine' : ''}` : '✗ not delivered'}</small>`
+  : m.mine ? html`<small title=${(m.delivered || []).join('\n')}>${fmtTime(m.ts)} · ${m.delivered?.length ? `✓ ${m.delivered.length} relay${m.delivered.length > 1 ? 's' : ''}${m.delivered.includes(env.PRIMARY) ? ' incl. mine' : ''}` : '✗ not delivered'}</small>`
   : html`<small>${fmtTime(m.ts)}</small>`;
-
 function Log({ msgs }) {
   const ref = useRef();
   useEffect(() => { if (ref.current) ref.current.scrollTop = ref.current.scrollHeight; }, [msgs.length, msgs[msgs.length - 1]?.pending]);
-  return html`<div class="log" ref=${ref}>${msgs.map(m => html`<div key=${m.id} class=${'msg ' + (m.mine ? 'out' : 'in')}>${m.text}<${Delivery} m=${m} /></div>`)}</div>`;
+  return html`<div class="log" ref=${ref}>${msgs.map(m => html`<div key=${m.id} class=${'msg' + (m.mine ? ' out' : '')}>${m.text}<${Delivery} m=${m} /></div>`)}</div>`;
 }
-
-function Composer({ peer, placeholder }) {
+function Composer({ peer, placeholder, ready }) {
   const [text, setText] = useState('');
   const go = e => { e?.preventDefault(); const t = text; setText(''); send(peer, t); };
-  return html`<form onSubmit=${go}>
-    <textarea rows="1" value=${text} placeholder=${placeholder} disabled=${!!chat.busy}
-      onInput=${e => setText(e.target.value)} onKeyDown=${e => { if (e.key === 'Enter' && !e.shiftKey) go(e); }} />
-    <button class="pri" type="submit" disabled=${!!chat.busy || !text.trim()}>${chat.busy ? html`<span class="spin"></span>${chat.busy}` : 'send'}</button>
-  </form>`;
+  return html`<form onSubmit=${go}><textarea rows="1" value=${text} placeholder=${placeholder} disabled=${!ready || !!chat.busy} onInput=${e => setText(e.target.value)} onKeyDown=${e => { if (e.key === 'Enter' && !e.shiftKey) go(e); }} />
+    <button class="pri" type="submit" disabled=${!ready || !!chat.busy || !text.trim()}>${chat.busy ? html`<span class="spin"></span>${chat.busy}` : ready ? 'send' : '…'}</button></form>`;
 }
-
 function Keys() {
   const exportKey = () => { const k = localStorage.getItem(VISITOR_KEY); if (!k) return toast('no key yet — send a message first'); navigator.clipboard?.writeText(k).then(() => toast('key copied — keep it private'), () => prompt('your key:', k)); };
-  const importKey = () => { const v = prompt('paste an nsec1… key to continue an earlier conversation:'); if (!v) return; try { NT.nip19.decode(v.trim()); localStorage.setItem(VISITOR_KEY, v.trim()); localStorage.removeItem(CACHE()); location.reload(); } catch { toast('that is not a valid key', 'err'); } };
-  const forget = () => { if (confirm('Forget this browser\'s key and conversation?')) { localStorage.removeItem(VISITOR_KEY); localStorage.removeItem(NICK); localStorage.removeItem(CACHE()); location.reload(); } };
-  return html`<details class="keys"><summary>your key</summary>
-    <div>Your messages are encrypted to my key and signed by a key that lives only in this browser${chat.me ? html` (<code>${short(chat.me)}</code>)` : ''}. Export it to pick the conversation up elsewhere.</div>
-    <div class="row"><button class="sm" onClick=${exportKey}>export</button><button class="sm" onClick=${importKey}>import</button><button class="sm danger" onClick=${forget}>forget</button></div>
-  </details>`;
+  const importKey = () => { const v = prompt('paste an nsec1… key to continue an earlier conversation:'); if (!v) return; try { env.NT.nip19.decode(v.trim()); localStorage.setItem(VISITOR_KEY, v.trim()); localStorage.removeItem(CACHE()); location.reload(); } catch { toast('that is not a valid key', 'err'); } };
+  const forget = () => { if (confirm("Forget this browser's key and conversation?")) { localStorage.removeItem(VISITOR_KEY); localStorage.removeItem(NICK); localStorage.removeItem(CACHE()); location.reload(); } };
+  return html`<details class="keys"><summary>your key</summary><div>Messages are encrypted to my key and signed by one that lives only in this browser. Export it to pick the conversation up elsewhere.</div>
+    <div class="row"><button class="sm" onClick=${exportKey}>export</button><button class="sm" onClick=${importKey}>import</button><button class="sm danger" onClick=${forget}>forget</button></div></details>`;
 }
-
-export function Chat({ ownerMode }) {
+export function Chat({ live, ownerMode }) {
   const [, bump] = useState(0);
-  useEffect(() => { if (Notification?.permission === 'default' && ownerMode) Notification.requestPermission().catch(() => {}); }, [ownerMode]);
+  useEffect(() => { if (ownerMode && globalThis.Notification?.permission === 'default') Notification.requestPermission().catch(() => {}); }, [ownerMode]);
+  const ready = !!(live && env.NT);
   if (ownerMode) {
     const threads = [...chat.threads.values()].sort((a, b) => (b.msgs.at(-1)?.ts || 0) - (a.msgs.at(-1)?.ts || 0));
     if (!chat.active && threads[0]) chat.active = threads[0].peer;
     const t = chat.threads.get(chat.active);
-    return html`<div class="chat">
-      <div class="threads">${threads.length ? threads.map(x => html`<button key=${x.peer} class=${'sm ' + (x.peer === chat.active ? 'on' : '')} onClick=${() => { chat.active = x.peer; chat.unread -= x.unread; x.unread = 0; bump(n => n + 1); notify(); }}>${x.subject || short(x.peer)}${x.unread ? html`<span class="badge">${x.unread}</span>` : null}</button>`) : html`<span class="empty">no conversations yet — they arrive here from the relay</span>`}</div>
-      ${t ? html`<div class="who">${t.subject || 'anonymous'} · <code>${short(t.peer)}</code> · ${t.msgs.length} messages</div><${Log} msgs=${t.msgs} /><${Composer} peer=${t.peer} placeholder="reply (20-bit proof of work, a few seconds)" />` : null}
-    </div>`;
+    return html`<div class="chat"><div class="threads">${threads.length ? threads.map(x => html`<button key=${x.peer} class=${'sm' + (x.peer === chat.active ? ' on' : '')} onClick=${() => { chat.active = x.peer; chat.unread -= x.unread; x.unread = 0; bump(n => n + 1); notify(); }}>${x.subject || short(x.peer)}${x.unread ? html`<span class="badge">${x.unread}</span>` : null}</button>`) : html`<span class="empty">no conversations yet — they arrive here from the relay</span>`}</div>
+      ${t ? html`<div class="who">${t.subject || 'anonymous'} · <code>${short(t.peer)}</code> · ${t.msgs.length} messages</div><${Log} msgs=${t.msgs} /><${Composer} peer=${t.peer} ready=${ready} placeholder="reply (20-bit proof of work, a few seconds)" />` : null}</div>`;
   }
-  const t = chat.threads.get(SITE); const msgs = t?.msgs || [];
+  const msgs = chat.threads.get(env.SITE)?.msgs || [];
   return html`<div class="chat">
-    <div class="who">
-      ${msgs.length ? html`<span>you are <b>${chat.nick || 'anonymous'}</b></span><button class="lnk" style="font-size:.78rem" onClick=${() => { const n = prompt('nickname:', chat.nick); if (n != null) { chat.nick = n.trim().slice(0, 40); localStorage.setItem(NICK, chat.nick); bump(x => x + 1); } }}>change</button>`
-        : html`<span>call me</span><input placeholder="your name (optional)" maxlength="40" value=${chat.nick} onInput=${e => { chat.nick = e.target.value; }} />`}
-    </div>
-    ${msgs.length ? html`<${Log} msgs=${msgs} />` : html`<div class="hint">End-to-end encrypted, no account: your browser mints a key, wraps the message to mine (NIP-17) and hands it to my relay. I reply here; come back to the same browser or export your key below.</div>`}
-    <${Composer} peer=${SITE} placeholder="say hi…" />
-    <${Keys} />
-  </div>`;
+    <div class="who">${msgs.length ? html`<span>you are <b>${chat.nick || 'anonymous'}</b></span><button class="lnk" onClick=${() => { const n = prompt('nickname:', chat.nick); if (n != null) { chat.nick = n.trim().slice(0, 40); localStorage.setItem(NICK, chat.nick); bump(x => x + 1); } }}>change</button>`
+      : html`<span>call me</span><input placeholder="your name (optional)" maxlength="40" value=${chat.nick} onInput=${e => { chat.nick = e.target.value; }} />`}</div>
+    ${msgs.length ? html`<${Log} msgs=${msgs} />` : html`<div class="hint">End-to-end encrypted, no account: your browser mints a key, wraps the message to mine (NIP-17) and hands it to my relay. I reply here; come back in the same browser or export your key below.</div>`}
+    <${Composer} peer=${env.SITE} ready=${ready} placeholder="say hi…" />
+    <${Keys} /></div>`;
 }

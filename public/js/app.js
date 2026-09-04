@@ -1,52 +1,43 @@
-// app.js — composes the page from whatever events the store holds right now.
-import { html, render, useState, useEffect } from '/vendor/htm-preact-3.1.1.standalone.mjs';
-import { store, sel, onChange, loadCache, loadSnapshot, connect, restoreUnlock, owner, DEFAULT_CFG, K } from './store.js';
-import { Header, Section, Items, Notes, Footer, Toasts, Label } from './ui.js';
-import { Chat, chat, chatConfigure, chatInit } from './chat.js';
-import { OwnerBar, UnlockDialog, Editor, Console } from './owner.js';
+// app.js — hydrates the pre-rendered page, then upgrades it: crypto and the
+// relay pool load after first paint, the owner tools only after "unlock".
+import { hydrate } from 'preact';
+import { useState, useEffect } from 'preact/hooks';
+import { html, Page, Toasts, bindNotify } from './ui.js';
+import { env, init, store, sel, onChange, notify, loadSnapshot, loadCache, keepCache, connect, reverify, owner, storedKey, restore } from './store.js';
+import { Chat, chat, chatConfigure } from './chat.js';
+
+const meta = n => document.querySelector(`meta[name="${n}"]`)?.content?.trim() || '';
+init({ site: meta('site-pubkey'), relay: meta('site-relay'), backups: meta('site-backups').split(',').map(s => s.trim()).filter(Boolean) });
+const script = src => new Promise((ok, err) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = err; document.head.append(s); });
+let Owner = null, live = false;
 
 function App() {
   const [, bump] = useState(0);
   useEffect(() => onChange(() => bump(n => n + 1)), []);
-  const [unlockOpen, setUnlockOpen] = useState(false);
-  const [editing, setEditing] = useState(null);
-  const [consoleOpen, setConsoleOpen] = useState(false);
-  const cfg = { ...DEFAULT_CFG, ...(sel.config() || {}) };
-  const isOwner = !!owner.sk;
-  useEffect(() => { document.title = cfg.title || DEFAULT_CFG.title; document.documentElement.style.setProperty('--accent', cfg.accent || DEFAULT_CFG.accent); }, [cfg.title, cfg.accent]);
-  useEffect(() => { chatConfigure(isOwner); }, [isOwner]);
-  const edit = (kind, ev, preset) => html`<button class="sm edit" onClick=${() => setEditing({ kind, ev, preset })}>edit</button>`;
-  const editInline = (kind, ev) => html`<button class="sm" onClick=${() => setEditing({ kind, ev })}>edit</button>`;
-
-  const blocks = cfg.sections.map(id => {
-    if (id === 'projects' || id === 'writing') {
-      const type = id === 'projects' ? 'project' : 'writing';
-      return html`<${Items} key=${id} id=${id} title=${id} items=${sel.articles(type)} edit=${isOwner ? e => editInline(30023, e) : null} add=${isOwner ? () => setEditing({ kind: 30023, preset: { type } }) : null} />`;
-    }
-    if (id === 'notes') return html`<${Notes} key="notes" notes=${sel.notes()} edit=${isOwner ? e => editInline(1, e) : null} compose=${isOwner ? () => setEditing({ kind: 1 }) : null} />`;
-    if (id === 'chat') return cfg.chat === false && !isOwner ? null : html`<section class="c" id="chat" key="chat"><${Label} text=${isOwner ? 'inbox' : 'say hi'} /><${Chat} ownerMode=${isOwner} /></section>`;
-    const ev = sel.section(id);
-    if (!ev) return isOwner ? html`<section class="c" key=${id}><${Label} text=${id} /><p class="empty">no “${id}” section on the relay yet</p>${edit(30023, null, { d: id, type: 'section', title: id })}</section>` : null;
-    return html`<${Section} key=${id} ev=${ev}>${isOwner ? edit(30023, ev) : null}</${Section}>`;
-  });
-
-  return html`
-    ${isOwner ? html`<${OwnerBar} onEdit=${setEditing} onConsole=${() => setConsoleOpen(true)} unread=${chat.unread} />` : null}
-    <${Header} p=${sel.profileData()} ev=${sel.profile()}>${isOwner ? edit(0, sel.profile()) : null}</${Header}>
-    ${blocks}
-    <${Footer} cfg=${cfg} ownerOn=${isOwner} onUnlock=${() => setUnlockOpen(true)} />
-    <${UnlockDialog} open=${unlockOpen} onClose=${() => setUnlockOpen(false)} />
-    ${editing ? html`<${Editor} key=${editing.ev?.id || editing.kind} target=${editing} onClose=${() => setEditing(null)} />` : null}
-    ${consoleOpen ? html`<${Console} onClose=${() => setConsoleOpen(false)} />` : null}
+  const [unlockOpen, setUnlockOpen] = useState(false), [editing, setEditing] = useState(null), [consoleOpen, setConsoleOpen] = useState(false);
+  const isOwner = !!(Owner && owner.sk), cfg = sel.config();
+  useEffect(() => { document.title = cfg.title; }, [cfg.title]);
+  useEffect(() => { const el = document.getElementById('theme'), css = sel.css(); if (el && css && el.textContent !== css) el.textContent = css; });
+  useEffect(() => { if (live) chatConfigure(isOwner); }, [isOwner, live]);
+  const edit = isOwner ? (kind, ev, preset) => html`<button class=${'sm edit'} onClick=${() => setEditing({ kind, ev, preset })}>edit</button>` : null;
+  const openUnlock = async () => { if (!Owner) Owner = await import('./owner.js'); setUnlockOpen(true); };
+  return html`<${Page} Chat=${Chat} chatProps=${{ live, ownerMode: isOwner }} edit=${edit} ownerOn=${isOwner} onUnlock=${openUnlock}>
+      ${isOwner ? html`<${Owner.OwnerBar} onEdit=${(kind, ev, preset) => setEditing({ kind, ev, preset })} onConsole=${() => setConsoleOpen(true)} unread=${chat.unread} />` : null}
+    </${Page}>
+    ${Owner && unlockOpen ? html`<${Owner.UnlockDialog} open=${unlockOpen} onClose=${() => setUnlockOpen(false)} />` : null}
+    ${Owner && editing ? html`<${Owner.Editor} key=${editing.ev?.id || editing.kind} target=${editing} onClose=${() => setEditing(null)} />` : null}
+    ${Owner && consoleOpen ? html`<${Owner.Console} onClose=${() => setConsoleOpen(false)} />` : null}
     <${Toasts} />`;
 }
 
 (async () => {
-  loadCache();
-  await loadSnapshot();
-  restoreUnlock();
-  const root = document.getElementById('app'); root.textContent = '';
-  render(html`<${App} />`, root);
-  connect();
-  chatInit();
+  // Hydrate from exactly what was pre-rendered; anything newer (cache, relays) arrives as a normal re-render.
+  try { loadSnapshot(JSON.parse(document.getElementById('snapshot').textContent)); } catch {}
+  bindNotify(notify);
+  hydrate(html`<${App} />`, document.getElementById('app'));
+  loadCache(); keepCache(); notify();
+  await script('/vendor/nostr-tools-2.25.2.bundle.js'); env.NT = window.NostrTools; reverify();
+  script('/vendor/dompurify-3.4.14.min.js').then(notify).catch(() => {});
+  connect(); live = true; chatConfigure(false); notify();
+  if (storedKey()) { Owner = await import('./owner.js'); try { restore(); } catch {} notify(); }
 })();

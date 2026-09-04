@@ -132,9 +132,9 @@ h1 small{font-size:14px;color:var(--muted);font-weight:600;margin-left:6px}
   <div class="result" id="result"></div>
   <div class="controls">
     <div class="score" id="score"><span>Stars: <b>0</b></span><span>Best streak: <b>0</b></span></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="copy">Copy story</button><button class="btn primary" id="newstory">Skip story</button></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><label class="fine" style="display:flex;gap:6px;align-items:center">story length <select id="len" class="btn" style="padding:6px 10px"><option value="35">short</option><option value="55" selected>medium</option><option value="90">long</option><option value="150">epic</option></select></label><button class="btn" id="copy">Copy story</button><button class="btn primary" id="newstory">Skip story</button></div>
   </div>
-  <p class="fine"><b>How it works:</b> Bip is a 7‑million‑parameter language model that lives entirely inside this page; there is no server. A card is a real memory, not a hint: the two words are run through the model on their own, and what it wrote down about them is slipped into its memory as if it had read them in the story. Tap a thought in Bip's head to take the memory back out.</p>
+  <p class="fine"><b>How it works:</b> Bip is a 7-million-parameter language model that lives entirely inside this page; there is no server. It was <b>trained from scratch</b> for this game: a word-level GPT (6 layers, 256 wide, an 8,192-word vocabulary) trained on TinyStories for 36,000 steps in 444 seconds on one A100, then quantised to int8 and inlined here (9.4 MB of weights). A card is a real memory, not a hint, and planting <b>never changes the weights</b>: the two words are run through the model on their own, and the keys and values its attention wrote for them are spliced into Bip's memory ahead of the story, at no position at all, so every later word can look at them while it decides what to say. Two copies are planted per card because one is easy to ignore. Taking a thought out deletes exactly those entries, and the rest of the memory closes over the gap. The engine is hand-written JavaScript with a key/value cache; the story-length dial sets how many words Bip writes before stopping.</p>
 </div>
 <div class="toast" id="toast"></div>
 <div class="confetti" id="confetti"></div>
@@ -305,8 +305,8 @@ const MODEL = {"config":{"V":8192,"d":256,"heads":8,"layers":6,"ctx":256},"vocab
 (function () {
   const q = s => document.querySelector(s);
   const DECK = [["cat", "a cat", "🐱"], ["dog", "a dog", "🐶"], ["moon", "the moon", "🌙"], ["cake", "a cake", "🎂"], ["ball", "a ball", "⚽"], ["tree", "a tree", "🌳"], ["fish", "a fish", "🐟"], ["boat", "a boat", "⛵"], ["car", "a car", "🚗"], ["bird", "a bird", "🐦"], ["frog", "a frog", "🐸"], ["hat", "a hat", "🎩"], ["star", "a star", "⭐"], ["apple", "an apple", "🍎"], ["bear", "a bear", "🐻"], ["cookie", "a cookie", "🍪"], ["kite", "a kite", "🪁"], ["flower", "a flower", "🌸"], ["dragon", "a dragon", "🐉"], ["robot", "a robot", "🤖"]];
-  const COPIES = 3;
-  const MAXWORDS = 55, TEMP = 0.85, TOPK = 40, TICK = 170;
+  const COPIES = 2;
+  let MAXWORDS = 55; const TEMP = 0.85, TOPK = 40, TICK = 170;
   const PUNCT = new Set([".", ",", "!", "?", ";", ":", "\"", "(", ")", "-", "\n"]);
   let eng, deck, targets, hand, planted, story, hits, running = false, ended = false, pos = 0, prev = 1, tagSeq = 1000, totalStars = 0, streak = 0, best = 0, round = 0, level = 1, budget = 0, msAvg = null, lastStep = 0, busy = false, seed = Date.now() % 1e6;
   function rand() { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; }
@@ -443,6 +443,7 @@ const MODEL = {"config":{"V":8192,"d":256,"heads":8,"layers":6,"ctx":256},"vocab
   q("#hand").addEventListener("click", e => { const b = e.target.closest(".cardbtn"); if (b && !b.disabled) plant(+b.dataset.i); });
   q("#thoughts").addEventListener("click", e => { const t = e.target.closest(".thought"); if (t) unplant(+t.dataset.id); });
   q("#newstory").addEventListener("click", startRound);
+  q("#len").addEventListener("change", e => { MAXWORDS = +e.target.value; renderStory(); toast(`Stories now run to about ${MAXWORDS} words.`, 1400); });
   q("#copy").addEventListener("click", async () => {
     const text = layout(story).text + (ended ? " The end." : "") + `\n\n— a story by Bip, a 7M-parameter robot that lives inside a web page. Stars: ${hits.size}/${targets.length}`;
     try { await navigator.clipboard.writeText(text); toast("Story copied!", 1200); } catch (e) { toast("Select the story to copy it.", 1500); }
