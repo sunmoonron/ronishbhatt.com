@@ -120,8 +120,14 @@ export function Chat({ live, ownerMode }) {
     const threads = [...chat.threads.values()].sort((a, b) => (b.msgs.at(-1)?.ts || 0) - (a.msgs.at(-1)?.ts || 0));
     if (!chat.active && threads[0]) chat.active = threads[0].peer;
     const t = chat.threads.get(chat.active);
-    return html`<div class="chat"><div class="threads">${threads.length ? threads.map(x => html`<button key=${x.peer} class=${'sm' + (x.peer === chat.active ? ' on' : '')} onClick=${() => { chat.active = x.peer; chat.unread -= x.unread; x.unread = 0; bump(n => n + 1); notify(); }}>${x.subject || short(x.peer)}${x.unread ? html`<span class="badge">${x.unread}</span>` : null}</button>`) : html`<span class="empty">no conversations yet; they arrive here from the relay</span>`}</div>
-      ${t ? html`<div class="who">${t.subject || 'anonymous'} · <code>${short(t.peer)}</code> · ${t.msgs.length} messages</div><${Log} msgs=${t.msgs} /><${Composer} peer=${t.peer} placeholder="reply (20-bit proof of work, a few seconds)" />` : null}</div>`;
+    const open = x => { chat.active = x.peer; chat.unread -= x.unread; x.unread = 0; bump(n => n + 1); notify(); };
+    return html`<div class="chat inbox">
+      <aside class="threads">${threads.length ? threads.map(x => { const last = x.msgs.at(-1); return html`<button key=${x.peer} class=${'thread' + (x.peer === chat.active ? ' on' : '')} onClick=${() => open(x)}>
+        <b>${x.subject || short(x.peer)}</b><time>${last ? fmtTime(last.ts) : ''}</time>
+        <small>${last ? (last.mine ? 'you: ' : '') + last.text.slice(0, 70) : ''}</small>${x.unread ? html`<i class="badge">${x.unread}</i>` : null}</button>`; })
+        : html`<p class="empty">no conversations yet; they arrive here from the relay</p>`}</aside>
+      <section class="conv">${t ? html`<div class="who"><b>${t.subject || 'anonymous'}</b><code>${short(t.peer)}</code><span>${t.msgs.length} message${t.msgs.length === 1 ? '' : 's'}</span></div><${Log} msgs=${t.msgs} /><${Composer} peer=${t.peer} placeholder="reply (20-bit proof of work, a few seconds)" />` : html`<p class="empty">pick a conversation</p>`}</section>
+    </div>`;
   }
   const msgs = chat.threads.get(env.SITE)?.msgs || [];
   return html`<div class="chat">

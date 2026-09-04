@@ -41,7 +41,7 @@ if (returning) upgrade({ reason: 'returning' });
 for (const ev of ['focusin', 'pointerdown', 'keydown']) chat?.addEventListener(ev, () => upgrade({ focus: 'chat' }), { once: true });
 chat?.querySelector('form')?.addEventListener('submit', e => { e.preventDefault(); upgrade({ focus: 'chat', send: true }); });
 chat?.querySelector('.keys')?.addEventListener('click', e => { if (e.target.tagName === 'BUTTON') upgrade({ focus: 'chat' }); });
-$('footer button.lnk')?.addEventListener('click', () => upgrade({ unlock: true }));
+for (const b of document.querySelectorAll('.pills button.lnk, footer button.lnk')) b.addEventListener('click', () => upgrade({ unlock: true }));
 
 // papers: the thumbnail opens the PDF right there; without this script it is a plain link
 document.addEventListener('click', e => {

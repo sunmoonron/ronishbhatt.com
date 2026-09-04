@@ -4,12 +4,17 @@ import { useState, useEffect, useRef } from 'preact/hooks';
 import { env, K, TAG, CONFIG_D, CSS_D, DEFAULT_CFG, store, sel, apply, publish, sign, unlock, lock, now, tag, tagsOf, dTag, addrOf, keyOf, notify } from './store.js';
 import { html, toast, npub } from './ui.js';
 
-const CSS = `.ownerbar{position:sticky;top:0;z-index:5;display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;margin:-2.5rem -1.25rem 2.5rem;padding:.55rem 1.25rem;background:var(--card);border-bottom:1px solid var(--accent);font-size:.78rem;color:var(--mute)}.ownerbar .grow{flex:1}.ownerbar code{font:.78rem var(--mono);color:var(--fg)}
+const CSS = `.ownerbar{grid-column:1/-1;position:sticky;top:0;z-index:5;display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;margin:-1.5rem -1.25rem 1.5rem;padding:.55rem 1.25rem;background:var(--card);border-bottom:1px solid var(--accent);font-size:.78rem;color:var(--mute)}.ownerbar .grow{flex:1}.ownerbar code{font:.78rem var(--mono);color:var(--fg)}
 .edit{position:absolute;right:0;top:0}.label .edit{position:static}
 .panel{position:fixed;top:0;right:0;bottom:0;width:min(34rem,100%);background:var(--card);border-left:1px solid var(--line);z-index:20;overflow:auto;padding:1.25rem;box-shadow:-20px 0 60px rgba(0,0,0,.35)}.panel h2{margin:0 0 .25rem;font-size:1.05rem}.panel .sub{font-size:.78rem;color:var(--mute);margin:0}
 label.f{display:block;font-size:.72rem;color:var(--mute);margin:.75rem 0 .25rem;letter-spacing:.04em}textarea.big{min-height:16rem;font-family:var(--mono);font-size:.8rem}.err{color:var(--err);font-size:.8rem}
 .console{position:fixed;inset:0;z-index:30;background:var(--bg);display:flex;flex-direction:column}.console iframe{flex:1;border:0;width:100%;background:#0b0c0f}.console .bar{display:flex;gap:.6rem;align-items:center;padding:.45rem .8rem;border-bottom:1px solid var(--line);font-size:.78rem;color:var(--mute)}
 dialog{background:var(--card);color:var(--fg);border:1px solid var(--line);border-radius:12px;padding:1.25rem;max-width:26rem;width:calc(100% - 2rem)}dialog::backdrop{background:rgba(0,0,0,.55)}dialog h2{margin:0 0 .4rem;font-size:1.05rem}dialog p{font-size:.85rem;color:var(--mute);margin:0 0 .5rem}
+.inbox{display:grid;grid-template-columns:15rem minmax(0,1fr);min-height:24rem}.inbox .threads{display:flex;flex-direction:column;border-right:1px solid var(--line);overflow:auto;max-height:34rem}
+.thread{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.1rem .5rem;text-align:left;border:0;border-bottom:1px solid var(--line);border-radius:0;background:none;padding:.65rem .8rem;line-height:1.3}.thread:hover{background:color-mix(in srgb,var(--accent) 6%,transparent)}.thread.on{background:color-mix(in srgb,var(--accent) 12%,transparent)}
+.thread b{font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.thread time{font-size:.66rem;color:var(--mute)}.thread small{grid-column:1/-1;font-size:.74rem;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.thread .badge{grid-column:2;justify-self:end}
+.inbox .conv{display:flex;flex-direction:column;min-width:0}.inbox .conv .who{gap:.6rem}.inbox .conv .who code{font:.72rem var(--mono)}.inbox .conv .log{flex:1;max-height:28rem}.inbox .empty{padding:1rem}
+@media (max-width:700px){.inbox{grid-template-columns:1fr}.inbox .threads{border-right:0;border-bottom:1px solid var(--line);max-height:11rem}}
 @media (max-width:600px){.ownerbar{margin:-1rem -1rem 1.5rem;padding:.5rem 1rem}}`;
 if (typeof document !== 'undefined' && !document.getElementById('owner-css')) { const s = document.createElement('style'); s.id = 'owner-css'; s.textContent = CSS; document.head.append(s); }
 
@@ -24,7 +29,7 @@ const SCHEMAS = {
   0: [['name', 'Name'], ['about', 'About, one line'], ['picture', 'Picture URL'], ['nip05', 'NIP-05 (e.g. _@ronishbhatt.com)'], ['website', 'Website']],
   layout: [['title', 'Site title'], ['sections', 'Sections in order, comma separated (chat, about, now, projects, writing, notes, or any block slug)'], ['links', 'Footer links, one per line: label | url'], ['chat', 'Chat enabled (yes / no)']],
   css: [['content', 'Stylesheet, the whole page\'s CSS']],
-  30023: [['d', 'Slug, fixed once published'], ['type', 'Type: section / project / writing'], ['title', 'Title'], ['summary', 'One-line summary'], ['r', 'Link'], ['image', 'Image URL'], ['order', 'Order, lower first'], ['content', 'Body, Markdown']],
+  30023: [['d', 'Slug, fixed once published'], ['type', 'Type: section / project / writing'], ['display', 'Display: normal, or details (folded; the summary is the visible line)'], ['title', 'Title'], ['summary', 'One-line summary'], ['r', 'Link'], ['image', 'Image URL'], ['order', 'Order, lower first'], ['content', 'Body, Markdown']],
   1: [['content', 'Note, Markdown']],
 };
 const BIG = new Set(['content', 'links', 'about']);
@@ -35,7 +40,7 @@ function toFields(kind, ev, preset = {}) {
   if (f === 0) { try { return { ...JSON.parse(ev?.content || '{}') }; } catch { return {}; } }
   if (f === 'layout') { const c = sel.config(); return { title: c.title, sections: (c.sections || []).join(', '), links: (c.links || []).map(l => `${l.label} | ${l.url}`).join('\n'), chat: c.chat === false ? 'no' : 'yes' }; }
   if (f === 'css') return { content: ev?.content || '' };
-  if (f === 30023) return { d: dTag(ev) || preset.d || '', type: tagsOf(ev, 't').find(t => t !== TAG) || preset.type || 'section', title: tag(ev, 'title') || preset.title || '', summary: tag(ev, 'summary') || '', r: tag(ev, 'r') || '', image: tag(ev, 'image') || '', order: tag(ev, 'order') || '', content: ev?.content || '' };
+  if (f === 30023) return { d: dTag(ev) || preset.d || '', type: tagsOf(ev, 't').find(t => t !== TAG) || preset.type || 'section', display: tag(ev, 'display') || '', title: tag(ev, 'title') || preset.title || '', summary: tag(ev, 'summary') || '', r: tag(ev, 'r') || '', image: tag(ev, 'image') || '', order: tag(ev, 'order') || '', content: ev?.content || '' };
   return { content: ev?.content || '' };
 }
 function toTemplate(kind, f, ev, preset = {}) {
@@ -47,7 +52,7 @@ function toTemplate(kind, f, ev, preset = {}) {
   if (form === 30023) {
     const d = (f.d || '').trim().toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-|-$/g, ''); if (!d) throw new Error('a slug is required');
     const tags = [['d', d], ['title', f.title.trim() || d], ['t', TAG], ['t', (f.type || 'section').trim().toLowerCase()], ['published_at', tag(ev, 'published_at') || String(now())], ['alt', `${f.title.trim() || d}, a block of ronishbhatt.com`]];
-    for (const k of ['summary', 'r', 'image', 'order']) if (f[k]?.trim()) tags.push([k, f[k].trim()]);
+    for (const k of ['summary', 'r', 'image', 'order', 'display']) if (f[k]?.trim()) tags.push([k, f[k].trim()]);
     return { kind: K.article, tags, content: f.content || '' };
   }
   if (!f.content?.trim()) throw new Error('empty note'); return { kind: K.note, content: f.content.trim() };

@@ -47,14 +47,15 @@ const EvLink = ({ ev }) => { if (!ev || ev.draft) return null; const from = seen
   return html`<a class="ev" href=${njump(ev)} target="_blank" rel="noopener" title=${`signed event ${ev.id.slice(0, 8)}, ${from.length ? 'served by ' + from.map(s => s.replace(/^wss?:\/\//, '')).join(', ') : 'from the baked snapshot'}; open it in another client`}>⌁ event</a>`; };
 const Label = ({ text, ev, children }) => html`<h2 class="label">${text}<${Draft} ev=${ev} /><span class="grow"></span><${EvLink} ev=${ev} />${children}</h2>`;
 
-// A paper's first page; clicking it opens the PDF inline (boot.js does the same before the app loads).
-const Thumb = ({ ev }) => { const [open, setOpen] = useState(false); const href = tag(ev, 'r') || '#';
-  return html`<a href=${href} data-preview aria-label=${'preview ' + (tag(ev, 'title') || '')} onClick=${e => { if (!/\.pdf$/i.test(href)) return; e.preventDefault(); setOpen(o => !o); }}><img class="th" src=${tag(ev, 'image')} alt="" loading="lazy" /></a>
+// A tile's picture (or a placeholder) opens the thing inline; boot.js does the same before the app loads.
+const Thumb = ({ ev }) => { const [open, setOpen] = useState(false); const href = tag(ev, 'r') || '#', img = tag(ev, 'image');
+  const toggle = e => { if (href === '#') return; e.preventDefault(); setOpen(o => !o); };
+  return html`<a class=${img ? 'thumb' : 'thumb ph'} href=${href} data-preview aria-label=${'open ' + (tag(ev, 'title') || '') + ' here'} onClick=${toggle}>${img ? html`<img class="th" src=${img} alt="" loading="lazy" />` : '▶'}</a>
     ${open ? html`<iframe class="preview" src=${href} title=${tag(ev, 'title')} />` : null}`; };
 const Items = ({ id, items, edit, add }) => html`<section class="c" id=${id}>
   <${Label} text=${id}>${add ? html`<button class="sm" onClick=${add}>+ add</button>` : null}</${Label}>
   ${items.length ? html`<ul class="items">${items.map(e => html`<li key=${keyId(e)} class="item">
-    ${tag(e, 'image') ? html`<${Thumb} ev=${e} />` : null}
+    ${tag(e, 'r') ? html`<${Thumb} ev=${e} />` : null}
     <div class="b">
       <div class="t"><a href=${tag(e, 'r') || njump(e)} target=${/^https?:/.test(tag(e, 'r') || '') ? '_blank' : null} rel="noopener">${tag(e, 'title') || dTag(e)}</a> <${Draft} ev=${e} /></div>
       ${tag(e, 'summary') ? html`<div class="s">${tag(e, 'summary')}</div>` : null}
@@ -79,14 +80,14 @@ export function Page({ Chat, chatProps, edit, onUnlock, ownerOn, children }) {
     if (id === 'chat') return cfg.chat === false && !ownerOn ? null : html`<section class="c" id="chat" key="chat"><${Label} text=${ownerOn ? 'inbox' : 'say hi'} /><${Chat} ...${chatProps} /></section>`;
     const ev = sel.section(id);
     if (!ev) return ownerOn ? html`<section class="c" key=${id}><${Label} text=${id}>${edit(30023, null, { d: id, type: 'section', title: id })}</${Label}><p class="empty">no ${id} block on the relay yet</p></section>` : null;
+    if (tag(ev, 'display') === 'details') return html`<details class="fold" id=${id} key=${id}><summary>${tag(ev, 'summary') || tag(ev, 'title') || id}<${Draft} ev=${ev} /><span class="grow"></span>${edit ? edit(30023, ev) : null}<${EvLink} ev=${ev} /></summary><${Markdown} src=${ev.content} /></details>`;
     return html`<section class="c" id=${id} key=${id}><${Label} text=${tag(ev, 'title') || id} ev=${ev}>${edit ? edit(30023, ev) : null}</${Label}><${Markdown} src=${ev.content} /></section>`;
   });
   return html`${children}
-    <header class="me"><img src="/favicon.svg" alt="" width="56" height="56" /><div><h1>${p.name || 'Ronish Bhatt'}</h1><p>${p.about || ''}<${Draft} ev=${profile} /></p></div>${edit ? edit(0, profile) : null}</header>
+    <header class="me"><img src="/favicon.svg" alt="" width="56" height="56" /><div class="who"><h1>${p.name || 'Ronish Bhatt'}</h1><p class="line">${p.about || ''}<${Draft} ev=${profile} /></p>
+      <div class="pills">${(cfg.links || []).map(l => html`<a key=${l.url} class="pill" href=${l.url} target=${/^https?:/.test(l.url) ? '_blank' : null} rel="noopener">${l.label}</a>`)}<a class="pill" href=${'https://njump.me/' + npub(env.SITE)} target="_blank" rel="noopener" title="the key that signs this page">${npub(env.SITE).slice(0, 13)}…</a>${ownerOn ? null : html`<button class="pill lnk" onClick=${onUnlock}>unlock</button>`}</div></div>${edit ? edit(0, profile) : null}</header>
     ${blocks}
     <footer>
-      <div class="links">${(cfg.links || []).map(l => html`<a key=${l.url} href=${l.url} target=${/^https?:/.test(l.url) ? '_blank' : null} rel="noopener">${l.label}</a>`)}
-        ${ownerOn ? null : html`<button class="lnk" onClick=${onUnlock}>unlock</button>`}</div>
       <div class="status">${env.RELAYS.map(u => { const s = store.status.get(u); return html`<span key=${u} data-relay=${u} title=${s === 'open' ? 'connected' : s === 'closed' ? 'not connected' : 'connecting'}><i class=${'dot' + (s === 'open' ? ' open' : s === 'closed' ? ' err' : '')}></i>${u.replace(/^wss?:\/\//, '')}${u === env.PRIMARY ? ' · mine' : ''}</span>`; })}
         <span>${sel.signed()} signed events${store.ready ? '' : ' · syncing…'}</span></div>
     </footer>`;

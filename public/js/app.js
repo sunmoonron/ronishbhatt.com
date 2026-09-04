@@ -21,7 +21,7 @@ function App() {
   useEffect(() => { document.title = cfg.title; }, [cfg.title]);
   useEffect(() => { const el = document.getElementById('theme'), css = sel.css(); if (el && css && el.textContent !== css) el.textContent = css; });
   useEffect(() => { chatConfigure(isOwner); }, [isOwner]);
-  const edit = isOwner ? (kind, ev, preset) => html`<button class="sm edit" onClick=${() => setEditing({ kind, ev, preset })}>edit</button>` : null;
+  const edit = isOwner ? (kind, ev, preset) => html`<button class="sm edit" onClick=${e => { e.preventDefault(); e.stopPropagation(); setEditing({ kind, ev, preset }); }}>edit</button>` : null;
   const openUnlock = async () => { if (!Owner) Owner = await import('./owner.js'); setUnlockOpen(true); };
   return html`<${Page} Chat=${Chat} chatProps=${{ live: true, ownerMode: isOwner }} edit=${edit} ownerOn=${isOwner} onUnlock=${openUnlock}>
       ${isOwner ? html`<${Owner.OwnerBar} onEdit=${(kind, ev, preset) => setEditing({ kind, ev, preset })} onConsole=${() => setConsoleOpen(true)} unread=${chat.unread} />` : null}
