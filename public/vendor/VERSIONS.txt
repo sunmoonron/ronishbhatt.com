@@ -1,4 +1,4 @@
-Self-hosted, pinned, unmodified upstream builds (npm registry, 2026-09-04). Bare names resolve through the import map in index.html.
+Self-hosted, pinned upstream builds (npm registry, 2026-09-04), unmodified except the trailing sourceMappingURL comment (no maps are shipped). Bare names resolve through the import map in index.html.
 preact 10.29.8        dist/preact.mjs, hooks/dist/hooks.mjs   (ESM)                     MIT
 htm 3.1.1             dist/htm.mjs                            (ESM)                     Apache-2.0
 marked 18.0.11        lib/marked.esm.js                       (ESM)                     MIT

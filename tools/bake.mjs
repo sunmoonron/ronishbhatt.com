@@ -9,9 +9,9 @@ import crypto from 'node:crypto';
 import { render } from 'preact-render-to-string';
 import { verifyEvent } from 'nostr-tools/pure';
 import { SimplePool } from 'nostr-tools/pool';
-import { init, env, store, apply, sel, keyOf, tagsOf, addrOf, K } from '../public/js/v2/store.js';
-import { html, Page } from '../public/js/v2/ui.js';
-import { Chat } from '../public/js/v2/chat.js';
+import { init, env, store, apply, sel, keyOf, tagsOf, addrOf, K } from '../public/js/store.js';
+import { html, Page } from '../public/js/ui.js';
+import { Chat } from '../public/js/chat.js';
 
 const PUB = (process.argv[2] || new URL('../public', import.meta.url).pathname).replace(/\/$/, '') + '/';
 const src = fs.readFileSync(PUB + 'index.html', 'utf8');
@@ -35,14 +35,23 @@ fs.writeFileSync(PUB + 'site.json', JSON.stringify(out, null, 1));
 const cfg = sel.config(), p = sel.profileData();
 const body = render(html`<${Page} Chat=${Chat} chatProps=${{ live: false }} />`);
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
-const importmap = src.match(/<script type="importmap">([\s\S]*?)<\/script>/)[1];
-const hash = crypto.createHash('sha256').update(importmap).digest('base64');
+const sha = (algo, data) => crypto.createHash(algo).update(data).digest('base64');
+const sri = f => `sha384-${sha('sha384', fs.readFileSync(PUB + f))}`;
+// The import map: bare names -> pinned vendor files, plus subresource integrity
+// for every module the page can load (browsers that know the field verify it).
+const VENDOR = { preact: '/vendor/preact-10.29.8.mjs', 'preact/hooks': '/vendor/preact-hooks-10.29.8.mjs', htm: '/vendor/htm-3.1.1.mjs', marked: '/vendor/marked-18.0.11.mjs' };
+const MODULES = [...Object.values(VENDOR), '/js/store.js', '/js/ui.js', '/js/chat.js', '/js/owner.js'];
+const LAZY = ['/vendor/nostr-tools-2.25.2.bundle.js', '/vendor/dompurify-3.4.14.min.js'];
+const importmap = JSON.stringify({ imports: VENDOR, integrity: Object.fromEntries(MODULES.map(f => [f, sri(f)])) });
+const app = `globalThis.SRI=${JSON.stringify(Object.fromEntries(LAZY.map(f => [f, sri(f)])))};\n` + fs.readFileSync(PUB + 'js/app.js', 'utf8').replace(/<\/script/gi, '<\\/script');
 let html_ = src
   .replace(/<title>[^<]*<\/title>/, `<title>${esc(cfg.title)}</title>`)
   .replace(/<meta name="description" content="[^"]*">/, `<meta name="description" content="${esc(p.about || '')}">`)
-  .replace(/'sha256-[^']*'/, `'sha256-${hash}'`)
+  .replace(/'sha256-[^']*' 'sha256-[^']*'/, `'sha256-${sha('sha256', importmap)}' 'sha256-${sha('sha256', app)}'`)
+  .replace(/<script type="importmap">[\s\S]*?<\/script>/, `<script type="importmap">${importmap}</script>`)
   .replace(/<style id="theme">[\s\S]*?<\/style>/, `<style id="theme">${sel.css().replace(/<\/style/gi, '')}</style>`)
   .replace(/<main id="app">[\s\S]*?<\/main>/, `<main id="app">${body}</main>`)
-  .replace(/(<script type="application\/json" id="snapshot">)[\s\S]*?(<\/script>)/, `$1${JSON.stringify(out).replace(/<\//g, '<\\/')}$2`);
+  .replace(/(<script type="application\/json" id="snapshot">)[\s\S]*?(<\/script>)/, `$1${JSON.stringify(out).replace(/<\//g, '<\\/')}$2`)
+  .replace(/<script type="module"[^>]*>[\s\S]*?<\/script>\n<\/body>/, `<script type="module">${app}</script>\n</body>`);
 fs.writeFileSync(PUB + 'index.html', html_);
 console.log(`baked ${PUB}: ${events.length} signed events (${good.length} fetched from ${env.RELAYS.length} relays${useNew ? '' : ', kept previous'}), ${drafts.length} drafts, html ${(html_.length / 1024).toFixed(1)} KB`);

@@ -894,7 +894,7 @@
                 loadingStatus.textContent = 'Loading GPT-2 model (this takes a moment)...';
                 loadingProgressBar.style.width = '30%';
             
-                // Load model WITH attention output enabled
+                // Load the model (the ONNX export returns logits only, no attention maps)
                 model = await AutoModelForCausalLM.from_pretrained('Xenova/gpt2', {
                     progress_callback: (progress) => {
                         if (progress.status === 'downloading') {
@@ -924,7 +924,7 @@
         }
 
         // ==========================================
-        // LOW-LEVEL INFERENCE (gets attention weights)
+        // LOW-LEVEL INFERENCE (a plain forward pass: real next-token logits)
         // ==========================================
         async function runInference(prompt) {
             if (!model || !tokenizer) return null;
@@ -1024,23 +1024,20 @@
             updateTokenDisplay(prompt);
 
             try {
-                // Run inference and get REAL attention + logits
+                // Run the forward pass and read the real next-token logits
                 const result = await runInference(prompt);
-                
+
                 if (result && result.logits && result.logits.length > 0) {
                     lastLogits = result.logits;
+                    await updateTokenDisplayReal(result.inputIds);
                     analyzeWithRealData(result, numDistractors);
                 } else {
-                    console.warn('No valid logits, using fallback simulation');
-                    // Show fallback probabilities
-                    updateProbabilityDisplayReal(0.5, 0.3, [
-                        { token: '(model loading...)', prob: 0, id: 0 }
-                    ]);
+                    showFailure('The forward pass returned no logits, so there is nothing to show. Details are in the console.');
                 }
-            
+
             } catch (error) {
                 console.error('Analysis error:', error);
-                // Fallback to simulated data
+                showFailure('Inference failed: ' + error.message);
             }
         }
 
@@ -1053,11 +1050,7 @@
             // ==========================================
             // PART 1: Check if we have valid logits
             // ==========================================
-            if (!logits || logits.length === 0) {
-                console.error('No logits returned from model');
-                // Fallback to simulated
-                return;
-            }
+            if (!logits || logits.length === 0) { showFailure('No logits returned from the model.'); return; }
         
             // ==========================================
             // PART 2: Convert logits to probabilities (softmax)
@@ -1159,19 +1152,34 @@
         }
 
         function updateTokenDisplay(prompt) {
-            // Simple tokenization visualization
-            // Real tokenization is more complex, but this gives the idea
-            const simpleTokens = prompt.match(/\[\[|\]\]|[a-zA-Z_]+|\d+|[,=\s]/g) || [];
-            
-            tokenDisplay.innerHTML = simpleTokens.map((token, i) => {
-                let className = 'token';
-                if (token === '[[' || token === ']]') {
-                    className += ' critical';
-                } else if (/^\d+$/.test(token) && parseInt(token) >= 100) {
-                    className += ' noise';
-                }
-                return `<span class="${className}">${token.replace(/\s/g, '·')}</span>`;
-            }).join('');
+            // Placeholder until the real tokenizer has run (see updateTokenDisplayReal)
+            tokenDisplay.innerHTML = '<span class="token">tokenizing with GPT-2\u2019s BPE\u2026</span>';
+        }
+
+        // The strip below the prompt shows the model's actual input: every BPE
+        // token GPT-2 saw, decoded one by one. No approximation.
+        async function updateTokenDisplayReal(ids) {
+            const toks = [];
+            for (const id of ids) toks.push(await tokenizer.decode([id], { skip_special_tokens: false }));
+            tokenDisplay.innerHTML = toks.map(t => {
+                const s = t.trim(); let className = 'token';
+                if (s === '[[' || s === ']]' || s === '[' || s === ']') className += ' critical';
+                else if (/^\d+$/.test(s) && parseInt(s) >= 100) className += ' noise';
+                return `<span class="${className}" title="token id">${t.replace(/</g, '&lt;').replace(/ /g, '\u00b7')}</span>`;
+            }).join('') + `<span class="token" style="opacity:.6">${ids.length} tokens</span>`;
+        }
+
+        // Never show made-up numbers: if the forward pass fails, say so.
+        function showFailure(msg) {
+            document.getElementById('prob-correct').textContent = '\u2014';
+            document.getElementById('prob-wrong').textContent = '\u2014';
+            document.getElementById('bar-correct').style.width = '0%';
+            document.getElementById('bar-wrong').style.width = '0%';
+            const statusBox = document.getElementById('status-box');
+            statusBox.className = 'status-box failure';
+            document.getElementById('status-title').innerHTML = '\u26a0\ufe0f No model output';
+            document.getElementById('status-description').textContent = msg;
+            document.getElementById('top-predictions').innerHTML = '';
         }
 
         function updateProbabilityDisplay(probCorrect, probWrong, generatedText) {
@@ -1241,7 +1249,7 @@
             }
         
             // Show top predictions with REAL data
-            topPredEl.innerHTML = '<strong>Top 5 Predictions (Real Model Output):</strong><br>' +
+            topPredEl.innerHTML = '<strong>Top 5 next tokens, straight from GPT-2\u2019s logits:</strong><br>' +
                 topPredictions.map((p, i) => 
                     `<span style="margin-right: 15px;">
                         ${i + 1}. <code style="background:#e0e0e0;padding:2px 6px;border-radius:4px;">

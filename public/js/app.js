@@ -1,14 +1,16 @@
-// app.js — hydrates the pre-rendered page, then upgrades it: crypto and the
-// relay pool load after first paint, the owner tools only after "unlock".
+// app.js — inlined into index.html by the bake. Hydrates the pre-rendered page,
+// then upgrades it: crypto and the relay pool after first paint, the owner
+// tools only after "unlock".
 import { hydrate } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
-import { html, Page, Toasts, bindNotify } from './ui.js';
-import { env, init, store, sel, onChange, notify, loadSnapshot, loadCache, keepCache, connect, reverify, owner, storedKey, restore } from './store.js';
-import { Chat, chat, chatConfigure } from './chat.js';
+import { html, Page, Toasts, bindNotify } from '/js/ui.js';
+import { env, init, store, sel, onChange, notify, loadSnapshot, loadCache, keepCache, connect, reverify, owner, storedKey, restore } from '/js/store.js';
+import { Chat, chat, chatConfigure } from '/js/chat.js';
 
 const meta = n => document.querySelector(`meta[name="${n}"]`)?.content?.trim() || '';
 init({ site: meta('site-pubkey'), relay: meta('site-relay'), backups: meta('site-backups').split(',').map(s => s.trim()).filter(Boolean) });
-const script = src => new Promise((ok, err) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = err; document.head.append(s); });
+const SRI = globalThis.SRI || {}; // subresource hashes, filled in by the bake
+const script = src => new Promise((ok, err) => { const s = document.createElement('script'); s.src = src; if (SRI[src]) s.integrity = SRI[src]; s.onload = ok; s.onerror = err; document.head.append(s); });
 let Owner = null, live = false;
 
 function App() {
@@ -20,7 +22,7 @@ function App() {
   useEffect(() => { const el = document.getElementById('theme'), css = sel.css(); if (el && css && el.textContent !== css) el.textContent = css; });
   useEffect(() => { if (live) chatConfigure(isOwner); }, [isOwner, live]);
   const edit = isOwner ? (kind, ev, preset) => html`<button class=${'sm edit'} onClick=${() => setEditing({ kind, ev, preset })}>edit</button>` : null;
-  const openUnlock = async () => { if (!Owner) Owner = await import('./owner.js'); setUnlockOpen(true); };
+  const openUnlock = async () => { if (!Owner) Owner = await import('/js/owner.js'); setUnlockOpen(true); };
   return html`<${Page} Chat=${Chat} chatProps=${{ live, ownerMode: isOwner }} edit=${edit} ownerOn=${isOwner} onUnlock=${openUnlock}>
       ${isOwner ? html`<${Owner.OwnerBar} onEdit=${(kind, ev, preset) => setEditing({ kind, ev, preset })} onConsole=${() => setConsoleOpen(true)} unread=${chat.unread} />` : null}
     </${Page}>
@@ -39,5 +41,5 @@ function App() {
   await script('/vendor/nostr-tools-2.25.2.bundle.js'); env.NT = window.NostrTools; reverify();
   script('/vendor/dompurify-3.4.14.min.js').then(notify).catch(() => {});
   connect(); live = true; chatConfigure(false); notify();
-  if (storedKey()) { Owner = await import('./owner.js'); try { restore(); } catch {} notify(); }
+  if (storedKey()) { Owner = await import('/js/owner.js'); try { restore(); } catch {} notify(); }
 })();

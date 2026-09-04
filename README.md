@@ -3,7 +3,7 @@
 The page is an empty shell; the content is signed Nostr events.
 
 - `public/index.html` — shell + CSS, the site key and relay list in `<meta>` tags, a baked snapshot of signed events.
-- `public/js/v2/` — `store.js` (relay pool, verification, cache, snapshot), `ui.js`, `chat.js` (NIP-17), `owner.js` (editor, console), `app.js`, `pow-worker.js`.
+- `public/js/` — `store.js` (relay pool, verification, cache, snapshot), `ui.js`, `chat.js` (NIP-17), `owner.js` (editor, console), `app.js`, `pow-worker.js`.
 - `public/vendor/` — pinned upstream builds: nostr-tools, htm+preact, marked, DOMPurify. See `VERSIONS.txt`.
 - `public/site.json` — the snapshot: signed events from the relay plus unsigned drafts for blocks not published yet.
 - everything else in `public/` — the archive of one-page experiments, unchanged (`/directory.html` lists them).

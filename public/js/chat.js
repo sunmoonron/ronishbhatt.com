@@ -73,6 +73,7 @@ function ensureKey() { if (chat.sk) return; chat.sk = env.NT.generateSecretKey()
 async function send(peer, text) {
   text = text.trim().slice(0, 5000); if (!text || chat.busy || !env.NT) return;
   const isOwner = chat.mode === 'owner';
+  if (isOwner && globalThis.Notification?.permission === 'default') Notification.requestPermission().catch(() => {}); // from a click, as browsers require
   if (!isOwner) { ensureKey(); if (chat.nick) localStorage.setItem(NICK, chat.nick); }
   const rumor = makeRumor(chat.sk, peer, text, isOwner ? '' : chat.nick); seen.add(rumor.id);
   addMsg(peer, { id: rumor.id, from: chat.me, to: peer, text, ts: rumor.created_at, mine: true, pending: true });
@@ -114,7 +115,6 @@ function Keys() {
 }
 export function Chat({ live, ownerMode }) {
   const [, bump] = useState(0);
-  useEffect(() => { if (ownerMode && globalThis.Notification?.permission === 'default') Notification.requestPermission().catch(() => {}); }, [ownerMode]);
   const ready = !!(live && env.NT);
   if (ownerMode) {
     const threads = [...chat.threads.values()].sort((a, b) => (b.msgs.at(-1)?.ts || 0) - (a.msgs.at(-1)?.ts || 0));
