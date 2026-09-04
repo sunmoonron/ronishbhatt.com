@@ -3,9 +3,9 @@
 // the events, loads the crypto, verifies, renders live, and keeps subscribing.
 import { render } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
-import { html, Page, Toasts, bindNotify } from '/js/ui.js';
-import { env, init, sel, onChange, notify, loadSnapshot, loadCache, keepCache, connect, reverify, owner, storedKey, restore } from '/js/store.js';
-import { Chat, chat, chatConfigure, send as chatSend, setNick } from '/js/chat.js';
+import { html, Page, Toasts, bindNotify } from './ui.js';
+import { env, init, sel, onChange, notify, loadSnapshot, loadCache, keepCache, connect, reverify, owner, storedKey, restore } from './store.js';
+import { Chat, chat, chatConfigure, send as chatSend, setNick } from './chat.js';
 
 const meta = n => document.querySelector(`meta[name="${n}"]`)?.content?.trim() || '';
 init({ site: meta('site-pubkey'), relay: meta('site-relay'), backups: meta('site-backups').split(',').map(s => s.trim()).filter(Boolean) });
@@ -22,7 +22,7 @@ function App() {
   useEffect(() => { const el = document.getElementById('theme'), css = sel.css(); if (el && css && el.textContent !== css) el.textContent = css; });
   useEffect(() => { chatConfigure(isOwner); }, [isOwner]);
   const edit = isOwner ? (kind, ev, preset) => html`<button class="sm edit" onClick=${() => setEditing({ kind, ev, preset })}>edit</button>` : null;
-  const openUnlock = async () => { if (!Owner) Owner = await import('/js/owner.js'); setUnlockOpen(true); };
+  const openUnlock = async () => { if (!Owner) Owner = await import('./owner.js'); setUnlockOpen(true); };
   return html`<${Page} Chat=${Chat} chatProps=${{ live: true, ownerMode: isOwner }} edit=${edit} ownerOn=${isOwner} onUnlock=${openUnlock}>
       ${isOwner ? html`<${Owner.OwnerBar} onEdit=${(kind, ev, preset) => setEditing({ kind, ev, preset })} onConsole=${() => setConsoleOpen(true)} unread=${chat.unread} />` : null}
     </${Page}>
@@ -42,7 +42,7 @@ export async function start(opts = {}) {
   connect(); chatConfigure(false);
   if (seedNick) setNick(seedNick);
   chat.seed = opts.send ? '' : seedText;
-  if (opts.unlock || storedKey()) { Owner = await import('/js/owner.js'); if (storedKey()) { try { restore(); } catch {} } else initial.unlockOpen = true; }
+  if (opts.unlock || storedKey()) { Owner = await import('./owner.js'); if (storedKey()) { try { restore(); } catch {} } else initial.unlockOpen = true; }
   const root = document.getElementById('app'); root.textContent = ''; render(html`<${App} />`, root);
   if (opts.focus === 'chat') { document.querySelector('#chat textarea')?.focus(); if (opts.send && seedText.trim()) chatSend(env.SITE, seedText); }
 }

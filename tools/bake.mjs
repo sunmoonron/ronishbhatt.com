@@ -39,9 +39,22 @@ const body = render(html`<${Page} Chat=${Chat} chatProps=${{ live: false }} />`)
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 const sha = (algo, data) => crypto.createHash(algo).update(data).digest('base64');
 const sri = f => `sha384-${sha('sha384', fs.readFileSync(PUB + f))}`;
+// First-party modules get content-hashed copies (imports rewritten to match), so
+// the HTML, which is never cached, always names the exact bytes it was baked
+// with; stale copies at any cache layer can no longer be served under a live name.
+const ORDER = ['pow-worker', 'store', 'ui', 'chat', 'owner', 'app', 'boot'];
+const hashed = {}, keep = new Set();
+for (const name of ORDER) {
+  let code = fs.readFileSync(PUB + `js/${name}.js`, 'utf8');
+  code = code.replace(/(['"])\.\/([a-z-]+)\.js\1/g, (m, q, dep) => hashed[dep] ? `${q}./${hashed[dep]}${q}` : m);
+  const h = crypto.createHash('sha256').update(code).digest('hex').slice(0, 8);
+  hashed[name] = `${name}.${h}.js`; keep.add(hashed[name]);
+  fs.writeFileSync(PUB + 'js/' + hashed[name], code);
+}
+for (const f of fs.readdirSync(PUB + 'js')) if (/^[a-z-]+\.[0-9a-f]{8}\.js$/.test(f) && !keep.has(f)) fs.unlinkSync(PUB + 'js/' + f);
 // Import map: bare names to pinned vendor files, with integrity for every module the app can load.
 const VENDOR = { preact: '/vendor/preact-10.29.8.c30e721e.mjs', 'preact/hooks': '/vendor/preact-hooks-10.29.8.a6ee626f.mjs', htm: '/vendor/htm-3.1.1.mjs', marked: '/vendor/marked-18.0.11.05e41134.mjs' };
-const MODULES = [...Object.values(VENDOR), '/js/app.js', '/js/store.js', '/js/ui.js', '/js/chat.js', '/js/owner.js'];
+const MODULES = [...Object.values(VENDOR), ...['app', 'store', 'ui', 'chat', 'owner'].map(n => '/js/' + hashed[n])];
 const LAZY = ['/vendor/nostr-tools-2.25.2.bundle.js', '/vendor/dompurify-3.4.14.min.c2f26ea4.js'];
 const importmap = JSON.stringify({ imports: VENDOR, integrity: Object.fromEntries(MODULES.map(f => [f, sri(f)])) });
 const index = JSON.stringify({ baked_at, ids: events.map(e => e.id) });
@@ -54,6 +67,6 @@ const out = src
   .replace(/<style id="theme">[\s\S]*?<\/style>/, `<style id="theme">${sel.css().replace(/<\/style/gi, '')}</style>`)
   .replace(/<main id="app">[\s\S]*?<\/main>/, `<main id="app">${body}</main>`)
   .replace(/(<script type="application\/json" id="snapshot">)[\s\S]*?(<\/script>)/, `$1${index}$2`)
-  .replace(/integrity="sha384-[^"]*"/, `integrity="${sri('/js/boot.js')}"`);
+  .replace(/<script type="module" src="[^"]*" integrity="[^"]*">/, `<script type="module" src="/js/${hashed.boot}" integrity="${sri('/js/' + hashed.boot)}">`);
 fs.writeFileSync(PUB + 'index.html', out);
 console.log(`baked ${PUB}: ${events.length} signed events (${good.length} fetched from ${env.RELAYS.length} relays${useNew ? '' : ', kept previous'}), ${drafts.length} drafts, html ${(out.length / 1024).toFixed(1)} KB`);

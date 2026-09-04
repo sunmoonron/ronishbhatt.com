@@ -10,7 +10,7 @@ const known = new Set(snap.ids);
 const $ = s => document.querySelector(s);
 
 let upgrading = null;
-const upgrade = opts => upgrading ||= import('/js/app.js').then(m => { for (const ws of sockets) try { ws.close(); } catch {} return m.start(opts); })
+const upgrade = opts => upgrading ||= import('./app.js').then(m => { for (const ws of sockets) try { ws.close(); } catch {} return m.start(opts); })
   .catch(e => { console.error('upgrade failed', e); upgrading = null; });
 
 // ---- relays: raw WebSockets are enough to ask a Nostr relay a question ----
