@@ -1,7 +1,7 @@
 // owner.js, loaded only after "unlock": in-place editing of every block (the
 // stylesheet included), drafts, deletions, and the console (/dash.html, same key).
 import { useState, useEffect, useRef } from 'preact/hooks';
-import { env, K, DEFAULT_CFG, store, sel, apply, publish, sign, unlock, lock, now, h, veil, meta, text, dTag, addrOf, keyOf, notify } from './store.js';
+import { env, K, DEFAULT_CFG, store, sel, apply, publish, pool, sign, unlock, lock, now, h, veil, meta, text, dTag, addrOf, keyOf, notify } from './store.js';
 import { html, toast, npub } from './ui.js';
 
 const CSS = `.ownerbar{grid-column:1/-1;position:sticky;top:0;z-index:5;display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;margin:-1.5rem -1.25rem 1.5rem;padding:.55rem 1.25rem;background:var(--card);border-bottom:1px solid var(--accent);font-size:.78rem;color:var(--mute)}.ownerbar .grow{flex:1}.ownerbar code{font:.78rem var(--mono);color:var(--fg)}
@@ -87,14 +87,16 @@ export async function publishDrafts() {
 }
 // The header lives in the veiled 'profile' block now; a plain kind 0 from an earlier publish gets deleted.
 export async function retirePlainProfile() {
-  const k0 = [...store.events.values()].find(e => e.kind === 0 && !e.draft);
+  let k0 = null; try { k0 = await pool.get(env.RELAYS, { authors: [env.SITE], kinds: [0] }, { maxWait: 4000 }); } catch {}
   if (!k0) return;
   await publishTemplate({ kind: K.del, tags: [['e', k0.id]], content: '' }, env.RELAYS);
   toast('plain kind-0 profile retired from the relays');
 }
 
+let retired = false;
 export function OwnerBar({ onEdit, onConsole, unread }) {
   const drafts = sel.drafts().length, [busy, setBusy] = useState(false);
+  useEffect(() => { if (!retired) { retired = true; retirePlainProfile(); } }, []);
   return html`<div class="ownerbar"><span>unlocked · <code>${npub(env.SITE).slice(0, 16)}…</code></span>
     ${drafts ? html`<button class="sm pri" disabled=${busy} onClick=${async () => { setBusy(true); try { await publishDrafts(); } finally { setBusy(false); } }}>${busy ? html`<span class="spin"></span>` : null}publish ${drafts} draft${drafts > 1 ? 's' : ''}</button>` : null}
     <button class="sm" onClick=${() => onEdit('block', sel.layoutEvent(), { slug: 'layout' })}>layout</button>
