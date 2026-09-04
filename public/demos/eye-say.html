@@ -1,0 +1,294 @@
+<title>Eye Say</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap">
+<style>
+:root{
+  --ground:#ffe3c2; --ground2:#ffd1a6; --ink:#2a2140; --muted:#6d5f7c; --panel:#fff8ec; --iris:#2b5cff;
+  --good:#2fb56b; --bad:#ff5c5c; --gold:#ffcc4d;
+  --display:"Fredoka","Baloo 2","Arial Rounded MT Bold",Arial,sans-serif; --body:"Nunito","Trebuchet MS",Arial,sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--body);overflow:hidden;-webkit-user-select:none;user-select:none}
+#stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(120% 90% at 50% 0%,var(--ground) 0%,var(--ground2) 100%)}
+canvas{display:block;touch-action:none;border-radius:0;background:transparent}
+[hidden]{display:none!important}
+.overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(42,33,64,.18);backdrop-filter:blur(2px)}
+.card{width:min(440px,100%);background:var(--panel);border-radius:28px;padding:28px 26px 24px;box-shadow:0 24px 60px -24px rgba(42,33,64,.5),0 2px 0 rgba(255,255,255,.7) inset;text-align:center;display:grid;gap:14px;justify-items:center}
+h1{font-family:var(--display);font-weight:700;font-size:56px;line-height:1;margin:0;letter-spacing:-.01em;color:var(--ink)}
+h2{font-family:var(--display);font-weight:600;font-size:34px;line-height:1.05;margin:0}
+.eye-logo{font-size:64px;line-height:1}
+.how{display:grid;gap:8px;font-size:18px;font-weight:700;line-height:1.3;color:var(--ink)}
+.how span{display:block;font-weight:500;color:var(--muted);font-size:15px}
+.big{font-family:var(--display);font-size:22px;font-weight:600;padding:14px 30px;border:0;border-radius:999px;background:var(--iris);color:#fff;cursor:pointer;box-shadow:0 8px 0 #1d3fb3;transform:translateY(0);transition:transform .08s,box-shadow .08s}
+.big:active{transform:translateY(6px);box-shadow:0 2px 0 #1d3fb3}
+.big:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+.small{font:700 14px var(--body);color:var(--muted);background:transparent;border:2px solid #e2d3bf;border-radius:999px;padding:8px 14px;cursor:pointer}
+.small:focus-visible{outline:3px solid var(--gold)}
+.stat{display:flex;gap:26px;justify-content:center;font-family:var(--display)}
+.stat div{display:grid;gap:2px}
+.stat b{font-size:44px;line-height:1;font-weight:700}
+.stat span{font-family:var(--body);font-size:13px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.why{font-size:14px;color:var(--muted);line-height:1.45;max-width:36ch}
+.why a{color:var(--iris);font-weight:800;text-decoration:none}
+.row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+#toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--ink);color:#fff;font:800 14px var(--body);padding:10px 16px;border-radius:999px;opacity:0;transition:opacity .3s;pointer-events:none}
+@media (prefers-reduced-motion:reduce){.big{transition:none}}
+</style>
+
+<div id="stage"><canvas id="c"></canvas></div>
+
+<div class="overlay" id="start">
+  <div class="card">
+    <div class="eye-logo">👁️</div>
+    <h1>Eye Say</h1>
+    <div class="how">
+      Make the brain say the word.
+      <span>Drag the light onto it. Hold still to focus.</span>
+      Look at two things and it mumbles.
+      <span>The brain never forgets a word. The screen only fills up.</span>
+    </div>
+    <button class="big" id="go">Play</button>
+    <div class="row"><button class="small" id="mute">Sound: on</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="over" hidden>
+  <div class="card">
+    <h2 id="overtitle">The brain got confused</h2>
+    <div class="stat"><div><b id="score">0</b><span>words said</span></div><div><b id="seen">0</b><span>words it saw</span></div><div><b id="best">0</b><span>your best</span></div></div>
+    <p class="why" id="why">It never forgot a single one. It only ran out of places to look.</p>
+    <div class="row"><button class="big" id="again">Play again</button><button class="small" id="share">Copy my score</button></div>
+    <p class="why">Real language models work like this: nothing they have read is ever deleted, they steer their attention, and what they look at is what they say. We measured it. <a href="https://claude.ai/code/artifact/3f91fd1f-5720-41a0-bb89-e5ea98566f99">See the proof.</a></p>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+(() => {
+  const WORDS = [["🐱","CAT"],["🐶","DOG"],["🌞","SUN"],["🌙","MOON"],["🍎","APPLE"],["🚗","CAR"],["🐟","FISH"],["🐸","FROG"],["🎈","BALLOON"],["🍕","PIZZA"],["⭐","STAR"],["🐘","ELEPHANT"],["🦋","BUTTERFLY"],["🍌","BANANA"],["🚀","ROCKET"],["🐝","BEE"],["🌈","RAINBOW"],["⚽","BALL"],["🧸","BEAR"],["🐢","TURTLE"],["🍦","ICE CREAM"],["🦁","LION"],["🐧","PENGUIN"],["🌸","FLOWER"],["🚲","BIKE"],["🐄","COW"],["🎩","HAT"],["🔑","KEY"],["🍪","COOKIE"],["👑","CROWN"],["🐙","OCTOPUS"],["🦊","FOX"],["🐼","PANDA"],["🍉","MELON"],["🎸","GUITAR"],["🧀","CHEESE"],["🐴","HORSE"],["🌵","CACTUS"],["🍩","DONUT"],["🐳","WHALE"],["🦄","UNICORN"],["🍓","BERRY"],["🐔","CHICKEN"],["🏠","HOUSE"],["🚂","TRAIN"],["🐍","SNAKE"],["🎁","GIFT"],["🌻","SUNFLOWER"]];
+  const COLORS = ["#ff7a7a","#ffcc4d","#7bdc8a","#74c7ff","#c79cff","#ff9ed2","#ffb26b","#8fe3d9"];
+  const cv = document.getElementById("c"), ctx = cv.getContext("2d");
+  const $ = id => document.getElementById(id);
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let W = 0, H = 0, dpr = 1;
+  function resize() {
+    const vw = innerWidth, vh = innerHeight;
+    // portrait play area, fills phones; capped on desktop
+    W = Math.min(vw, Math.max(360, Math.min(560, vh * 0.62)));
+    H = vh;
+    dpr = Math.min(2, devicePixelRatio || 1);
+    cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + "px"; cv.style.height = H + "px";
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  addEventListener("resize", resize); resize();
+
+  /* ---------- sound (tiny, synthesized) ---------- */
+  let audio = null, muted = false;
+  function beep(freq, dur, type = "sine", gain = 0.08) {
+    if (muted) return;
+    try {
+      audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+      const o = audio.createOscillator(), g = audio.createGain();
+      o.type = type; o.frequency.value = freq; g.gain.value = gain;
+      o.connect(g); g.connect(audio.destination);
+      const t = audio.currentTime; o.start(t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); o.stop(t + dur);
+    } catch (e) {}
+  }
+  const sfx = { win: () => { beep(660, .12); setTimeout(() => beep(880, .18), 90); }, lose: () => { beep(220, .25, "triangle"); setTimeout(() => beep(160, .35, "triangle"), 160); }, tick: () => beep(1200, .05, "square", .03) };
+
+  /* ---------- game state ---------- */
+  const G = { on: false, bubbles: [], target: null, level: 0, score: 0, timeLeft: 0, roundTime: 0, hold: 0, gaze: { x: 0, y: 0, vx: 0, vy: 0, still: 0 }, sigma: 95, pointerDown: false, lastT: 0, blendWord: "", blendTick: 0, celebrate: 0, spent: new Set() };
+  const EYE = () => ({ x: W / 2, y: H - 92, r: 44 });
+  const TOP = 84;                                            // target banner height
+  const SIG_MAX = 100, SIG_MIN = 40, HOLD_NEED = 0.6, SHARE_NEED = 0.75;
+  let best = 0; try { best = +localStorage.getItem("eyesay_best") || 0; } catch (e) {}
+
+  function pick() {
+    const unused = WORDS.filter(w => !G.spent.has(w[1]));
+    const pool = unused.length ? unused : WORDS;
+    const w = pool[Math.floor(Math.random() * pool.length)];
+    G.spent.add(w[1]); return w;
+  }
+  function addBubble() {
+    const [emoji, word] = pick();
+    const r = 34;
+    let x, y, tries = 0;
+    do { x = r + 12 + Math.random() * (W - 2 * r - 24); y = TOP + r + 10 + Math.random() * (H - TOP - 200 - 2 * r); tries++; }
+    while (tries < 50 && G.bubbles.some(b => Math.hypot(b.x - x, b.y - y) < 82));
+    const sp = 18 + 7 * G.level, a = Math.random() * Math.PI * 2;
+    G.bubbles.push({ emoji, word, x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, r, color: COLORS[G.bubbles.length % COLORS.length], glow: 0, born: performance.now() });
+  }
+  function newRound() {
+    G.level++;
+    const add = G.level === 1 ? 3 : (G.level % 2 === 0 ? 2 : 1);
+    for (let i = 0; i < add; i++) addBubble();
+    const candidates = G.bubbles.filter(b => b !== G.target);
+    G.target = candidates[Math.floor(Math.random() * candidates.length)];
+    G.roundTime = Math.max(3.6, 9 - 0.45 * G.level); G.timeLeft = G.roundTime; G.hold = 0; G.celebrate = 0;
+  }
+  function start() {
+    G.on = true; G.bubbles = []; G.level = 0; G.score = 0; G.spent = new Set(); G.target = null;
+    G.gaze.x = W / 2; G.gaze.y = H / 2; G.sigma = SIG_MAX; G.lastT = performance.now();
+    $("start").hidden = true; $("over").hidden = true;
+    newRound();
+  }
+  function gameOver() {
+    G.on = false; sfx.lose();
+    if (G.score > best) { best = G.score; try { localStorage.setItem("eyesay_best", String(best)); } catch (e) {} }
+    $("score").textContent = G.score; $("seen").textContent = G.bubbles.length; $("best").textContent = best;
+    $("overtitle").textContent = G.score >= 20 ? "The brain is speechless" : G.score >= 10 ? "The brain got confused" : "The brain lost its focus";
+    $("why").textContent = `It never forgot a single one of the ${G.bubbles.length} words. It only ran out of places to look.`;
+    $("over").hidden = false;
+  }
+
+  /* ---------- input ---------- */
+  function setGaze(e) { const r = cv.getBoundingClientRect(); G.gaze.tx = e.clientX - r.left; G.gaze.ty = e.clientY - r.top; }
+  cv.addEventListener("pointerdown", e => { G.pointerDown = true; setGaze(e); cv.setPointerCapture(e.pointerId); if (audio && audio.state === "suspended") audio.resume(); });
+  cv.addEventListener("pointermove", e => { if (G.pointerDown || e.pointerType === "mouse") setGaze(e); });
+  cv.addEventListener("pointerup", () => { G.pointerDown = false; });
+  cv.addEventListener("pointercancel", () => { G.pointerDown = false; });
+
+  /* ---------- attention ---------- */
+  function attention() {
+    // softmax over distance: weight = exp(-d^2 / 2 sigma^2); plus a constant "sink" so an empty gaze says "umm"
+    const s2 = 2 * G.sigma * G.sigma;
+    let sum = 0.05, ws = [];
+    for (const b of G.bubbles) { const d = Math.hypot(b.x - G.gaze.x, b.y - G.gaze.y); const w = Math.exp(-(d * d) / s2); ws.push(w); sum += w; }
+    const shares = ws.map(w => w / sum);
+    let top = -1, second = -1;
+    shares.forEach((s, i) => { if (top < 0 || s > shares[top]) { second = top; top = i; } else if (second < 0 || s > shares[second]) second = i; });
+    return { shares, top, second, sink: 0.05 / sum };
+  }
+  function blend(a, b, share) {
+    // the utterance: letters of the top word, each swapped for the second word's letter with probability (1 - share)
+    const A = a.word, B = b ? b.word : a.word;
+    let out = "";
+    for (let i = 0; i < A.length; i++) { const ch = B[i % B.length]; out += (Math.random() < Math.min(0.85, 1.2 * (1 - share))) && b ? ch : A[i]; }
+    return out;
+  }
+
+  /* ---------- loop ---------- */
+  function step(now) {
+    const dt = Math.min(0.05, (now - G.lastT) / 1000); G.lastT = now;
+    if (G.on) {
+      // gaze follows the pointer with a little lag; stillness narrows the beam (focus)
+      const gz = G.gaze;
+      if (gz.tx !== undefined) {
+        const k = 1 - Math.pow(0.001, dt);
+        const nx = gz.x + (gz.tx - gz.x) * k, ny = gz.y + (gz.ty - gz.y) * k;
+        const sp = Math.hypot(nx - gz.x, ny - gz.y) / Math.max(dt, 1e-3);
+        gz.x = nx; gz.y = ny;
+        gz.still = sp < 60 ? gz.still + dt : 0;
+      }
+      const focus = Math.min(1, gz.still / 0.8);
+      G.sigma = SIG_MAX - (SIG_MAX - SIG_MIN) * focus;
+      // bubbles drift and softly repel
+      for (const b of G.bubbles) {
+        b.x += b.vx * dt; b.y += b.vy * dt;
+        if (b.x < b.r + 6) { b.x = b.r + 6; b.vx = Math.abs(b.vx); } if (b.x > W - b.r - 6) { b.x = W - b.r - 6; b.vx = -Math.abs(b.vx); }
+        if (b.y < TOP + b.r + 6) { b.y = TOP + b.r + 6; b.vy = Math.abs(b.vy); } if (b.y > H - 175 - b.r) { b.y = H - 175 - b.r; b.vy = -Math.abs(b.vy); }
+      }
+      for (let i = 0; i < G.bubbles.length; i++) for (let j = i + 1; j < G.bubbles.length; j++) {
+        const a = G.bubbles[i], b = G.bubbles[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 1, min = 78;
+        if (d < min) { const push = (min - d) * 0.5; a.x -= dx / d * push; a.y -= dy / d * push; b.x += dx / d * push; b.y += dy / d * push; }
+      }
+      // attention and the utterance
+      const at = attention();
+      G.bubbles.forEach((b, i) => { b.glow += (at.shares[i] - b.glow) * Math.min(1, dt * 12); });
+      const targetShare = at.shares[G.bubbles.indexOf(G.target)];
+      if (targetShare >= SHARE_NEED) { G.hold += dt; } else G.hold = Math.max(0, G.hold - dt * 2);
+      if (now - G.blendTick > 140) { G.blendTick = now; const t = G.bubbles[at.top]; G.blendWord = at.top < 0 || at.sink > at.shares[at.top] ? "umm…" : blend(t, at.shares[at.second] > 0.18 ? G.bubbles[at.second] : null, at.shares[at.top]); }
+      if (G.hold >= HOLD_NEED) { G.score++; sfx.win(); G.celebrate = 1; newRound(); }
+      G.timeLeft -= dt;
+      if (G.timeLeft <= 1.2 && Math.floor(G.timeLeft * 4) !== Math.floor((G.timeLeft + dt) * 4)) sfx.tick();
+      if (G.timeLeft <= 0) gameOver();
+    }
+    draw(now);
+    requestAnimationFrame(step);
+  }
+
+  /* ---------- drawing ---------- */
+  function rounded(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+  function draw(now) {
+    ctx.clearRect(0, 0, W, H);
+    const eye = EYE();
+    // beam
+    if (G.on || G.bubbles.length) {
+      const g = ctx.createRadialGradient(G.gaze.x, G.gaze.y, 0, G.gaze.x, G.gaze.y, G.sigma * 2.2);
+      g.addColorStop(0, "rgba(255,247,200,.95)"); g.addColorStop(0.45, "rgba(255,240,170,.45)"); g.addColorStop(1, "rgba(255,240,170,0)");
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(G.gaze.x, G.gaze.y, G.sigma * 2.2, 0, Math.PI * 2); ctx.fill();
+      // cone from the eye to the gaze
+      ctx.save(); ctx.globalAlpha = 0.18; ctx.fillStyle = "#fff3b0";
+      const ang = Math.atan2(G.gaze.y - eye.y, G.gaze.x - eye.x), d = Math.hypot(G.gaze.x - eye.x, G.gaze.y - eye.y);
+      ctx.beginPath(); ctx.moveTo(eye.x, eye.y); ctx.lineTo(G.gaze.x + Math.cos(ang + Math.PI / 2) * G.sigma * 0.9, G.gaze.y + Math.sin(ang + Math.PI / 2) * G.sigma * 0.9); ctx.lineTo(G.gaze.x + Math.cos(ang - Math.PI / 2) * G.sigma * 0.9, G.gaze.y + Math.sin(ang - Math.PI / 2) * G.sigma * 0.9); ctx.closePath(); ctx.fill(); ctx.restore();
+    }
+    // bubbles
+    for (const b of G.bubbles) {
+      const lit = Math.min(1, b.glow * 1.3), isT = b === G.target;
+      ctx.save();
+      ctx.shadowColor = "rgba(42,33,64,.25)"; ctx.shadowBlur = 10; ctx.shadowOffsetY = 4;
+      ctx.fillStyle = b.color; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      if (lit > 0.02) { ctx.strokeStyle = `rgba(255,255,255,${(0.35 + 0.65 * lit).toFixed(2)})`; ctx.lineWidth = 3 + 5 * lit; ctx.beginPath(); ctx.arc(b.x, b.y, b.r + 2, 0, Math.PI * 2); ctx.stroke(); }
+      ctx.font = "34px system-ui, 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(b.emoji, b.x, b.y + 2);
+      ctx.font = "800 11px Nunito, sans-serif"; ctx.fillStyle = "rgba(42,33,64,.85)"; ctx.fillText(b.word, b.x, b.y + b.r + 12);
+    }
+    // top banner: target
+    ctx.save();
+    ctx.fillStyle = "rgba(255,248,236,.92)"; rounded(10, 10, W - 20, TOP - 18, 22); ctx.fill();
+    ctx.fillStyle = "#6d5f7c"; ctx.font = "800 12px Nunito, sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "middle"; ctx.fillText("SAY", 26, 30);
+    if (G.target) { ctx.font = "40px system-ui, 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif"; ctx.fillText(G.target.emoji, 26, TOP / 2 + 6); ctx.font = "600 30px Fredoka, sans-serif"; ctx.fillStyle = "#2a2140"; ctx.fillText(G.target.word, 82, TOP / 2 + 6); }
+    ctx.textAlign = "right"; ctx.font = "700 26px Fredoka, sans-serif"; ctx.fillStyle = "#2a2140"; ctx.fillText(String(G.score), W - 26, TOP / 2 + 4);
+    ctx.font = "800 11px Nunito, sans-serif"; ctx.fillStyle = "#6d5f7c"; ctx.fillText("WORDS SAID", W - 26, 30);
+    // timer bar
+    const tw = W - 52, frac = G.roundTime ? Math.max(0, G.timeLeft / G.roundTime) : 0;
+    ctx.fillStyle = "rgba(42,33,64,.12)"; rounded(26, TOP - 16, tw, 6, 3); ctx.fill();
+    ctx.fillStyle = frac < 0.25 ? "#ff5c5c" : "#2b5cff"; rounded(26, TOP - 16, tw * frac, 6, 3); ctx.fill();
+    ctx.restore();
+    // focus ring + hold progress at the gaze
+    if (G.on) {
+      ctx.strokeStyle = "rgba(43,92,255,.55)"; ctx.lineWidth = 2; ctx.setLineDash([6, 6]); ctx.beginPath(); ctx.arc(G.gaze.x, G.gaze.y, G.sigma, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+      if (G.hold > 0) { ctx.strokeStyle = "#2fb56b"; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(G.gaze.x, G.gaze.y, G.sigma + 8, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, G.hold / HOLD_NEED)); ctx.stroke(); }
+    }
+    // the eye
+    ctx.save();
+    ctx.shadowColor = "rgba(42,33,64,.3)"; ctx.shadowBlur = 16; ctx.shadowOffsetY = 6;
+    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.ellipse(eye.x, eye.y, eye.r * 1.35, eye.r, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    const ang = Math.atan2(G.gaze.y - eye.y, G.gaze.x - eye.x), off = Math.min(eye.r * 0.55, Math.hypot(G.gaze.x - eye.x, G.gaze.y - eye.y) / 12);
+    const ix = eye.x + Math.cos(ang) * off, iy = eye.y + Math.sin(ang) * off * 0.7;
+    ctx.fillStyle = "#2b5cff"; ctx.beginPath(); ctx.arc(ix, iy, eye.r * 0.52, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#1a1330"; ctx.beginPath(); ctx.arc(ix, iy, eye.r * (0.28 + 0.1 * (1 - (G.sigma - SIG_MIN) / (SIG_MAX - SIG_MIN))), 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,.9)"; ctx.beginPath(); ctx.arc(ix - 7, iy - 8, 6, 0, Math.PI * 2); ctx.fill();
+    // blink
+    const bl = (now % 4200) < 120 ? 1 : 0; if (bl) { ctx.fillStyle = "#ffe3c2"; ctx.beginPath(); ctx.ellipse(eye.x, eye.y, eye.r * 1.4, eye.r * 1.05, 0, 0, Math.PI * 2); ctx.fill(); }
+    // speech bubble
+    if (G.on || G.blendWord) {
+      const word = G.blendWord || "…", bw = Math.max(120, 22 + word.length * 16), bx = eye.x - bw / 2, by = eye.y - eye.r - 62;
+      ctx.fillStyle = "#fff8ec"; rounded(bx, by, bw, 44, 18); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(eye.x - 8, by + 44); ctx.lineTo(eye.x + 8, by + 44); ctx.lineTo(eye.x, by + 54); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = word === G.target?.word ? "#2fb56b" : "#2a2140"; ctx.font = "600 24px Fredoka, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(word, eye.x, by + 23);
+    }
+    // celebrate flash
+    if (G.celebrate > 0) { ctx.fillStyle = `rgba(47,181,107,${(G.celebrate * 0.25).toFixed(2)})`; ctx.fillRect(0, 0, W, H); G.celebrate = Math.max(0, G.celebrate - 0.05); }
+    // hint at the very start
+    if (G.on && G.level === 1 && G.score === 0) { ctx.fillStyle = "rgba(42,33,64,.7)"; ctx.font = "800 14px Nunito, sans-serif"; ctx.textAlign = "center"; ctx.fillText("drag the light · hold still to focus", W / 2, H - 236); }
+  }
+
+  /* ---------- wiring ---------- */
+  $("go").addEventListener("click", () => { beep(520, .05); start(); });
+  $("again").addEventListener("click", start);
+  $("mute").addEventListener("click", e => { muted = !muted; e.currentTarget.textContent = muted ? "Sound: off" : "Sound: on"; });
+  $("share").addEventListener("click", async () => {
+    const text = `I made the brain say ${G.score} words in Eye Say 👁️ It saw ${G.bubbles.length} and forgot none of them.`;
+    try { await navigator.clipboard.writeText(text); toast("Copied. Go brag."); } catch (e) { toast(text); }
+  });
+  function toast(t) { const el = $("toast"); el.textContent = t; el.style.opacity = 1; setTimeout(() => el.style.opacity = 0, 2200); }
+  // an idle eye on the start screen: it follows the pointer
+  addEventListener("pointermove", e => { if (!G.on) { const r = cv.getBoundingClientRect(); G.gaze.x = e.clientX - r.left; G.gaze.y = e.clientY - r.top; } });
+  G.gaze.x = W / 2; G.gaze.y = H / 2; G.lastT = performance.now();
+  requestAnimationFrame(step);
+})();
+</script>

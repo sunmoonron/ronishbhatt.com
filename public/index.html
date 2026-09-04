@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Ronish Bhatt</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Ronish Bhatt — developer and security enthusiast. Small language models, Bitcoin and Nostr, weird web things. This page is assembled from signed Nostr events served by my own relay.">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' wss://relay.ronishbhatt.com wss://relay.damus.io wss://nos.lol wss://relay.primal.net; frame-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<!-- The page is an empty shell. Everything below the fold is a signed Nostr
+     event by this key, fetched from the relay named here first and from the
+     backups when it is unreachable. See js/store.js. -->
+<meta name="site-pubkey" content="0bfcddd3f832913d00075f9246f2f45c362d5467546e593ec8e2f1d87a9e5a3d">
+<meta name="site-relay" content="wss://relay.ronishbhatt.com">
+<meta name="site-backups" content="wss://relay.damus.io,wss://nos.lol,wss://relay.primal.net">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='80'>⌁</text></svg>">
+<style>
+:root{--bg:#0c0d10;--fg:#e7e5df;--mute:#8b9098;--line:#23262d;--card:#131519;--soft:#191c22;--accent:#7dd3a8;--accent-ink:#0b1a12;--err:#e5484d;color-scheme:dark light;
+  --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Inter,sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+@media (prefers-color-scheme:light){:root{--bg:#faf9f6;--fg:#1c1e22;--mute:#69707a;--line:#e6e2da;--card:#fff;--soft:#f1efe9}}
+*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 var(--sans)}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+main{max-width:42rem;margin:0 auto;padding:4rem 1.25rem 5rem}
+.boot{color:var(--mute)}
+header.me{display:flex;gap:1.25rem;align-items:center;margin-bottom:3rem;position:relative}
+header.me img{width:64px;height:64px;border-radius:50%;object-fit:cover;background:var(--soft);flex:none}
+header.me h1{font-size:1.75rem;line-height:1.2;margin:0 0 .3rem;letter-spacing:-.01em}
+header.me p{margin:0;color:var(--mute)}
+section.c{margin-top:3rem;position:relative}
+.label{display:flex;align-items:baseline;gap:.6rem;margin:0 0 1rem;font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);font-weight:600}
+.label .grow{flex:1}
+.ev{font-weight:400;letter-spacing:0;text-transform:none;font-size:.72rem;opacity:.5;color:var(--mute)}.ev:hover{opacity:1;text-decoration:none;color:var(--accent)}
+.draft{font-size:.62rem;color:var(--accent);border:1px dashed var(--accent);border-radius:4px;padding:0 .3rem;letter-spacing:0;text-transform:none;font-weight:500}
+.md p{margin:0 0 1rem}.md>:last-child{margin-bottom:0}.md h1,.md h2,.md h3{font-size:1.02rem;margin:1.4rem 0 .5rem}
+.md ul,.md ol{padding-left:1.3rem;margin:0 0 1rem}.md li{margin:.15rem 0}
+.md code{font:.88em var(--mono);background:var(--soft);padding:.1em .35em;border-radius:4px}.md pre{background:var(--soft);padding:1rem;border-radius:8px;overflow:auto}.md pre code{background:none;padding:0}
+.md img{max-width:100%;border-radius:8px}.md blockquote{margin:0 0 1rem;padding-left:1rem;border-left:2px solid var(--line);color:var(--mute)}
+.md hr{border:0;border-top:1px solid var(--line);margin:1.5rem 0}
+.items{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:1.25rem}
+.item{display:flex;gap:1rem;align-items:flex-start;position:relative}
+.item img.th{width:64px;height:64px;object-fit:cover;border-radius:8px;flex:none;background:var(--soft)}
+.item .b{min-width:0;flex:1}
+.item .t{font-weight:600;font-size:1.02rem}.item .t a{color:var(--fg)}.item .t a:hover{color:var(--accent)}
+.item .s{color:var(--mute);margin:.1rem 0 .35rem}
+.item .md{font-size:.92rem}
+.item .meta{display:flex;gap:.6rem;align-items:center;margin-top:.35rem;font-size:.72rem;color:var(--mute)}
+.note{padding:.9rem 0;border-top:1px solid var(--line)}.note:first-of-type{border-top:0;padding-top:0}
+.note time{display:block;font-size:.74rem;color:var(--mute);margin-bottom:.2rem}
+.note .meta{display:flex;gap:.6rem;margin-top:.3rem;font-size:.72rem}
+footer{margin-top:4rem;padding-top:1.25rem;border-top:1px solid var(--line);font-size:.85rem;color:var(--mute)}
+footer .links{display:flex;flex-wrap:wrap;gap:.3rem 1.1rem;margin-bottom:.7rem}
+.status{display:flex;flex-wrap:wrap;gap:.4rem 1rem;align-items:center;font-size:.76rem}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--line);margin-right:.35rem;vertical-align:1px}.dot.open{background:var(--accent)}.dot.err{background:var(--err)}
+button{font:inherit;font-size:.85rem;color:var(--fg);background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:.45rem .8rem;cursor:pointer;line-height:1.2}
+button:hover{border-color:var(--mute)}button.pri{background:var(--accent);color:var(--accent-ink);border-color:transparent;font-weight:600}button.pri:hover{filter:brightness(1.06)}
+button.sm{font-size:.72rem;padding:.22rem .5rem}button.lnk{background:none;border:0;padding:0;color:var(--accent);font-size:inherit}button.lnk:hover{text-decoration:underline}
+button.danger{color:var(--err)}button:disabled{opacity:.5;cursor:default}
+input,textarea,select{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:.5rem .65rem;width:100%}
+textarea{min-height:5rem;resize:vertical;font-size:.92rem}textarea.big{min-height:14rem;font-family:var(--mono);font-size:.82rem}
+input:focus,textarea:focus{outline:none;border-color:var(--accent)}
+label.f{display:block;font-size:.72rem;color:var(--mute);margin:.75rem 0 .25rem;letter-spacing:.04em}
+.edit{position:absolute;right:0;top:0}
+.chat{border:1px solid var(--line);border-radius:12px;background:var(--card);overflow:hidden}
+.chat .who{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;padding:.6rem .8rem;border-bottom:1px solid var(--line);font-size:.82rem;color:var(--mute)}
+.chat .who input{max-width:12rem;padding:.3rem .5rem;font-size:.85rem}
+.chat .log{max-height:24rem;overflow:auto;padding:1rem;display:flex;flex-direction:column;gap:.45rem}
+.chat .hint{font-size:.82rem;color:var(--mute);padding:1rem;border-bottom:1px solid var(--line)}
+.msg{max-width:84%;padding:.5rem .8rem;border-radius:12px;background:var(--soft);font-size:.92rem;white-space:pre-wrap;word-break:break-word;align-self:flex-start;border-bottom-left-radius:3px}
+.msg.out{align-self:flex-end;background:var(--accent);color:var(--accent-ink);border-bottom-left-radius:12px;border-bottom-right-radius:3px}
+.msg small{display:block;font-size:.66rem;opacity:.65;margin-top:.15rem}
+.chat form{display:flex;gap:.5rem;padding:.7rem .8rem;border-top:1px solid var(--line)}.chat form textarea{min-height:2.6rem;max-height:10rem}
+.threads{display:flex;gap:.4rem;flex-wrap:wrap;padding:.6rem .8rem;border-bottom:1px solid var(--line)}
+.threads button.on{border-color:var(--accent)}.badge{display:inline-block;min-width:1.2em;padding:0 .35em;border-radius:999px;background:var(--accent);color:var(--accent-ink);font-size:.66rem;font-weight:700;margin-left:.35rem;vertical-align:1px}
+.keys{padding:.5rem .8rem;border-top:1px solid var(--line);font-size:.76rem;color:var(--mute)}.keys summary{cursor:pointer}.keys .row{margin-top:.4rem}
+.empty{color:var(--mute);font-size:.9rem;margin:0}
+.ownerbar{position:sticky;top:0;z-index:5;display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;margin:-2.5rem -1.25rem 2.5rem;padding:.55rem 1.25rem;background:var(--card);border-bottom:1px solid var(--accent);font-size:.78rem;color:var(--mute)}
+.ownerbar .grow{flex:1}.ownerbar code{font:.78rem var(--mono);color:var(--fg)}
+.panel{position:fixed;top:0;right:0;bottom:0;width:min(34rem,100%);background:var(--card);border-left:1px solid var(--line);z-index:20;overflow:auto;padding:1.25rem;box-shadow:-20px 0 60px rgba(0,0,0,.35)}
+.panel h2{margin:0 0 .25rem;font-size:1.05rem}.panel .sub{font-size:.78rem;color:var(--mute);margin:0}
+.row{display:flex;gap:.5rem;margin-top:1rem;flex-wrap:wrap;align-items:center}
+.console{position:fixed;inset:0;z-index:30;background:var(--bg);display:flex;flex-direction:column}
+.console iframe{flex:1;border:0;width:100%;background:#0b0c0f}
+.console .bar{display:flex;gap:.6rem;align-items:center;padding:.45rem .8rem;border-bottom:1px solid var(--line);font-size:.78rem;color:var(--mute)}
+.toasts{position:fixed;right:1rem;bottom:1rem;display:flex;flex-direction:column;gap:.4rem;z-index:40}
+.toast{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:.5rem .8rem;font-size:.78rem;max-width:22rem;box-shadow:0 8px 30px rgba(0,0,0,.3)}.toast.err{border-color:var(--err)}
+dialog{background:var(--card);color:var(--fg);border:1px solid var(--line);border-radius:12px;padding:1.25rem;max-width:26rem;width:calc(100% - 2rem)}dialog::backdrop{background:rgba(0,0,0,.55)}
+dialog h2{margin:0 0 .4rem;font-size:1.05rem}dialog p{font-size:.85rem;color:var(--mute);margin:0 0 .5rem}
+.err{color:var(--err);font-size:.8rem}
+.spin{display:inline-block;width:.8em;height:.8em;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;vertical-align:-1px;margin-right:.35rem}@keyframes spin{to{transform:rotate(360deg)}}
+@media (max-width:600px){main{padding:2.5rem 1rem 4rem}header.me{flex-direction:column;align-items:flex-start}.ownerbar{margin:-1rem -1rem 1.5rem;padding:.5rem 1rem}.item img.th{width:48px;height:48px}}
+</style>
+</head>
+<body>
+<main id="app"><p class="boot">Loading from the relay…</p></main>
+<!-- Baked by tools/bake.mjs: the newest signed events from the relay, plus
+     unsigned drafts for anything the owner has not published yet. -->
+<script type="application/json" id="snapshot"></script>
+<script src="/vendor/nostr-tools-2.25.2.bundle.js"></script>
+<script src="/vendor/dompurify-3.4.14.min.js"></script>
+<script type="module" src="/js/app.js"></script>
+</body>
+</html>

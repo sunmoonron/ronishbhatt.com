@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Residual Grammar</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #f3f1e8;
+      --muted: #a8aaa0;
+      --quiet: #6e7169;
+      --paper: #10110f;
+      --panel: rgba(20, 22, 19, 0.72);
+      --line: rgba(243, 241, 232, 0.16);
+      --orange: #de754f;
+      --green: #49b47f;
+      --gold: #d8b84d;
+      --cyan: #59adc1;
+      --red: #d95b66;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      overflow: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
+      background-size: 42px 42px, 42px 42px;
+      mask-image: radial-gradient(circle at center, black 0%, transparent 78%);
+    }
+
+    canvas {
+      position: fixed;
+      inset: 0;
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: crosshair;
+    }
+
+    .shell {
+      position: relative;
+      z-index: 2;
+      min-height: 100svh;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 260px;
+      grid-template-rows: auto 1fr auto;
+      padding: 28px;
+      pointer-events: none;
+    }
+
+    .title {
+      align-self: start;
+      max-width: 560px;
+    }
+
+    .kicker {
+      margin: 0 0 10px;
+      color: var(--gold);
+      font-size: 0.74rem;
+      font-weight: 700;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 5.4rem;
+      line-height: 0.92;
+      font-weight: 760;
+      letter-spacing: 0;
+      text-wrap: balance;
+    }
+
+    .line {
+      width: min(420px, 72vw);
+      height: 1px;
+      margin: 22px 0 18px;
+      background: linear-gradient(90deg, var(--orange), var(--green), transparent);
+    }
+
+    .copy {
+      margin: 0;
+      max-width: 470px;
+      color: var(--muted);
+      font-size: 1rem;
+      line-height: 1.7;
+      text-wrap: pretty;
+    }
+
+    .panel {
+      grid-column: 2;
+      grid-row: 1 / span 3;
+      align-self: stretch;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 18px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      backdrop-filter: blur(18px);
+      pointer-events: auto;
+    }
+
+    .panel h2 {
+      margin: 0;
+      color: var(--ink);
+      font-size: 0.82rem;
+      font-weight: 760;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+
+    .readouts {
+      display: grid;
+      align-content: start;
+      gap: 16px;
+    }
+
+    .meter {
+      display: grid;
+      gap: 7px;
+    }
+
+    .meter-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+
+    .meter-track {
+      height: 8px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.035);
+      overflow: hidden;
+    }
+
+    .meter-fill {
+      width: 0%;
+      height: 100%;
+      background: var(--accent, var(--green));
+      transition: width 150ms linear;
+    }
+
+    .sigil {
+      min-height: 160px;
+      display: grid;
+      place-items: center;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      color: var(--quiet);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.86rem;
+      line-height: 1.5;
+      white-space: pre;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    button {
+      appearance: none;
+      min-width: 0;
+      height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: rgba(255,255,255,0.045);
+      color: var(--ink);
+      font: 700 0.9rem/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      cursor: pointer;
+    }
+
+    button:focus-visible {
+      outline: 2px solid var(--cyan);
+      outline-offset: 3px;
+    }
+
+    button:hover {
+      border-color: rgba(243,241,232,0.34);
+      background: rgba(255,255,255,0.08);
+    }
+
+    .foot {
+      grid-column: 1;
+      grid-row: 3;
+      align-self: end;
+      color: var(--quiet);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.76rem;
+      line-height: 1.7;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 26px;
+      z-index: 3;
+      width: min(360px, calc(100vw - 36px));
+      transform: translate(-50%, 18px);
+      opacity: 0;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      background: rgba(13,14,12,0.9);
+      color: var(--muted);
+      font-size: 0.84rem;
+      text-align: center;
+      transition: opacity 180ms ease, transform 180ms ease;
+      pointer-events: none;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+
+    @media (max-width: 980px) {
+      h1 {
+        font-size: 4.2rem;
+      }
+    }
+
+    @media (max-width: 860px) {
+      html,
+      body {
+        overflow: auto;
+      }
+
+      canvas {
+        min-height: 100svh;
+      }
+
+      .shell {
+        min-height: 100svh;
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr auto auto;
+        gap: 24px;
+        padding: 20px;
+      }
+
+      .title {
+        max-width: 100%;
+      }
+
+      h1 {
+        font-size: 3.2rem;
+      }
+
+      .panel {
+        grid-column: 1;
+        grid-row: 3;
+        align-self: end;
+        min-height: 0;
+      }
+
+      .sigil {
+        min-height: 96px;
+      }
+
+      .foot {
+        grid-row: 4;
+      }
+    }
+
+    @media (max-width: 430px) {
+      h1 {
+        font-size: 2.56rem;
+      }
+
+      .copy {
+        font-size: 0.94rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="field" aria-label="Animated woven field"></canvas>
+
+  <main class="shell">
+    <section class="title" aria-label="Residual Grammar">
+      <p class="kicker">browser-only residue</p>
+      <h1>Residual Grammar</h1>
+      <div class="line"></div>
+      <p class="copy">
+        A page that refuses to become a profile: no account, no ledger, no witness.
+        It spends the visitor's attention while keeping none of it.
+      </p>
+    </section>
+
+    <aside class="panel" aria-label="Field telemetry">
+      <h2>Live Field</h2>
+      <div class="readouts">
+        <div class="meter">
+          <div class="meter-head"><span>presence</span><span id="presenceText">00</span></div>
+          <div class="meter-track"><div class="meter-fill" id="presenceFill" style="--accent: var(--green)"></div></div>
+        </div>
+        <div class="meter">
+          <div class="meter-head"><span>tension</span><span id="tensionText">00</span></div>
+          <div class="meter-track"><div class="meter-fill" id="tensionFill" style="--accent: var(--orange)"></div></div>
+        </div>
+        <div class="meter">
+          <div class="meter-head"><span>return</span><span id="returnText">00</span></div>
+          <div class="meter-track"><div class="meter-fill" id="returnFill" style="--accent: var(--cyan)"></div></div>
+        </div>
+      </div>
+      <div class="sigil" id="sigil" aria-hidden="true"></div>
+      <div class="actions">
+        <button id="pause" type="button" aria-label="Pause or resume animation" title="Pause or resume">||</button>
+        <button id="clear" type="button" aria-label="Clear traces" title="Clear traces">x</button>
+        <button id="still" type="button" aria-label="Hold field still" title="Hold field still">.</button>
+      </div>
+    </aside>
+
+    <footer class="foot">
+      local motion / temporary pattern / zero retained state
+    </footer>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const canvas = document.getElementById("field");
+    const ctx = canvas.getContext("2d", { alpha: false });
+    const presenceFill = document.getElementById("presenceFill");
+    const tensionFill = document.getElementById("tensionFill");
+    const returnFill = document.getElementById("returnFill");
+    const presenceText = document.getElementById("presenceText");
+    const tensionText = document.getElementById("tensionText");
+    const returnText = document.getElementById("returnText");
+    const sigil = document.getElementById("sigil");
+    const toast = document.getElementById("toast");
+    const pauseBtn = document.getElementById("pause");
+    const clearBtn = document.getElementById("clear");
+    const stillBtn = document.getElementById("still");
+
+    const state = {
+      width: 0,
+      height: 0,
+      dpr: 1,
+      time: 0,
+      pointerX: 0.5,
+      pointerY: 0.52,
+      lastX: 0.5,
+      lastY: 0.52,
+      velocity: 0,
+      presence: 0.22,
+      tension: 0,
+      returning: 0.76,
+      paused: false,
+      still: false,
+      traces: [],
+      glyphTick: 0
+    };
+
+    const colors = [
+      [222, 117, 79],
+      [73, 180, 127],
+      [216, 184, 77],
+      [89, 173, 193],
+      [217, 91, 102]
+    ];
+
+    function resize() {
+      state.dpr = Math.min(window.devicePixelRatio || 1, 2);
+      state.width = Math.max(1, window.innerWidth);
+      state.height = Math.max(1, window.innerHeight);
+      canvas.width = Math.floor(state.width * state.dpr);
+      canvas.height = Math.floor(state.height * state.dpr);
+      canvas.style.width = state.width + "px";
+      canvas.style.height = state.height + "px";
+      ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
+      state.pointerX = clamp(state.pointerX, 0, 1);
+      state.pointerY = clamp(state.pointerY, 0, 1);
+    }
+
+    function clamp(value, low, high) {
+      return Math.max(low, Math.min(high, value));
+    }
+
+    function mix(a, b, amount) {
+      return a + (b - a) * amount;
+    }
+
+    function wave(x, y, t) {
+      const a = Math.sin(x * 0.019 + y * 0.011 + t * 0.0017);
+      const b = Math.cos(x * 0.008 - y * 0.022 - t * 0.0011);
+      const c = Math.sin((x + y) * 0.006 + t * 0.0029);
+      return (a + b + c) / 3;
+    }
+
+    function colorAt(index, alpha) {
+      const c = colors[index % colors.length];
+      return "rgba(" + c[0] + "," + c[1] + "," + c[2] + "," + alpha + ")";
+    }
+
+    function updatePointer(clientX, clientY) {
+      const x = clamp(clientX / state.width, 0, 1);
+      const y = clamp(clientY / state.height, 0, 1);
+      const dx = x - state.pointerX;
+      const dy = y - state.pointerY;
+      state.lastX = state.pointerX;
+      state.lastY = state.pointerY;
+      state.pointerX = x;
+      state.pointerY = y;
+      state.velocity = clamp(Math.hypot(dx, dy) * 19, 0, 1);
+      state.traces.push({
+        x: clientX,
+        y: clientY,
+        px: state.lastX * state.width,
+        py: state.lastY * state.height,
+        life: 1,
+        force: 0.24 + state.velocity * 0.76
+      });
+      if (state.traces.length > 160) state.traces.shift();
+    }
+
+    function drawGround() {
+      const w = state.width;
+      const h = state.height;
+      const g = ctx.createLinearGradient(0, 0, w, h);
+      g.addColorStop(0, "#10110f");
+      g.addColorStop(0.38, "#171813");
+      g.addColorStop(0.72, "#111816");
+      g.addColorStop(1, "#14120e");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+
+      ctx.globalAlpha = 0.55;
+      ctx.fillStyle = "#0c0d0b";
+      for (let i = 0; i < 80; i++) {
+        const x = (i * 97 + Math.sin(state.time * 0.0002 + i) * 11) % w;
+        const y = (i * 53 + Math.cos(state.time * 0.00018 + i) * 9) % h;
+        ctx.fillRect(x, y, 1, 1);
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    function drawField() {
+      const w = state.width;
+      const h = state.height;
+      const px = state.pointerX * w;
+      const py = state.pointerY * h;
+      const shortSide = Math.min(w, h);
+      const cols = clamp(Math.floor(w / 68), 8, 24);
+      const rows = clamp(Math.floor(h / 54), 7, 18);
+      const stepX = w / (cols - 1);
+      const stepY = h / (rows - 1);
+      const pull = state.still ? 0.05 : 0.42 + state.presence * 0.28;
+
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+
+      for (let y = 0; y < rows; y++) {
+        ctx.beginPath();
+        for (let x = 0; x < cols; x++) {
+          const bx = x * stepX;
+          const by = y * stepY;
+          const dx = bx - px;
+          const dy = by - py;
+          const dist = Math.hypot(dx, dy) / shortSide;
+          const influence = Math.max(0, 1 - dist * 1.8);
+          const angle = Math.atan2(dy, dx) + wave(bx, by, state.time) * 1.8;
+          const amp = (18 + 42 * influence) * pull;
+          const nx = bx + Math.cos(angle) * amp + wave(by, bx, state.time) * 14;
+          const ny = by + Math.sin(angle) * amp + wave(bx, by, state.time + 300) * 14;
+          if (x === 0) ctx.moveTo(nx, ny);
+          else ctx.lineTo(nx, ny);
+        }
+        ctx.strokeStyle = colorAt(y, 0.13 + y / rows * 0.1);
+        ctx.lineWidth = 1.1 + state.tension * 1.4;
+        ctx.stroke();
+      }
+
+      for (let x = 0; x < cols; x++) {
+        ctx.beginPath();
+        for (let y = 0; y < rows; y++) {
+          const bx = x * stepX;
+          const by = y * stepY;
+          const dx = bx - px;
+          const dy = by - py;
+          const dist = Math.hypot(dx, dy) / shortSide;
+          const influence = Math.max(0, 1 - dist * 1.9);
+          const angle = Math.atan2(dy, dx) - wave(by, bx, state.time) * 1.4;
+          const amp = (12 + 34 * influence) * pull;
+          const nx = bx - Math.sin(angle) * amp + wave(by, bx, state.time + 900) * 9;
+          const ny = by + Math.cos(angle) * amp + wave(bx, by, state.time + 1200) * 9;
+          if (y === 0) ctx.moveTo(nx, ny);
+          else ctx.lineTo(nx, ny);
+        }
+        ctx.strokeStyle = colorAt(x + 2, 0.08 + x / cols * 0.08);
+        ctx.lineWidth = 0.8 + state.presence;
+        ctx.stroke();
+      }
+    }
+
+    function drawTraces(delta) {
+      for (let i = state.traces.length - 1; i >= 0; i--) {
+        const tr = state.traces[i];
+        tr.life -= delta * 0.00042;
+        if (tr.life <= 0) {
+          state.traces.splice(i, 1);
+          continue;
+        }
+
+        const bend = wave(tr.x, tr.y, state.time) * 32 * tr.force;
+        ctx.beginPath();
+        ctx.moveTo(tr.px, tr.py);
+        ctx.quadraticCurveTo(
+          mix(tr.px, tr.x, 0.5) + bend,
+          mix(tr.py, tr.y, 0.5) - bend,
+          tr.x,
+          tr.y
+        );
+        ctx.strokeStyle = colorAt(i, tr.life * 0.38);
+        ctx.lineWidth = 1 + tr.force * 5 * tr.life;
+        ctx.stroke();
+      }
+    }
+
+    function drawNeedle() {
+      const w = state.width;
+      const h = state.height;
+      const x = state.pointerX * w;
+      const y = state.pointerY * h;
+      const r = 16 + state.presence * 18 + Math.sin(state.time * 0.004) * 3;
+
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(wave(x, y, state.time) * 2);
+      ctx.strokeStyle = "rgba(243,241,232,0.62)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(-r, 0);
+      ctx.lineTo(r, 0);
+      ctx.moveTo(0, -r);
+      ctx.lineTo(0, r);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 0.55, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(89,173,193,0.45)";
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function updateReadouts() {
+      const values = [
+        [state.presence, presenceFill, presenceText],
+        [state.tension, tensionFill, tensionText],
+        [state.returning, returnFill, returnText]
+      ];
+
+      for (const [value, fill, text] of values) {
+        const n = Math.round(clamp(value, 0, 1) * 99);
+        fill.style.width = n + "%";
+        text.textContent = String(n).padStart(2, "0");
+      }
+
+      if (state.time - state.glyphTick > 280) {
+        state.glyphTick = state.time;
+        const cells = [];
+        const p = Math.round(state.presence * 9);
+        const t = Math.round(state.tension * 9);
+        const r = Math.round(state.returning * 9);
+        for (let y = 0; y < 5; y++) {
+          let row = "";
+          for (let x = 0; x < 11; x++) {
+            const v = (x * 3 + y * 5 + p + t * 2 + r * 4) % 12;
+            row += v < 2 ? "/" : v < 4 ? "\\" : v < 6 ? "." : v < 7 ? ":" : v < 8 ? "|" : " ";
+          }
+          cells.push(row);
+        }
+        sigil.textContent = cells.join("\n");
+      }
+    }
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add("show");
+      window.clearTimeout(showToast.id);
+      showToast.id = window.setTimeout(() => toast.classList.remove("show"), 1300);
+    }
+
+    let last = performance.now();
+    function frame(now) {
+      const delta = Math.min(48, now - last);
+      last = now;
+
+      if (!state.paused) {
+        state.time = now;
+        const targetPresence = clamp(0.18 + state.velocity * 0.76 + state.traces.length / 260, 0, 1);
+        const targetTension = clamp(state.velocity * 0.88 + Math.abs(state.pointerX - 0.5) * 0.22, 0, 1);
+        const targetReturn = clamp(1 - state.tension * 0.7 - state.traces.length / 230, 0, 1);
+
+        state.presence = mix(state.presence, targetPresence, 0.045);
+        state.tension = mix(state.tension, targetTension, 0.055);
+        state.returning = mix(state.returning, targetReturn, 0.035);
+        state.velocity *= 0.92;
+
+        if (state.still) {
+          state.pointerX = mix(state.pointerX, 0.5, 0.03);
+          state.pointerY = mix(state.pointerY, 0.52, 0.03);
+        }
+
+        drawGround();
+        drawField();
+        drawTraces(delta);
+        drawNeedle();
+        updateReadouts();
+      }
+
+      requestAnimationFrame(frame);
+    }
+
+    window.addEventListener("resize", resize);
+    window.addEventListener("pointermove", (event) => {
+      state.still = false;
+      updatePointer(event.clientX, event.clientY);
+    }, { passive: true });
+    window.addEventListener("pointerdown", (event) => {
+      state.still = false;
+      updatePointer(event.clientX, event.clientY);
+    }, { passive: true });
+
+    pauseBtn.addEventListener("click", () => {
+      state.paused = !state.paused;
+      pauseBtn.textContent = state.paused ? ">" : "||";
+      showToast(state.paused ? "held" : "released");
+    });
+
+    clearBtn.addEventListener("click", () => {
+      state.traces.length = 0;
+      state.velocity = 0;
+      showToast("cleared");
+    });
+
+    stillBtn.addEventListener("click", () => {
+      state.still = !state.still;
+      showToast(state.still ? "centered" : "loose");
+    });
+
+    resize();
+    updatePointer(window.innerWidth * 0.52, window.innerHeight * 0.54);
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>

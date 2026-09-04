@@ -1,0 +1,1553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FiberText PhD Workbench</title>
+  <meta name="description" content="A standalone research workbench for treating language as a backward-compatible geometric encoding system.">
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f4f1e8;
+      --paper: #fffaf0;
+      --paper-2: #f7f9f2;
+      --ink: #17201d;
+      --muted: #61716a;
+      --line: #d0c7b6;
+      --line-strong: #a99d89;
+      --teal: #0e746c;
+      --blue: #2f6fa5;
+      --gold: #d59a2b;
+      --red: #bf514a;
+      --plum: #71518b;
+      --green: #3d7a52;
+      --dark: #1f2b27;
+      --shadow: 0 22px 60px rgba(29, 36, 33, 0.14);
+      --radius: 8px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background:
+        linear-gradient(90deg, rgba(23, 32, 29, 0.05) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(23, 32, 29, 0.045) 1px, transparent 1px),
+        radial-gradient(circle at 12% 0%, rgba(213, 154, 43, 0.16), transparent 24rem),
+        radial-gradient(circle at 96% 6%, rgba(47, 111, 165, 0.13), transparent 26rem),
+        var(--bg);
+      background-size: 34px 34px, 34px 34px, auto, auto, auto;
+      color: var(--ink);
+    }
+
+    body {
+      min-height: 100vh;
+    }
+
+    button,
+    textarea,
+    input {
+      font: inherit;
+    }
+
+    a {
+      color: var(--teal);
+      text-decoration-thickness: 1px;
+      text-underline-offset: 3px;
+    }
+
+    .shell {
+      width: min(1680px, calc(100% - 28px));
+      margin: 14px auto 28px;
+      display: grid;
+      grid-template-columns: 360px minmax(520px, 1fr) 420px;
+      grid-template-rows: auto minmax(760px, 1fr);
+      gap: 14px;
+    }
+
+    .mast {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: end;
+      gap: 14px;
+      padding: 10px 0 4px;
+      border-bottom: 2px solid rgba(23, 32, 29, 0.12);
+    }
+
+    .mast h1 {
+      margin: 0;
+      font-size: clamp(2.2rem, 5.8vw, 6.8rem);
+      line-height: 0.88;
+      letter-spacing: 0;
+      max-width: 1180px;
+    }
+
+    .mast p {
+      margin: 12px 0 0;
+      max-width: 980px;
+      color: var(--muted);
+      font-size: clamp(1rem, 1.15vw, 1.2rem);
+      line-height: 1.55;
+    }
+
+    .thesis-stamp {
+      min-width: 220px;
+      background: rgba(255, 250, 240, 0.78);
+      border: 2px solid var(--dark);
+      padding: 10px 12px;
+      box-shadow: 6px 6px 0 rgba(14, 116, 108, 0.14);
+      text-align: right;
+    }
+
+    .thesis-stamp strong,
+    .thesis-stamp span {
+      display: block;
+    }
+
+    .thesis-stamp strong {
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: 0.8rem;
+    }
+
+    .thesis-stamp span {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    .panel {
+      background: rgba(255, 250, 240, 0.88);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .panel-head {
+      min-height: 56px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .panel-head h2 {
+      margin: 0;
+      font-size: 0.95rem;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+    }
+
+    .status-pill {
+      border: 1px solid rgba(23, 32, 29, 0.22);
+      border-radius: 999px;
+      padding: 5px 9px;
+      background: rgba(247, 249, 242, 0.78);
+      color: var(--teal);
+      font-size: 0.75rem;
+      white-space: nowrap;
+    }
+
+    .left {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+    }
+
+    .input-stack {
+      padding: 14px;
+      display: grid;
+      gap: 14px;
+      align-content: start;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 240px;
+      resize: vertical;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fffdf7;
+      color: var(--ink);
+      padding: 12px;
+      line-height: 1.48;
+      outline: none;
+    }
+
+    textarea:focus,
+    input:focus-visible,
+    button:focus-visible {
+      outline: 3px solid rgba(14, 116, 108, 0.24);
+      outline-offset: 2px;
+    }
+
+    .control {
+      display: grid;
+      grid-template-columns: 94px minmax(0, 1fr) 52px;
+      gap: 8px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--teal);
+    }
+
+    .toggles {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .toggle {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 38px;
+      border: 1px solid rgba(23, 32, 29, 0.14);
+      border-radius: var(--radius);
+      padding: 7px 8px;
+      background: rgba(247, 249, 242, 0.68);
+      color: var(--muted);
+      font-size: 0.84rem;
+      cursor: pointer;
+    }
+
+    .toggle input {
+      accent-color: var(--teal);
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    button {
+      border: 1px solid rgba(23, 32, 29, 0.22);
+      border-radius: var(--radius);
+      background: #fdf8ed;
+      color: var(--ink);
+      min-height: 40px;
+      cursor: pointer;
+      transition: transform 0.12s ease, background 0.12s ease, border-color 0.12s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      border-color: var(--teal);
+      background: #edf5f1;
+    }
+
+    .primary {
+      background: var(--teal);
+      border-color: #0b4d48;
+      color: white;
+    }
+
+    .primary:hover {
+      background: #0b4d48;
+      color: white;
+    }
+
+    .readout-box {
+      display: grid;
+      gap: 8px;
+    }
+
+    .box-title {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+    }
+
+    .carrier,
+    .compressed {
+      border: 1px dashed rgba(23, 32, 29, 0.24);
+      border-radius: var(--radius);
+      padding: 10px;
+      min-height: 86px;
+      background: rgba(255, 255, 255, 0.56);
+      line-height: 1.44;
+      overflow-wrap: anywhere;
+      color: #26312e;
+    }
+
+    .compressed {
+      border-style: solid;
+      background: #f5f8ef;
+    }
+
+    .signature {
+      font-family: var(--mono);
+      color: var(--muted);
+      font-size: 0.78rem;
+      overflow-wrap: anywhere;
+    }
+
+    .center {
+      display: grid;
+      grid-template-rows: auto minmax(520px, 1fr) auto;
+    }
+
+    .metric-strip {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 8px;
+      background: rgba(247, 249, 242, 0.72);
+    }
+
+    .metric {
+      border: 1px solid rgba(23, 32, 29, 0.12);
+      border-radius: var(--radius);
+      padding: 8px;
+      background: rgba(255, 250, 240, 0.82);
+      min-width: 0;
+    }
+
+    .metric span,
+    .metric strong {
+      display: block;
+    }
+
+    .metric span {
+      color: var(--muted);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .metric strong {
+      margin-top: 3px;
+      font-size: clamp(1rem, 1.55vw, 1.42rem);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .canvas-wrap {
+      position: relative;
+      min-height: 520px;
+      background:
+        linear-gradient(90deg, rgba(23, 32, 29, 0.06) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(23, 32, 29, 0.05) 1px, transparent 1px),
+        #fbfaf4;
+      background-size: 28px 28px;
+    }
+
+    #atlas {
+      width: 100%;
+      height: 100%;
+      min-height: 520px;
+      display: block;
+    }
+
+    .chart-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 10px;
+      padding: 12px 14px;
+      border-top: 1px solid var(--line);
+    }
+
+    .chart {
+      min-height: 86px;
+      display: grid;
+      grid-template-columns: repeat(64, minmax(2px, 1fr));
+      gap: 2px;
+      align-items: end;
+      border: 1px solid rgba(23, 32, 29, 0.12);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.52);
+      padding: 8px;
+      overflow: hidden;
+    }
+
+    .bar {
+      min-height: 5px;
+      border-radius: 2px 2px 0 0;
+      background: var(--teal);
+    }
+
+    .right {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+    }
+
+    .tabs {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .tab {
+      min-height: 32px;
+      padding: 5px 8px;
+      font-size: 0.8rem;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.58);
+    }
+
+    .tab.active {
+      background: var(--dark);
+      color: white;
+      border-color: var(--dark);
+    }
+
+    .research-body {
+      padding: 14px;
+      overflow: auto;
+      display: grid;
+      align-content: start;
+      gap: 14px;
+    }
+
+    .tab-panel {
+      display: none;
+      gap: 14px;
+      align-content: start;
+    }
+
+    .tab-panel.active {
+      display: grid;
+    }
+
+    .claim {
+      padding: 13px;
+      background: var(--dark);
+      color: #fffaf0;
+      border-radius: var(--radius);
+      line-height: 1.45;
+      box-shadow: 5px 5px 0 rgba(213, 154, 43, 0.24);
+    }
+
+    .claim strong {
+      color: #f6ce7b;
+    }
+
+    .note {
+      border-top: 1px solid var(--line);
+      padding-top: 12px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .note:first-child {
+      border-top: 0;
+      padding-top: 0;
+    }
+
+    .note h3 {
+      margin: 0;
+      font-size: 0.84rem;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--muted);
+    }
+
+    .note p,
+    .note li {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+      font-size: 0.92rem;
+    }
+
+    .note ul,
+    .note ol {
+      margin: 0;
+      padding-left: 1.1rem;
+      display: grid;
+      gap: 7px;
+    }
+
+    .code {
+      font-family: var(--mono);
+      font-size: 0.79rem;
+      line-height: 1.45;
+      overflow-x: auto;
+      white-space: pre;
+      background: rgba(237, 245, 241, 0.78);
+      border: 1px solid rgba(14, 116, 108, 0.18);
+      border-radius: var(--radius);
+      padding: 10px;
+      color: #263d38;
+    }
+
+    .ledger {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.86rem;
+    }
+
+    .ledger th,
+    .ledger td {
+      border-top: 1px solid var(--line);
+      padding: 8px 6px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .ledger th {
+      color: var(--ink);
+    }
+
+    .ledger td {
+      color: var(--muted);
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .chip {
+      border: 1px solid rgba(23, 32, 29, 0.16);
+      border-radius: 999px;
+      padding: 5px 8px;
+      background: rgba(255, 255, 255, 0.58);
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+
+    .source-list {
+      display: grid;
+      gap: 8px;
+      font-size: 0.86rem;
+    }
+
+    .source-list a {
+      line-height: 1.35;
+    }
+
+    .chunk-list {
+      display: grid;
+      gap: 6px;
+      max-height: 180px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .chunk-item {
+      display: grid;
+      grid-template-columns: 38px minmax(0, 1fr) 52px;
+      gap: 8px;
+      align-items: center;
+      border: 1px solid rgba(23, 32, 29, 0.12);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.46);
+      padding: 7px;
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+
+    .chunk-item code {
+      color: var(--ink);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 1260px) {
+      .shell {
+        grid-template-columns: 340px minmax(0, 1fr);
+      }
+
+      .right {
+        grid-column: 1 / -1;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .shell {
+        width: min(100% - 18px, 820px);
+        grid-template-columns: 1fr;
+        grid-template-rows: auto;
+      }
+
+      .mast {
+        grid-template-columns: 1fr;
+      }
+
+      .thesis-stamp {
+        justify-self: start;
+        text-align: left;
+      }
+
+      .metric-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .chart-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .actions,
+      .toggles {
+        grid-template-columns: 1fr;
+      }
+
+      .control {
+        grid-template-columns: 82px minmax(0, 1fr) 44px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="mast">
+      <div>
+        <h1>FiberText PhD Workbench</h1>
+        <p>A stricter prototype: raw writing is a public carrier, while geometry is a private sidecar computed across glyphs, adaptive chunks, discourse sheets, and lossy compression skeletons.</p>
+      </div>
+      <div class="thesis-stamp">
+        <strong>PhD artifact sketch</strong>
+        <span>April 25, 2026 literature boundary</span>
+      </div>
+    </header>
+
+    <section class="panel left" aria-label="carrier and codec controls">
+      <div class="panel-head">
+        <h2>Carrier</h2>
+        <span class="status-pill">UTF-8 unchanged</span>
+      </div>
+      <div class="input-stack">
+        <textarea id="input" spellcheck="false">A cautious scientist compresses a sentence by removing words. A geometric scientist compresses a sentence by preserving the path: endpoints, bends, rare shocks, negations, numbers, and the places where the stream changes its mind.</textarea>
+
+        <label class="control">
+          <span>granularity</span>
+          <input id="granularity" type="range" min="10" max="95" value="55">
+          <output id="granularityOut">0.55</output>
+        </label>
+        <label class="control">
+          <span>memory</span>
+          <input id="memory" type="range" min="0" max="100" value="48">
+          <output id="memoryOut">0.48</output>
+        </label>
+        <label class="control">
+          <span>budget</span>
+          <input id="budget" type="range" min="18" max="82" value="42">
+          <output id="budgetOut">42%</output>
+        </label>
+
+        <div class="toggles">
+          <label class="toggle"><input id="showGlyphs" type="checkbox" checked> glyph path</label>
+          <label class="toggle"><input id="showChunks" type="checkbox" checked> adaptive chunks</label>
+          <label class="toggle"><input id="showSheet" type="checkbox" checked> discourse sheet</label>
+          <label class="toggle"><input id="showFiber" type="checkbox" checked> fiber field</label>
+        </div>
+
+        <div class="actions">
+          <button id="encode" class="primary" type="button">encode</button>
+          <button id="sample" type="button">sample</button>
+          <button id="mutate" type="button">mutate</button>
+        </div>
+
+        <div class="readout-box">
+          <p class="box-title">Exact carrier</p>
+          <div id="carrier" class="carrier"></div>
+        </div>
+
+        <div class="readout-box">
+          <p class="box-title">Geodesic compression</p>
+          <div id="compressed" class="compressed"></div>
+          <div id="signature" class="signature"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel center" aria-label="geometric atlas">
+      <div class="panel-head">
+        <h2>Multiscale Atlas</h2>
+        <span class="status-pill">no tokenizer, no model call</span>
+      </div>
+      <div class="metric-strip">
+        <div class="metric"><span>chars</span><strong id="mChars">0</strong></div>
+        <div class="metric"><span>chunks</span><strong id="mChunks">0</strong></div>
+        <div class="metric"><span>rate</span><strong id="mRate">0</strong></div>
+        <div class="metric"><span>curvature</span><strong id="mCurv">0</strong></div>
+        <div class="metric"><span>dimension</span><strong id="mDim">0</strong></div>
+        <div class="metric"><span>fidelity</span><strong id="mFidelity">0</strong></div>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="atlas"></canvas>
+      </div>
+      <div class="chart-row">
+        <div>
+          <p class="box-title">coding-rate shocks</p>
+          <div id="shockChart" class="chart"></div>
+        </div>
+        <div>
+          <p class="box-title">fiber signature</p>
+          <div id="fiberChart" class="chart"></div>
+        </div>
+      </div>
+    </section>
+
+    <aside class="panel right" aria-label="research notebook">
+      <div class="panel-head">
+        <h2>Notebook</h2>
+        <div class="tabs" role="tablist">
+          <button class="tab active" data-tab="thesis" type="button">thesis</button>
+          <button class="tab" data-tab="mechanism" type="button">mechanism</button>
+          <button class="tab" data-tab="questions" type="button">questions</button>
+          <button class="tab" data-tab="sources" type="button">sources</button>
+        </div>
+      </div>
+      <div class="research-body">
+        <section id="tab-thesis" class="tab-panel active">
+          <div class="claim">
+            <strong>Claim:</strong> language can be represented as a fiber bundle over a byte or glyph stream. Grammar is one possible coordinate chart. The invariant object is the transport: what changes, bends, repeats, vanishes, and remains recoverable across scale.
+          </div>
+          <div class="note">
+            <h3>What changed from the toy prototype</h3>
+            <p>The unit is not a word or sentence. The unit is a boundary that emerges when the stream's coding rate, curvature, and memory residual change enough to justify a new patch.</p>
+          </div>
+          <div class="note">
+            <h3>Why compression appears</h3>
+            <p>If text is a path, compression is not deletion. It is finding a shorter carrier whose transport preserves endpoints, high curvature, rare events, and control tokens such as negation and numbers.</p>
+          </div>
+          <div class="note">
+            <h3>Use cases</h3>
+            <ul>
+              <li>Cheap retrieval prefilters before embedding search.</li>
+              <li>Prompt compression that keeps reasoning pivots rather than frequent filler.</li>
+              <li>Text diffing by geometric deformation instead of edit distance alone.</li>
+              <li>Tokenizer-free segmentation experiments for byte-level models.</li>
+              <li>Interpretability probes that compare model trajectories with carrier geometry.</li>
+            </ul>
+          </div>
+          <div class="note">
+            <h3>Chunk ledger</h3>
+            <div id="chunkList" class="chunk-list"></div>
+          </div>
+        </section>
+
+        <section id="tab-mechanism" class="tab-panel">
+          <div class="note">
+            <h3>First principles</h3>
+            <div class="code">carrier C = raw Unicode sequence
+base path p_t in R^3
+fiber h_t in R^d
+transport: (p_t, h_t) = T(c_t, rate_t, kappa_t, h_{t-1})
+boundary: cut when delta coding-rate + delta curvature + residual > tau
+compression: keep chunks with maximal geometric work under budget</div>
+          </div>
+          <div class="note">
+            <h3>Big O</h3>
+            <table class="ledger">
+              <thead>
+                <tr><th>operation</th><th>time</th><th>space</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>stream transport</td><td>O(n)</td><td>O(1) signature, O(n) drawing</td></tr>
+                <tr><td>adaptive chunking</td><td>O(n)</td><td>O(V + B), bounded maps in this demo</td></tr>
+                <tr><td>geodesic compression</td><td>O(k log k)</td><td>O(k), k chunks</td></tr>
+                <tr><td>shape fidelity</td><td>O(n + m)</td><td>O(1) metrics, O(n + m) if drawing both</td></tr>
+                <tr><td>windowed retrieval index</td><td>O(n)</td><td>O(n / w)</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="note">
+            <h3>Compression contract</h3>
+            <p>The demo is intentionally model-free. It cannot know truth. It can preserve geometric work: rare shocks, turns, endpoints, numbers, negation, and high-surprise chunks. A real thesis would train and evaluate whether that work correlates with semantic recoverability.</p>
+          </div>
+          <div class="note">
+            <h3>Index chips</h3>
+            <div id="indexChips" class="chips"></div>
+          </div>
+        </section>
+
+        <section id="tab-questions" class="tab-panel">
+          <div class="claim">
+            The 100-plus questions are not a weakness. They are the research program. A credible dissertation would turn them into falsifiable axes.
+          </div>
+          <div class="note">
+            <h3>Research axes</h3>
+            <table class="ledger">
+              <thead>
+                <tr><th>axis</th><th>hard question</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>invariance</td><td>Which geometric quantities survive paraphrase, translation, OCR, and speech transcription?</td></tr>
+                <tr><td>recoverability</td><td>Can a compressed skeleton reconstruct enough task intent without hallucinated details?</td></tr>
+                <tr><td>universality</td><td>Do model embeddings align more with learned grammar or with raw carrier transport?</td></tr>
+                <tr><td>scale</td><td>Where does the unit of meaning emerge: byte, glyph, morpheme, phrase, turn, document?</td></tr>
+                <tr><td>security</td><td>Do sidecar signatures leak semantics like embedding vectors can?</td></tr>
+                <tr><td>evaluation</td><td>What benchmark punishes beautiful geometry that fails downstream tasks?</td></tr>
+                <tr><td>compression</td><td>Can geometric work beat token-count heuristics for long-context prompting?</td></tr>
+                <tr><td>control</td><td>Can reasoning be steered by desired trajectory without editing words directly?</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="tab-sources" class="tab-panel">
+          <div class="note">
+            <h3>Existing boundary</h3>
+            <p>Current work strongly supports geometric views of embeddings, token spaces, reasoning trajectories, and compression-driven segmentation. The speculative leap here is to make a deterministic alphabet-compatible carrier geometry that can be compared against learned geometry.</p>
+          </div>
+          <div class="source-list">
+            <a href="https://openreview.net/forum?id=GhJIa921j7">ByteFlow Net, ICLR 2026: adaptive byte compression without a tokenizer</a>
+            <a href="https://aclanthology.org/2025.findings-emnlp.641/">Semantic Geometry of Sentence Embeddings, EMNLP Findings 2025</a>
+            <a href="https://aclanthology.org/2024.findings-acl.306/">Extending Context Window via Semantic Compression, ACL Findings 2024</a>
+            <a href="https://arxiv.org/abs/2505.12540">Harnessing the Universal Geometry of Embeddings, revised Jan. 2026</a>
+            <a href="https://arxiv.org/abs/2503.15421">Probing the Topology of Token Space, 2025</a>
+            <a href="https://arxiv.org/abs/2510.09782">The Geometry of Reasoning, revised Mar. 2026</a>
+            <a href="https://arxiv.org/abs/2604.05655">LLM Reasoning as Trajectories, Apr. 2026</a>
+            <a href="https://arxiv.org/abs/2406.01506">Categorical and Hierarchical Concepts in LLMs, ICLR 2025</a>
+            <a href="https://arxiv.org/abs/2410.04010">Hyperbolic Fine-Tuning for LLMs, NeurIPS 2025</a>
+          </div>
+        </section>
+      </div>
+    </aside>
+  </main>
+
+  <script>
+    const els = {
+      input: document.getElementById("input"),
+      granularity: document.getElementById("granularity"),
+      memory: document.getElementById("memory"),
+      budget: document.getElementById("budget"),
+      granularityOut: document.getElementById("granularityOut"),
+      memoryOut: document.getElementById("memoryOut"),
+      budgetOut: document.getElementById("budgetOut"),
+      showGlyphs: document.getElementById("showGlyphs"),
+      showChunks: document.getElementById("showChunks"),
+      showSheet: document.getElementById("showSheet"),
+      showFiber: document.getElementById("showFiber"),
+      encode: document.getElementById("encode"),
+      sample: document.getElementById("sample"),
+      mutate: document.getElementById("mutate"),
+      carrier: document.getElementById("carrier"),
+      compressed: document.getElementById("compressed"),
+      signature: document.getElementById("signature"),
+      canvas: document.getElementById("atlas"),
+      mChars: document.getElementById("mChars"),
+      mChunks: document.getElementById("mChunks"),
+      mRate: document.getElementById("mRate"),
+      mCurv: document.getElementById("mCurv"),
+      mDim: document.getElementById("mDim"),
+      mFidelity: document.getElementById("mFidelity"),
+      shockChart: document.getElementById("shockChart"),
+      fiberChart: document.getElementById("fiberChart"),
+      chunkList: document.getElementById("chunkList"),
+      indexChips: document.getElementById("indexChips")
+    };
+
+    const ctx = els.canvas.getContext("2d");
+    const alphabet = "abcdefghijklmnopqrstuvwxyz";
+    const vowels = new Set(["a", "e", "i", "o", "u"]);
+    const punctuation = new Set([".", ",", ":", ";", "!", "?", "(", ")", "[", "]", "{", "}", "-", "\"", "'"]);
+    const anchors = new Set(["no", "not", "never", "none", "without", "unless", "except", "before", "after", "because", "therefore", "but", "however"]);
+    const samples = [
+      "If a model reasons in a vector space, a human sentence may already be a crude vector machine: a path, a field, and a memory of turns.",
+      "Compression is not merely making text short. It is choosing which deformations the next reader can survive.",
+      "The old tokenizer asks where a word begins. The geometric codec asks where the stream becomes expensive to continue.",
+      "A treaty, a poem, and a proof can share vocabulary while transporting attention through different curves.",
+      "When the sentence says not, the path should not merely move; it should reverse a local orientation."
+    ];
+    let sampleIndex = 0;
+    let last = null;
+
+    function params() {
+      return {
+        granularity: Number(els.granularity.value) / 100,
+        memory: Number(els.memory.value) / 100,
+        budget: Number(els.budget.value) / 100,
+        showGlyphs: els.showGlyphs.checked,
+        showChunks: els.showChunks.checked,
+        showSheet: els.showSheet.checked,
+        showFiber: els.showFiber.checked
+      };
+    }
+
+    function escapeHtml(text) {
+      return text.replace(/[&<>"']/g, (ch) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "\"": "&quot;",
+        "'": "&#39;"
+      })[ch]);
+    }
+
+    function classify(ch) {
+      const lower = ch.toLowerCase();
+      if (alphabet.includes(lower)) return vowels.has(lower) ? "vowel" : "letter";
+      if (ch === " " || ch === "\n" || ch === "\t") return "space";
+      if (punctuation.has(ch)) return "punct";
+      if (/\d/.test(ch)) return "digit";
+      return "symbol";
+    }
+
+    function hash32(text) {
+      let h = 2166136261;
+      for (let i = 0; i < text.length; i += 1) {
+        h ^= text.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+      }
+      return h >>> 0;
+    }
+
+    function unitVector(key, dims) {
+      let h = hash32(key);
+      const out = new Array(dims);
+      let norm = 0;
+      for (let i = 0; i < dims; i += 1) {
+        h ^= h << 13;
+        h ^= h >>> 17;
+        h ^= h << 5;
+        const value = (((h >>> 0) % 2001) - 1000) / 1000;
+        out[i] = value;
+        norm += value * value;
+      }
+      norm = Math.sqrt(norm) || 1;
+      return out.map((v) => v / norm);
+    }
+
+    function charAngle(ch) {
+      const lower = ch.toLowerCase();
+      const idx = alphabet.indexOf(lower);
+      if (idx >= 0) return (idx / 26) * Math.PI * 2;
+      return ((hash32(ch) % 4096) / 4096) * Math.PI * 2;
+    }
+
+    function updateMarkov(prev, ch, state) {
+      const key = prev + "\u0000" + ch;
+      state.total += 1;
+      state.vocab.add(ch);
+      state.prevTotals.set(prev, (state.prevTotals.get(prev) || 0) + 1);
+      state.bigram.set(key, (state.bigram.get(key) || 0) + 1);
+    }
+
+    function surprise(prev, ch, state) {
+      const key = prev + "\u0000" + ch;
+      const count = state.bigram.get(key) || 0;
+      const prevTotal = state.prevTotals.get(prev) || 0;
+      const vocab = Math.max(16, state.vocab.size + 1);
+      const alpha = 0.35;
+      const probability = (count + alpha) / (prevTotal + alpha * vocab);
+      return -Math.log2(probability);
+    }
+
+    function analyze(text, options, keepGeometry = true) {
+      const chars = Array.from(text);
+      const dims = 12;
+      const points = [];
+      const chunks = [];
+      const shocks = [];
+      const fiber = new Array(dims).fill(0);
+      const fiberEnergy = new Array(64).fill(0);
+      const markov = {
+        bigram: new Map(),
+        prevTotals: new Map(),
+        vocab: new Set(),
+        total: 0
+      };
+      const counts = { vowel: 0, letter: 0, space: 0, punct: 0, digit: 0, symbol: 0 };
+      let x = 0;
+      let y = 0;
+      let z = 0;
+      let theta = -Math.PI / 2;
+      let turnTotal = 0;
+      let length = 0;
+      let signedArea = 0;
+      let prev = "^";
+      let meanRate = 4;
+      let chunkStart = 0;
+      let chunkWork = 0;
+      let chunkSurprise = 0;
+      let chunkCurv = 0;
+      let chunkAnchor = 0;
+      let prevPoint = { x, y, z };
+      let sx = 0;
+      let sy = 0;
+      let sz = 0;
+      let sxx = 0;
+      let syy = 0;
+      let szz = 0;
+      let sxy = 0;
+      let sxz = 0;
+      let syz = 0;
+
+      points.push({ x, y, z, theta, kind: "start", i: 0, ch: "" });
+
+      chars.forEach((ch, i) => {
+        const kind = classify(ch);
+        counts[kind] += 1;
+        const rate = surprise(prev, ch, markov);
+        const lower = ch.toLowerCase();
+        const a = charAngle(ch);
+        const idx = Math.max(0, alphabet.indexOf(lower));
+        const baseStep = 4.8 + (idx % 9) * 0.9 + Math.min(5.2, rate * 0.28);
+        const classTurn = kind === "vowel" ? 0.18 : kind === "punct" ? 0.62 : kind === "space" ? 0.08 : -0.035;
+        const memoryPull = options.memory * Math.sin((fiber[0] || 0) * 2.4 + (fiber[3] || 0) * 1.6);
+        const turn = (Math.sin(a * 2.1 + i * 0.13) * 0.12 + classTurn + memoryPull * 0.09) * (0.56 + options.granularity);
+        const old = { x, y, z, theta };
+        const step = kind === "space" ? 2.6 : kind === "punct" ? 6.2 : baseStep;
+
+        theta += turn;
+        x += Math.cos(theta + a * 0.13) * step;
+        y += Math.sin(theta + a * 0.13) * step;
+        z += Math.sin(a + i * 0.19) * (kind === "vowel" ? 1.3 : 0.58) + (kind === "punct" ? 2.0 : 0);
+
+        const delta = Math.hypot(x - old.x, y - old.y, z - old.z);
+        length += delta;
+        signedArea += old.x * y - x * old.y;
+        turnTotal += Math.abs(turn);
+        meanRate = meanRate * 0.94 + rate * 0.06;
+
+        const vec = unitVector(ch + ":" + i + ":" + prev, dims);
+        const residual = Math.abs(rate - meanRate) / Math.max(1, meanRate);
+        for (let d = 0; d < dims; d += 1) {
+          fiber[d] = fiber[d] * (0.86 + options.memory * 0.08) + vec[d] * (0.3 + residual * 0.42);
+        }
+        const fbin = Math.abs(Math.floor((fiber[0] * 997 + fiber[4] * 443 + i * 17))) % fiberEnergy.length;
+        fiberEnergy[fbin] += delta + residual * 4;
+
+        sx += x;
+        sy += y;
+        sz += z;
+        sxx += x * x;
+        syy += y * y;
+        szz += z * z;
+        sxy += x * y;
+        sxz += x * z;
+        syz += y * z;
+
+        chunkWork += delta + Math.abs(turn) * 8 + residual * 3;
+        chunkSurprise += rate;
+        chunkCurv += Math.abs(turn);
+        if (/\d/.test(ch) || lower === "n") chunkAnchor += 0.2;
+        shocks.push({
+          value: residual + Math.abs(turn) * 0.7 + (kind === "punct" ? 0.55 : 0),
+          rate,
+          i
+        });
+
+        if (keepGeometry) {
+          points.push({ x, y, z, theta, kind, i: i + 1, ch, rate, residual });
+        }
+
+        const span = i - chunkStart + 1;
+        const threshold = 1.15 - options.granularity * 0.75;
+        const isBoundary = (
+          span >= 22 ||
+          (span >= 3 && kind === "punct") ||
+          (span >= 5 && kind === "space" && residual + Math.abs(turn) > threshold) ||
+          (span >= 8 && residual > threshold * 1.35)
+        );
+
+        updateMarkov(prev, ch, markov);
+        prev = ch;
+
+        if (isBoundary || i === chars.length - 1) {
+          const chunkText = chars.slice(chunkStart, i + 1).join("");
+          const words = chunkText.toLowerCase().match(/[a-z0-9']+/g) || [];
+          const hasAnchor = words.some((word) => anchors.has(word)) || /\d/.test(chunkText);
+          chunks.push({
+            start: chunkStart,
+            end: i + 1,
+            text: chunkText,
+            x,
+            y,
+            z,
+            work: chunkWork,
+            surprise: chunkSurprise / Math.max(1, span),
+            curvature: chunkCurv,
+            anchor: hasAnchor ? 1 : chunkAnchor,
+            length: span
+          });
+          chunkStart = i + 1;
+          chunkWork = 0;
+          chunkSurprise = 0;
+          chunkCurv = 0;
+          chunkAnchor = 0;
+        }
+        prevPoint = { x, y, z };
+      });
+
+      const n = Math.max(1, chars.length);
+      const cov = {
+        xx: sxx / n - (sx / n) ** 2,
+        yy: syy / n - (sy / n) ** 2,
+        zz: szz / n - (sz / n) ** 2,
+        xy: sxy / n - (sx / n) * (sy / n),
+        xz: sxz / n - (sx / n) * (sz / n),
+        yz: syz / n - (sy / n) * (sz / n)
+      };
+      const trace = Math.max(0.0001, cov.xx + cov.yy + cov.zz);
+      const frob = cov.xx ** 2 + cov.yy ** 2 + cov.zz ** 2 + 2 * (cov.xy ** 2 + cov.xz ** 2 + cov.yz ** 2);
+      const dim = Math.min(3, Math.max(1, (trace * trace) / Math.max(0.0001, frob)));
+      const averageRate = shocks.reduce((sum, s) => sum + s.rate, 0) / Math.max(1, shocks.length);
+      const signature = makeSignature({
+        chars: chars.length,
+        chunks: chunks.length,
+        averageRate,
+        turnTotal,
+        length,
+        signedArea,
+        dim,
+        fiberEnergy
+      });
+
+      return {
+        text,
+        points,
+        chunks,
+        shocks,
+        fiber,
+        fiberEnergy,
+        counts,
+        metrics: {
+          chars: chars.length,
+          chunks: chunks.length,
+          averageRate,
+          curvature: turnTotal,
+          length,
+          signedArea: signedArea / 2,
+          endpoint: Math.hypot(x, y, z),
+          dim
+        },
+        signature
+      };
+    }
+
+    function makeSignature(model) {
+      const parts = [
+        model.chars,
+        model.chunks,
+        Math.round(model.averageRate * 100),
+        Math.round(model.turnTotal * 100),
+        Math.round(model.length),
+        Math.round(model.signedArea),
+        Math.round(model.dim * 100)
+      ].concat(model.fiberEnergy.filter((_, i) => i % 7 === 0).map((v) => Math.round(v)));
+      let h = 2166136261;
+      parts.forEach((n) => {
+        h ^= n & 255;
+        h = Math.imul(h, 16777619);
+        h ^= (n >>> 8) & 255;
+        h = Math.imul(h, 16777619);
+      });
+      return "FTX2:" + (h >>> 0).toString(36).padStart(7, "0");
+    }
+
+    function compress(model, options) {
+      if (!model.text.trim()) {
+        return { text: "", selected: [], ratio: 0, fidelity: 1, compressedModel: analyze("", options, false) };
+      }
+      const target = Math.max(18, Math.floor(model.metrics.chars * options.budget));
+      const scored = model.chunks.map((chunk, index) => {
+        const density = chunk.work / Math.max(1, chunk.length);
+        const rarity = chunk.surprise;
+        const edge = index === 0 || index === model.chunks.length - 1 ? 2.2 : 0;
+        const score = density * 0.55 + rarity * 0.38 + chunk.anchor * 2.8 + edge;
+        return { ...chunk, index, score };
+      });
+      const selected = [];
+      let used = 0;
+      scored
+        .slice()
+        .sort((a, b) => b.score - a.score)
+        .forEach((chunk) => {
+          if (used + chunk.length <= target || selected.length < 2 || chunk.anchor > 0.9) {
+            selected.push(chunk);
+            used += chunk.length;
+          }
+        });
+      selected.sort((a, b) => a.index - b.index);
+
+      const pieces = [];
+      let previous = -1;
+      selected.forEach((chunk) => {
+        if (previous >= 0 && chunk.index > previous + 1) {
+          pieces.push("...");
+        }
+        pieces.push(chunk.text.trim());
+        previous = chunk.index;
+      });
+      const output = pieces.join(" ").replace(/\s+/g, " ").trim();
+      const compressedModel = analyze(output, options, false);
+      const fidelity = shapeFidelity(model, compressedModel);
+      return {
+        text: output,
+        selected,
+        ratio: output.length / Math.max(1, model.text.length),
+        fidelity,
+        compressedModel
+      };
+    }
+
+    function shapeFidelity(a, b) {
+      const endpoint = Math.abs(a.metrics.endpoint - b.metrics.endpoint) / Math.max(1, a.metrics.endpoint);
+      const curvature = Math.abs(a.metrics.curvature - b.metrics.curvature) / Math.max(1, a.metrics.curvature);
+      const rate = Math.abs(a.metrics.averageRate - b.metrics.averageRate) / Math.max(1, a.metrics.averageRate);
+      const dim = Math.abs(a.metrics.dim - b.metrics.dim) / 3;
+      const penalty = endpoint * 0.27 + curvature * 0.34 + rate * 0.22 + dim * 0.17;
+      return Math.max(0, Math.min(1, 1 - penalty));
+    }
+
+    function fit(points, width, height) {
+      const xs = points.map((p) => p.x);
+      const ys = points.map((p) => p.y);
+      let minX = Math.min(...xs);
+      let maxX = Math.max(...xs);
+      let minY = Math.min(...ys);
+      let maxY = Math.max(...ys);
+      if (!Number.isFinite(minX)) {
+        minX = -1;
+        maxX = 1;
+        minY = -1;
+        maxY = 1;
+      }
+      if (minX === maxX) {
+        minX -= 8;
+        maxX += 8;
+      }
+      if (minY === maxY) {
+        minY -= 8;
+        maxY += 8;
+      }
+      const pad = 54;
+      const scale = Math.min((width - pad * 2) / (maxX - minX), (height - pad * 2) / (maxY - minY));
+      const ox = (width - (minX + maxX) * scale) / 2;
+      const oy = (height - (minY + maxY) * scale) / 2;
+      return (p) => ({ x: p.x * scale + ox, y: p.y * scale + oy, z: p.z * scale * 0.2 });
+    }
+
+    function color(kind) {
+      if (kind === "vowel") return "#d59a2b";
+      if (kind === "punct") return "#bf514a";
+      if (kind === "space") return "#71518b";
+      if (kind === "digit") return "#2f6fa5";
+      if (kind === "symbol") return "#3d7a52";
+      return "#0e746c";
+    }
+
+    function draw(model, options, compressed) {
+      const rect = els.canvas.getBoundingClientRect();
+      const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+      const width = Math.max(360, Math.floor(rect.width));
+      const height = Math.max(520, Math.floor(rect.height));
+      els.canvas.width = Math.floor(width * dpr);
+      els.canvas.height = Math.floor(height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, width, height);
+      drawBackground(width, height);
+
+      if (model.points.length < 2) {
+        ctx.fillStyle = "#61716a";
+        ctx.font = "16px system-ui, sans-serif";
+        ctx.fillText("empty carrier", 24, 38);
+        return;
+      }
+
+      const project = fit(model.points, width, height);
+      const mapped = model.points.map(project);
+
+      if (options.showSheet) drawSheet(mapped, model);
+      if (options.showFiber) drawFiberField(width, height, model);
+      if (options.showGlyphs) drawGlyphPath(mapped, model);
+      if (options.showChunks) drawChunks(mapped, model, compressed);
+      drawEndpoints(mapped);
+    }
+
+    function drawBackground(width, height) {
+      ctx.fillStyle = "#fbfaf4";
+      ctx.fillRect(0, 0, width, height);
+      ctx.strokeStyle = "rgba(23, 32, 29, 0.065)";
+      ctx.lineWidth = 1;
+      for (let x = 0; x < width; x += 28) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
+        ctx.stroke();
+      }
+      for (let y = 0; y < height; y += 28) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+      }
+    }
+
+    function drawSheet(mapped, model) {
+      if (mapped.length < 4) return;
+      ctx.save();
+      ctx.globalAlpha = 0.22;
+      ctx.fillStyle = "#d59a2b";
+      ctx.beginPath();
+      mapped.forEach((p, i) => {
+        const y = p.y + Math.sin(i * 0.17) * 9 + p.z;
+        if (i === 0) ctx.moveTo(p.x, y);
+        else ctx.lineTo(p.x, y);
+      });
+      for (let i = mapped.length - 1; i >= 0; i -= 1) {
+        const p = mapped[i];
+        ctx.lineTo(p.x, p.y - 18 - p.z);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawFiberField(width, height, model) {
+      const max = Math.max(1, ...model.fiberEnergy);
+      ctx.save();
+      for (let i = 0; i < model.fiberEnergy.length; i += 1) {
+        const v = model.fiberEnergy[i] / max;
+        const angle = (i / model.fiberEnergy.length) * Math.PI * 2;
+        const cx = width * (0.5 + Math.cos(angle) * 0.41);
+        const cy = height * (0.5 + Math.sin(angle) * 0.39);
+        ctx.strokeStyle = i % 3 === 0 ? "rgba(47, 111, 165, 0.22)" : i % 3 === 1 ? "rgba(14, 116, 108, 0.2)" : "rgba(113, 81, 139, 0.18)";
+        ctx.lineWidth = 1 + v * 5;
+        ctx.beginPath();
+        ctx.moveTo(width / 2, height / 2);
+        ctx.lineTo(cx, cy);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function drawGlyphPath(mapped, model) {
+      ctx.save();
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      for (let i = 1; i < mapped.length; i += 1) {
+        const p0 = mapped[i - 1];
+        const p1 = mapped[i];
+        const source = model.points[i];
+        ctx.strokeStyle = color(source.kind);
+        ctx.globalAlpha = source.kind === "space" ? 0.34 : 0.86;
+        ctx.lineWidth = source.kind === "punct" ? 2.3 : source.kind === "vowel" ? 2.0 : 1.35;
+        ctx.beginPath();
+        ctx.moveTo(p0.x, p0.y + p0.z);
+        ctx.lineTo(p1.x, p1.y + p1.z);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      mapped.forEach((p, i) => {
+        if (i === 0 || i % 3 !== 0) return;
+        const source = model.points[i];
+        if (source.kind === "space") return;
+        ctx.fillStyle = color(source.kind);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y + p.z, source.kind === "punct" ? 4.2 : 2.4, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.restore();
+    }
+
+    function drawChunks(mapped, model, compressed) {
+      ctx.save();
+      const selected = new Set(compressed.selected.map((chunk) => chunk.index));
+      model.chunks.forEach((chunk, index) => {
+        const p = mapped[Math.min(mapped.length - 1, chunk.end)];
+        if (!p) return;
+        const radius = Math.max(5, Math.min(20, chunk.work * 0.22));
+        ctx.fillStyle = selected.has(index) ? "rgba(191, 81, 74, 0.88)" : "rgba(23, 32, 29, 0.18)";
+        ctx.strokeStyle = selected.has(index) ? "#7d2722" : "rgba(23, 32, 29, 0.24)";
+        ctx.lineWidth = selected.has(index) ? 2 : 1;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y + p.z, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      });
+      ctx.strokeStyle = "rgba(23, 32, 29, 0.22)";
+      ctx.setLineDash([5, 6]);
+      ctx.beginPath();
+      model.chunks.forEach((chunk, index) => {
+        const p = mapped[Math.min(mapped.length - 1, chunk.end)];
+        if (!p) return;
+        if (index === 0) ctx.moveTo(p.x, p.y + p.z);
+        else ctx.lineTo(p.x, p.y + p.z);
+      });
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawEndpoints(mapped) {
+      const start = mapped[0];
+      const end = mapped[mapped.length - 1];
+      [
+        [start, "#17201d", "start"],
+        [end, "#bf514a", "end"]
+      ].forEach(([p, fill, label]) => {
+        ctx.fillStyle = fill;
+        ctx.strokeStyle = "#fffaf0";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y + p.z, 8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = fill;
+        ctx.font = "700 11px system-ui, sans-serif";
+        ctx.fillText(label, p.x + 11, p.y + p.z + 4);
+      });
+    }
+
+    function renderBars(node, values, palette) {
+      const max = Math.max(1, ...values);
+      const sampled = resample(values, 64);
+      node.innerHTML = sampled.map((value, i) => {
+        const h = 5 + Math.round((value / max) * 62);
+        const bg = palette[i % palette.length];
+        return `<span class="bar" style="height:${h}px;background:${bg}"></span>`;
+      }).join("");
+    }
+
+    function resample(values, target) {
+      if (values.length === 0) return new Array(target).fill(0);
+      if (values.length <= target) {
+        return values.concat(new Array(target - values.length).fill(0));
+      }
+      const out = [];
+      for (let i = 0; i < target; i += 1) {
+        const start = Math.floor((i / target) * values.length);
+        const end = Math.max(start + 1, Math.floor(((i + 1) / target) * values.length));
+        let sum = 0;
+        for (let j = start; j < end; j += 1) sum += values[j];
+        out.push(sum / (end - start));
+      }
+      return out;
+    }
+
+    function renderChunks(model, compressed) {
+      const selected = new Set(compressed.selected.map((chunk) => chunk.index));
+      els.chunkList.innerHTML = model.chunks.slice(0, 60).map((chunk, index) => {
+        const mark = selected.has(index) ? "keep" : "drop";
+        return `<div class="chunk-item"><span>${index + 1}</span><code>${escapeHtml(chunk.text.trim() || "[space]")}</code><span>${mark}</span></div>`;
+      }).join("");
+    }
+
+    function renderIndex(model) {
+      const window = Math.max(24, Math.round(model.metrics.chars / 8));
+      const chips = [];
+      for (let i = 0; i < model.text.length; i += window) {
+        const part = model.text.slice(i, i + window);
+        if (!part) continue;
+        chips.push(`<span class="chip">${i}-${i + part.length}: ${makeWindowCode(part)}</span>`);
+      }
+      els.indexChips.innerHTML = chips.join("");
+    }
+
+    function makeWindowCode(text) {
+      const h = hash32(text).toString(36).slice(0, 5);
+      const density = Array.from(text).filter((ch) => classify(ch) !== "space").length;
+      return h + "/" + density;
+    }
+
+    function format(value, digits = 1) {
+      if (!Number.isFinite(value)) return "0";
+      const abs = Math.abs(value);
+      if (abs >= 1000000) return (value / 1000000).toFixed(1) + "M";
+      if (abs >= 1000) return Math.round(value).toLocaleString();
+      return value.toFixed(digits);
+    }
+
+    function update() {
+      const options = params();
+      els.granularityOut.value = options.granularity.toFixed(2);
+      els.memoryOut.value = options.memory.toFixed(2);
+      els.budgetOut.value = Math.round(options.budget * 100) + "%";
+      const text = els.input.value;
+      const model = analyze(text, options, true);
+      const compressed = compress(model, options);
+      last = { model, compressed, options };
+
+      els.carrier.innerHTML = text ? escapeHtml(text) : "<span style=\"color:var(--muted)\">empty carrier</span>";
+      els.compressed.innerHTML = compressed.text ? escapeHtml(compressed.text) : "<span style=\"color:var(--muted)\">empty compression</span>";
+      els.signature.textContent = model.signature + " | ratio " + Math.round(compressed.ratio * 100) + "%";
+      els.mChars.textContent = model.metrics.chars.toLocaleString();
+      els.mChunks.textContent = model.metrics.chunks.toLocaleString();
+      els.mRate.textContent = format(model.metrics.averageRate, 2);
+      els.mCurv.textContent = format(model.metrics.curvature, 1);
+      els.mDim.textContent = format(model.metrics.dim, 2);
+      els.mFidelity.textContent = Math.round(compressed.fidelity * 100) + "%";
+
+      renderBars(els.shockChart, model.shocks.map((s) => s.value), ["#0e746c", "#d59a2b", "#bf514a"]);
+      renderBars(els.fiberChart, model.fiberEnergy, ["#2f6fa5", "#71518b", "#3d7a52", "#d59a2b"]);
+      renderChunks(model, compressed);
+      renderIndex(model);
+      draw(model, options, compressed);
+    }
+
+    function mutateText(text) {
+      const parts = text.match(/[^.!?]+[.!?]?/g) || [text];
+      if (parts.length > 1) {
+        const first = parts.shift();
+        parts.push(first);
+        return parts.join(" ").replace(/\s+/g, " ").trim();
+      }
+      const words = text.split(/\s+/).filter(Boolean);
+      if (words.length < 4) return text + " Notably, the path now has a second turn.";
+      const mid = Math.floor(words.length / 2);
+      return words.slice(0, mid).join(" ") + " not " + words.slice(mid).join(" ");
+    }
+
+    function debounce(fn, wait) {
+      let id = 0;
+      return (...args) => {
+        window.clearTimeout(id);
+        id = window.setTimeout(() => fn(...args), wait);
+      };
+    }
+
+    const schedule = debounce(update, 25);
+    els.input.addEventListener("input", schedule);
+    [els.granularity, els.memory, els.budget].forEach((el) => el.addEventListener("input", schedule));
+    [els.showGlyphs, els.showChunks, els.showSheet, els.showFiber].forEach((el) => el.addEventListener("change", schedule));
+    els.encode.addEventListener("click", update);
+    els.sample.addEventListener("click", () => {
+      sampleIndex = (sampleIndex + 1) % samples.length;
+      els.input.value = samples[sampleIndex];
+      update();
+    });
+    els.mutate.addEventListener("click", () => {
+      els.input.value = mutateText(els.input.value);
+      update();
+    });
+
+    document.querySelectorAll(".tab").forEach((button) => {
+      button.addEventListener("click", () => {
+        const tab = button.dataset.tab;
+        document.querySelectorAll(".tab").forEach((b) => b.classList.toggle("active", b === button));
+        document.querySelectorAll(".tab-panel").forEach((panel) => panel.classList.toggle("active", panel.id === "tab-" + tab));
+      });
+    });
+
+    if ("ResizeObserver" in window) {
+      new ResizeObserver(() => {
+        if (last) draw(last.model, last.options, last.compressed);
+      }).observe(els.canvas);
+    } else {
+      window.addEventListener("resize", () => {
+        if (last) draw(last.model, last.options, last.compressed);
+      });
+    }
+
+    update();
+  </script>
+</body>
+</html>

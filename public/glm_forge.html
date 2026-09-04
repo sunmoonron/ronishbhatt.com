@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GLM Forge — Live Code Generator</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600&family=Space+Grotesk:wght@400;600;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #060609;
+    --surface: #0d0d14;
+    --surface2: #13131e;
+    --border: #1e1e2e;
+    --border2: #2a2a3e;
+    --accent: #7c3aed;
+    --accent2: #a855f7;
+    --orange: #f97316;
+    --green: #22c55e;
+    --text: #e2e2f0;
+    --muted: #4a4a6a;
+    --muted2: #6a6a8a;
+    --code: #c4b5fd;
+    --glow: rgba(124, 58, 237, 0.3);
+  }
+
+  html, body { height: 100%; overflow: hidden; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Top bar ─────────────────────────────────────── */
+  .topbar {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+    z-index: 10;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 700;
+    font-size: 1.1rem;
+    letter-spacing: -0.02em;
+  }
+
+  .logo-icon {
+    width: 28px; height: 28px;
+    background: linear-gradient(135deg, var(--accent), var(--orange));
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.9rem;
+  }
+
+  .logo-text { background: linear-gradient(90deg, var(--accent2), var(--orange)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+  .tagline { font-size: 0.72rem; color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase; }
+
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 0.5rem; }
+
+  .badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    border: 1px solid var(--border2);
+    color: var(--muted2);
+    letter-spacing: 0.08em;
+  }
+
+  .badge.live {
+    border-color: rgba(34,197,94,0.4);
+    color: var(--green);
+    animation: badge-pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes badge-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+    50% { box-shadow: 0 0 0 4px rgba(34,197,94,0.08); }
+  }
+
+  /* ── Prompt bar ──────────────────────────────────── */
+  .prompt-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+
+  .prompt-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--bg);
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    padding: 0.5rem 0.75rem;
+    transition: border-color 0.2s;
+  }
+
+  .prompt-wrap:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(124,58,237,0.12);
+  }
+
+  .prompt-icon { color: var(--muted); font-size: 0.9rem; flex-shrink: 0; }
+
+  #prompt {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font: inherit;
+    font-size: 0.9rem;
+  }
+
+  #prompt::placeholder { color: var(--muted); }
+
+  .btn {
+    display: flex; align-items: center; gap: 0.4rem;
+    padding: 0.55rem 1.1rem;
+    border: none;
+    border-radius: 8px;
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .btn-forge {
+    background: linear-gradient(135deg, var(--accent), #9333ea);
+    color: #fff;
+    box-shadow: 0 0 16px rgba(124,58,237,0.35);
+  }
+
+  .btn-forge:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 0 24px rgba(124,58,237,0.5); }
+  .btn-forge:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; box-shadow: none; }
+
+  .btn-clear {
+    background: var(--surface2);
+    color: var(--muted2);
+    border: 1px solid var(--border2);
+  }
+
+  .btn-clear:hover:not(:disabled) { background: var(--border2); color: var(--text); }
+  .btn-clear:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn-stop {
+    background: rgba(239,68,68,0.15);
+    color: #f87171;
+    border: 1px solid rgba(239,68,68,0.25);
+  }
+  .btn-stop:hover { background: rgba(239,68,68,0.25); }
+
+  /* ── Examples ────────────────────────────────────── */
+  .examples {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    flex-shrink: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .examples::-webkit-scrollbar { display: none; }
+
+  .ex-label { font-size: 0.7rem; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap; flex-shrink: 0; }
+
+  .ex-chip {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.65rem;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 999px;
+    color: var(--muted2);
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: all 0.15s;
+  }
+
+  .ex-chip:hover { background: rgba(124,58,237,0.15); border-color: rgba(124,58,237,0.4); color: var(--accent2); }
+
+  /* ── Main layout ─────────────────────────────────── */
+  .workspace {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+  }
+
+  /* ── Code panel ──────────────────────────────────── */
+  .code-panel {
+    width: 42%;
+    min-width: 300px;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+    flex-shrink: 0;
+  }
+
+  .panel-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    color: var(--muted2);
+    text-transform: uppercase;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+
+  .dot { width: 7px; height: 7px; border-radius: 50%; }
+  .dot-red { background: #ff5f57; }
+  .dot-yellow { background: #febc2e; }
+  .dot-green { background: #28c840; }
+
+  .line-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+  }
+
+  .code-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border2) transparent;
+  }
+
+  .code-area::-webkit-scrollbar { width: 6px; }
+  .code-area::-webkit-scrollbar-track { background: transparent; }
+  .code-area::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+  #code-display {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    line-height: 1.7;
+    color: var(--code);
+    white-space: pre-wrap;
+    word-break: break-all;
+    min-height: 100%;
+  }
+
+  #code-display .cursor {
+    display: inline-block;
+    width: 2px;
+    height: 1.1em;
+    background: var(--accent2);
+    animation: blink 0.8s steps(1) infinite;
+    vertical-align: text-bottom;
+    margin-left: 1px;
+  }
+
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+  /* Syntax highlight colors */
+  .t-tag { color: #f472b6; }
+  .t-attr { color: #fb923c; }
+  .t-val { color: #a3e635; }
+  .t-comment { color: #4a4a6a; font-style: italic; }
+  .t-kw { color: #818cf8; }
+  .t-str { color: #a3e635; }
+  .t-num { color: #fb923c; }
+  .t-fn { color: #34d399; }
+  .t-prop { color: #93c5fd; }
+  .t-punct { color: #6b7280; }
+
+  /* ── Preview panel ───────────────────────────────── */
+  .preview-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .preview-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+    flex-shrink: 0;
+  }
+
+  .preview-btn {
+    background: none;
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    color: var(--muted2);
+    font: inherit;
+    font-size: 0.72rem;
+    padding: 0.2rem 0.6rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex; align-items: center; gap: 0.3rem;
+  }
+
+  .preview-btn:hover { background: var(--border2); color: var(--text); }
+  .preview-btn.active { background: rgba(124,58,237,0.2); border-color: rgba(124,58,237,0.5); color: var(--accent2); }
+
+  .url-bar {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.25rem 0.6rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  #preview-frame {
+    flex: 1;
+    border: none;
+    background: #fff;
+  }
+
+  /* ── Empty / placeholder states ──────────────────── */
+  .empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    color: var(--muted);
+    padding: 2rem;
+    text-align: center;
+  }
+
+  .empty-icon {
+    width: 64px; height: 64px;
+    border: 2px solid var(--border2);
+    border-radius: 18px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.8rem;
+    background: var(--surface2);
+  }
+
+  .empty-title { font-size: 1rem; font-weight: 600; color: var(--muted2); }
+  .empty-sub { font-size: 0.8rem; color: var(--muted); max-width: 300px; line-height: 1.5; }
+
+  /* ── Progress bar ────────────────────────────────── */
+  .progress-bar {
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--orange));
+    position: absolute;
+    top: 0; left: 0;
+    transition: width 0.1s linear;
+    border-radius: 1px;
+  }
+
+  /* ── Status bar ──────────────────────────────────── */
+  .statusbar {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.3rem 1.25rem;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+  }
+
+  #status-text { flex: 1; }
+  #token-count { color: var(--muted2); }
+
+  /* ── Resize handle ───────────────────────────────── */
+  .resize-handle {
+    width: 4px;
+    background: var(--border);
+    cursor: col-resize;
+    flex-shrink: 0;
+    transition: background 0.15s;
+    position: relative;
+  }
+
+  .resize-handle:hover, .resize-handle.dragging { background: var(--accent); }
+
+  /* ── Responsive ──────────────────────────────────── */
+  @media (max-width: 768px) {
+    .workspace { flex-direction: column; }
+    .code-panel { width: 100%; min-width: unset; height: 40%; border-right: none; border-bottom: 1px solid var(--border); }
+    .preview-panel { height: 60%; }
+    .resize-handle { display: none; }
+    .tagline { display: none; }
+  }
+
+  /* ── Streaming glow effect ───────────────────────── */
+  .streaming #code-display { text-shadow: 0 0 8px rgba(196, 181, 253, 0.2); }
+
+  /* ── Toast ───────────────────────────────────────── */
+  .toast {
+    position: fixed;
+    bottom: 2.5rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
+    color: var(--text);
+    opacity: 0;
+    transition: all 0.3s ease;
+    pointer-events: none;
+    z-index: 999;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-icon">⚒</div>
+    <span class="logo-text">GLM Forge</span>
+  </div>
+  <div class="tagline">Describe it. Watch it build.</div>
+  <div class="topbar-right">
+    <span class="badge" id="model-badge">research-model</span>
+    <span class="badge live" id="live-badge" style="display:none">● streaming</span>
+  </div>
+</div>
+
+<!-- Prompt bar -->
+<div class="prompt-bar">
+  <div class="prompt-wrap">
+    <span class="prompt-icon">✦</span>
+    <input id="prompt" type="text" placeholder="Describe what to build… e.g. a bouncy ball physics sim with color trails" autocomplete="off" />
+  </div>
+  <button class="btn btn-forge" id="forge-btn">⚒ Forge</button>
+  <button class="btn btn-stop" id="stop-btn" style="display:none">■ Stop</button>
+  <button class="btn btn-clear" id="clear-btn">Clear</button>
+</div>
+
+<!-- Example chips -->
+<div class="examples">
+  <span class="ex-label">Try:</span>
+  <span class="ex-chip">bouncy ball physics with color trails</span>
+  <span class="ex-chip">Lorenz attractor in 3D with neon glow</span>
+  <span class="ex-chip">kaleidoscope that reacts to mouse position</span>
+  <span class="ex-chip">animated sierpinski triangle fractal</span>
+  <span class="ex-chip">synthwave city at night with scrolling road</span>
+  <span class="ex-chip">interactive particle gravity field</span>
+  <span class="ex-chip">neon clock with smooth second hand</span>
+  <span class="ex-chip">maze generator that solves itself</span>
+  <span class="ex-chip">cellular automaton (Conway's Game of Life)</span>
+  <span class="ex-chip">3D rotating wireframe cube with controls</span>
+</div>
+
+<!-- Main workspace -->
+<div class="workspace" id="workspace">
+
+  <!-- Code panel -->
+  <div class="code-panel" id="code-panel">
+    <div class="panel-header">
+      <div class="panel-title">
+        <div class="dot dot-red"></div>
+        <div class="dot dot-yellow"></div>
+        <div class="dot dot-green"></div>
+        &nbsp;generated.html
+      </div>
+      <div class="line-count" id="line-count">0 lines</div>
+    </div>
+
+    <div class="code-area" id="code-area">
+      <div id="code-display">
+        <div class="empty-state" style="height:100%;min-height:300px;color:var(--muted);">
+          <div class="empty-icon">⚒</div>
+          <div class="empty-title">Nothing forged yet</div>
+          <div class="empty-sub">Describe what you want to build above and hit Forge — watch GLM write it live.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Resize handle -->
+  <div class="resize-handle" id="resize-handle"></div>
+
+  <!-- Preview panel -->
+  <div class="preview-panel" id="preview-panel">
+    <div class="preview-toolbar" style="position:relative;overflow:hidden;">
+      <div class="progress-bar" id="progress-bar" style="width:0%"></div>
+      <button class="preview-btn active" id="preview-tab">⬡ Preview</button>
+      <div class="url-bar" id="url-bar">about:blank</div>
+      <button class="preview-btn" id="fullscreen-btn" title="Fullscreen preview">⤢</button>
+      <button class="preview-btn" id="copy-btn" title="Copy code">⎘ Copy</button>
+      <button class="preview-btn" id="download-btn" title="Download HTML">↓ Download</button>
+    </div>
+
+    <div id="preview-container" style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+      <div class="empty-state" id="preview-empty">
+        <div class="empty-icon" style="font-size:2rem;">◈</div>
+        <div class="empty-title">Preview</div>
+        <div class="empty-sub">Your creation will appear here as it's being built.</div>
+      </div>
+      <iframe id="preview-frame" style="display:none;" sandbox="allow-scripts allow-same-origin"></iframe>
+    </div>
+  </div>
+
+</div>
+
+<!-- Status bar -->
+<div class="statusbar">
+  <span id="status-text">Ready — describe something to forge it into existence</span>
+  <span id="token-count"></span>
+</div>
+
+<div class="toast" id="toast"></div>
+<script>
+
+  const API_KEY = 'rp-ak-f763e6b7b7c32a04b5669c78';
+  const API_URL = 'https://aicohort.org/v1/chat/completions';
+  const MODEL   = 'research-model';
+
+  // ── DOM refs ──────────────────────────────────────────────────
+  const promptEl     = document.getElementById('prompt');
+  const forgeBtn     = document.getElementById('forge-btn');
+  const stopBtn      = document.getElementById('stop-btn');
+  const clearBtn     = document.getElementById('clear-btn');
+  const codeDisplay  = document.getElementById('code-display');
+  const codeArea     = document.getElementById('code-area');
+  const previewFrame = document.getElementById('preview-frame');
+  const previewEmpty = document.getElementById('preview-empty');
+  const lineCountEl  = document.getElementById('line-count');
+  const statusEl     = document.getElementById('status-text');
+  const tokenEl      = document.getElementById('token-count');
+  const liveBadge    = document.getElementById('live-badge');
+  const progressBar  = document.getElementById('progress-bar');
+  const urlBar       = document.getElementById('url-bar');
+  const toastEl      = document.getElementById('toast');
+
+  // ── State ─────────────────────────────────────────────────────
+  let rawCode    = '';
+  let streaming  = false;
+  let controller = null;
+  let tokenCount = 0;
+  let updateScheduled = false;
+  let progressVal = 0;
+  let progressTimer = null;
+
+  // ── Syntax highlight (lightweight, no deps) ───────────────────
+  function highlight(code) {
+    // Escape HTML first
+    let s = code
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+
+    // Comments
+    s = s.replace(/(\/\/[^\n]*)/g, '<span class="t-comment">$1</span>');
+    s = s.replace(/(\/\*[\s\S]*?\*\/)/g, '<span class="t-comment">$1</span>');
+    s = s.replace(/(&lt;!--[\s\S]*?--&gt;)/g, '<span class="t-comment">$1</span>');
+
+    // HTML tags
+    s = s.replace(/(&lt;\/?)([\w-]+)([^&]*?)(\/?&gt;)/g, (_, open, tag, attrs, close) => {
+      // Highlight attributes inside tags
+      const attrHL = attrs.replace(/([\w-]+)(=)(&quot;[^&]*&quot;|'[^']*'|\S+)/g,
+        '<span class="t-attr">$1</span><span class="t-punct">$2</span><span class="t-val">$3</span>');
+      return `<span class="t-punct">${open}</span><span class="t-tag">${tag}</span>${attrHL}<span class="t-punct">${close}</span>`;
+    });
+
+    // JS keywords
+    const kws = /\b(const|let|var|function|return|if|else|for|while|new|class|import|export|default|async|await|try|catch|finally|of|in|typeof|instanceof|this|true|false|null|undefined|void|break|continue|switch|case|throw)\b/g;
+    s = s.replace(kws, '<span class="t-kw">$1</span>');
+
+    // Strings (simple)
+    s = s.replace(/(&quot;[^&]*?&quot;|'[^']*?'|`[^`]*?`)/g, '<span class="t-str">$1</span>');
+
+    // Numbers
+    s = s.replace(/\b(\d+\.?\d*)\b/g, '<span class="t-num">$1</span>');
+
+    // CSS properties / JS method calls
+    s = s.replace(/\b([\w-]+)(\s*:(?!:))/g, '<span class="t-prop">$1</span>$2');
+
+    return s;
+  }
+
+  // ── Progressive iframe update (throttled) ────────────────────
+  function schedulePreviewUpdate() {
+    if (updateScheduled) return;
+    updateScheduled = true;
+    setTimeout(() => {
+      updateScheduled = false;
+      updatePreview();
+    }, 300);
+  }
+
+  function updatePreview() {
+    if (!rawCode.trim()) return;
+    const html = extractHTML(rawCode);
+    previewEmpty.style.display = 'none';
+    previewFrame.style.display = 'block';
+    previewFrame.srcdoc = html;
+    urlBar.textContent = 'data:text/html (live preview)';
+  }
+
+  // Extract the best usable HTML from the streamed text
+  function extractHTML(code) {
+    // If it has <!DOCTYPE or <html, use it directly
+    if (/<!DOCTYPE/i.test(code) || /<html/i.test(code)) {
+      // Try to close any unclosed </html> if still streaming
+      if (!/<\/html>/i.test(code)) code += '\n</body></html>';
+      return code;
+    }
+    // Look for a code block
+    const fenced = code.match(/```(?:html)?\s*([\s\S]+?)(?:```|$)/i);
+    if (fenced) {
+      let inner = fenced[1];
+      if (!/<\/html>/i.test(inner)) inner += '\n</body></html>';
+      return inner;
+    }
+    // Wrap raw HTML/CSS/JS fragments
+    if (/<(?:div|canvas|style|script|body)/i.test(code)) {
+      return `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;background:#fff;}</style></head><body>${code}</body></html>`;
+    }
+    // Plain JS — wrap in a canvas/script setup
+    return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{margin:0;background:#0a0a0a;color:#eee;font-family:system-ui;}</style></head><body><script>${code}<\/script></body></html>`;
+  }
+
+  // ── Code display update ───────────────────────────────────────
+  function updateCodeDisplay() {
+    const lines = rawCode.split('\n').length;
+    lineCountEl.textContent = `${lines} line${lines !== 1 ? 's' : ''}`;
+
+    const hl = highlight(rawCode);
+    codeDisplay.innerHTML = hl + (streaming ? '<span class="cursor"></span>' : '');
+
+    // Auto-scroll to bottom if near bottom
+    const ca = codeArea;
+    const atBottom = ca.scrollHeight - ca.scrollTop - ca.clientHeight < 80;
+    if (atBottom) ca.scrollTop = ca.scrollHeight;
+  }
+
+  // ── Progress animation ────────────────────────────────────────
+  function startProgress() {
+    progressVal = 0;
+    clearInterval(progressTimer);
+    progressTimer = setInterval(() => {
+      // Slow crawl that never reaches 100 until done
+      const remaining = 95 - progressVal;
+      progressVal += remaining * 0.04;
+      progressBar.style.width = progressVal + '%';
+    }, 200);
+  }
+
+  function finishProgress() {
+    clearInterval(progressTimer);
+    progressVal = 100;
+    progressBar.style.width = '100%';
+    setTimeout(() => { progressBar.style.width = '0%'; progressVal = 0; }, 600);
+  }
+
+  // ── Main forge function ───────────────────────────────────────
+  async function forge() {
+    const userPrompt = promptEl.value.trim();
+    if (!userPrompt || streaming) return;
+
+    rawCode = '';
+    tokenCount = 0;
+    streaming = true;
+    controller = new AbortController();
+
+    // UI state
+    forgeBtn.disabled = true;
+    stopBtn.style.display = '';
+    clearBtn.disabled = true;
+    liveLabel(true);
+    codeDisplay.innerHTML = '<span class="cursor"></span>';
+    previewEmpty.style.display = 'flex';
+    previewFrame.style.display = 'none';
+    previewFrame.srcdoc = '';
+    lineCountEl.textContent = '0 lines';
+    urlBar.textContent = 'generating…';
+    document.getElementById('workspace').classList.add('streaming');
+    startProgress();
+    setStatus('⚒ Forging: ' + userPrompt);
+    tokenEl.textContent = '';
+
+    const systemPrompt = `You are an expert web developer and creative coder. The user will describe a web creation (animation, game, tool, visualization, art, etc.).
+
+RULES:
+- Respond with ONLY a complete, self-contained HTML file. No explanation, no markdown wrapper, no preamble.
+- The file must start with <!DOCTYPE html> and include all CSS and JS inline.
+- Make it visually stunning and polished. Use canvas, WebGL, CSS animations, or whatever fits best.
+- The code must work immediately when opened in a browser with zero dependencies.
+- Never use external CDN links — everything must be self-contained.
+- Aim for something genuinely impressive and beautiful.
+- For games/interactive things: include clear on-screen instructions.
+- Start your response directly with <!DOCTYPE html>`;
+
+    try {
+      const resp = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${API_KEY}`
+        },
+        body: JSON.stringify({
+          model: MODEL,
+          stream: true,
+          temperature: 0.85,
+          max_tokens: 40000,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user',   content: `Build this: ${userPrompt}` }
+          ]
+        }),
+        signal: controller.signal
+      });
+
+      if (!resp.ok) {
+        const errText = await resp.text();
+        throw new Error(`API ${resp.status}: ${errText}`);
+      }
+
+      const reader = resp.body.getReader();
+      const dec    = new TextDecoder();
+      let   buf    = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buf += dec.decode(value, { stream: true });
+        const lines = buf.split('\n');
+        buf = lines.pop();
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const payload = line.slice(6).trim();
+          if (payload === '[DONE]') continue;
+
+          try {
+            const json    = JSON.parse(payload);
+            const content = json.choices?.[0]?.delta?.content;
+            if (content) {
+              rawCode    += content;
+              tokenCount += content.split(/\s+/).length;
+              tokenEl.textContent = `~${tokenCount} tokens`;
+              updateCodeDisplay();
+              schedulePreviewUpdate();
+            }
+          } catch (_) {}
+        }
+      }
+
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        setStatus('Error: ' + err.message);
+        showToast('⚠ ' + err.message);
+      }
+    } finally {
+      streaming = false;
+      controller = null;
+      forgeBtn.disabled = false;
+      stopBtn.style.display = 'none';
+      clearBtn.disabled = false;
+      liveLabel(false);
+      document.getElementById('workspace').classList.remove('streaming');
+      finishProgress();
+      updateCodeDisplay(); // Remove cursor
+      if (rawCode.trim()) {
+        updatePreview();   // Final render
+        setStatus('✓ Forged — ' + rawCode.split('\n').length + ' lines | ' + tokenCount + ' tokens');
+      }
+    }
+  }
+
+  function liveLabel(on) { liveBadge.style.display = on ? '' : 'none'; }
+
+  function setStatus(msg) { statusEl.textContent = msg; }
+
+  function stopForge() {
+    if (controller) controller.abort();
+  }
+
+  function clearAll() {
+    rawCode = '';
+    tokenCount = 0;
+    codeDisplay.innerHTML = `<div class="empty-state" style="height:100%;min-height:300px;color:var(--muted);">
+      <div class="empty-icon">⚒</div>
+      <div class="empty-title">Nothing forged yet</div>
+      <div class="empty-sub">Describe what you want to build above and hit Forge — watch GLM write it live.</div>
+    </div>`;
+    previewFrame.style.display = 'none';
+    previewFrame.srcdoc = '';
+    previewEmpty.style.display = 'flex';
+    lineCountEl.textContent = '0 lines';
+    urlBar.textContent = 'about:blank';
+    tokenEl.textContent = '';
+    setStatus('Ready — describe something to forge it into existence');
+  }
+
+  // ── Copy / Download ───────────────────────────────────────────
+  function copyCode() {
+    if (!rawCode) return;
+    navigator.clipboard.writeText(rawCode).then(() => showToast('Copied to clipboard!')).catch(() => showToast('Copy failed'));
+  }
+
+  function downloadHTML() {
+    if (!rawCode) return;
+    const blob = new Blob([extractHTML(rawCode)], { type: 'text/html' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'forged.html';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    showToast('Downloaded forged.html');
+  }
+
+  function openFullscreen() {
+    if (!rawCode) return;
+    const html = extractHTML(rawCode);
+    const w = window.open('', '_blank');
+    w.document.write(html);
+    w.document.close();
+  }
+
+  function showToast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    setTimeout(() => toastEl.classList.remove('show'), 2500);
+  }
+
+  // ── Column resize ─────────────────────────────────────────────
+  const resizeHandle = document.getElementById('resize-handle');
+  const codePanel    = document.getElementById('code-panel');
+  let   resizing     = false;
+  let   startX       = 0;
+  let   startW       = 0;
+
+  resizeHandle.addEventListener('mousedown', e => {
+    resizing = true;
+    startX   = e.clientX;
+    startW   = codePanel.offsetWidth;
+    resizeHandle.classList.add('dragging');
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor     = 'col-resize';
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', e => {
+    if (!resizing) return;
+    const dx  = e.clientX - startX;
+    const nw  = Math.max(200, Math.min(window.innerWidth * 0.75, startW + dx));
+    codePanel.style.width    = nw + 'px';
+    codePanel.style.minWidth = 'unset';
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (!resizing) return;
+    resizing = false;
+    resizeHandle.classList.remove('dragging');
+    document.body.style.userSelect = '';
+    document.body.style.cursor     = '';
+  });
+
+  // ── Event listeners ───────────────────────────────────────────
+  forgeBtn.addEventListener('click', forge);
+  stopBtn.addEventListener('click', stopForge);
+  clearBtn.addEventListener('click', clearAll);
+
+  promptEl.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); forge(); }
+  });
+
+  document.querySelectorAll('.ex-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      promptEl.value = chip.textContent.trim();
+      promptEl.focus();
+    });
+  });
+
+  document.getElementById('copy-btn').addEventListener('click', copyCode);
+  document.getElementById('download-btn').addEventListener('click', downloadHTML);
+  document.getElementById('fullscreen-btn').addEventListener('click', openFullscreen);
+    async function loadScriptAsText() {
+  try {
+    const response = await fetch('glm.js');
+    const code = await response.text();
+    
+    // Now you can store or use the code
+    window.GLM_CODE = code;
+    console.log("Code loaded:", extractHTML(window.GLM_CODE));
+  } catch (err) {
+    console.error("Failed to load script:", err);
+  }
+}
+
+loadScriptAsText();
+</script>
+</body>
+</html>

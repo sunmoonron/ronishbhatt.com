@@ -1,0 +1,226 @@
+<title>Copycat</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@500;700;800&display=swap">
+<style>
+:root{
+  --ground:#eaf5f1; --paper:#fffdf6; --paper-edge:#e8e1cf; --ink:#233038; --muted:#6b7a85;
+  --own:#ff6b35; --glow:#ffcf3f; --good:#2fb673; --bad:#e2493f; --bot:#6c5ce7; --bot-soft:#e4dfff;
+  --display:"Baloo 2","Trebuchet MS",Verdana,sans-serif; --body:"Nunito","Trebuchet MS",Verdana,sans-serif;
+  --shadow:0 2px 0 var(--paper-edge), 0 10px 24px -14px rgba(35,48,56,.35);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#15202a; --paper:#26343f; --paper-edge:#16222b; --ink:#eef3f7; --muted:#a4b2bd;
+    --own:#ff8a5c; --glow:#ffd75e; --good:#4ccb8a; --bad:#ff6b61; --bot:#9b8cff; --bot-soft:#2c2757;
+    --shadow:0 2px 0 var(--paper-edge), 0 10px 24px -14px rgba(0,0,0,.7);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#15202a; --paper:#26343f; --paper-edge:#16222b; --ink:#eef3f7; --muted:#a4b2bd;
+  --own:#ff8a5c; --glow:#ffd75e; --good:#4ccb8a; --bad:#ff6b61; --bot:#9b8cff; --bot-soft:#2c2757;
+  --shadow:0 2px 0 var(--paper-edge), 0 10px 24px -14px rgba(0,0,0,.7);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.4;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.app{max-width:560px;margin:0 auto;padding:14px 14px 40px;display:grid;gap:14px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+h1{font-family:var(--display);font-size:34px;font-weight:800;margin:0;letter-spacing:-.01em;line-height:1}
+h1 span{color:var(--own)}
+.pill{font-family:var(--display);font-weight:700;font-size:15px;padding:4px 12px;border-radius:999px;background:var(--paper);box-shadow:var(--shadow);white-space:nowrap}
+.pill.bot{background:var(--bot-soft);color:var(--bot)}
+.rule{font-size:16px;color:var(--muted);text-align:center;padding:0 6px}
+.rule b{color:var(--ink)}
+.strip{min-height:74px;background:var(--paper);border-radius:18px;box-shadow:var(--shadow);padding:12px 14px;display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;font-family:var(--display);font-size:22px;font-weight:700;line-height:1.2}
+.strip .w{padding:2px 4px;border-radius:8px}
+.strip .w.now{background:var(--glow);color:#3a2a00;box-shadow:0 0 0 4px color-mix(in srgb,var(--glow) 45%,transparent);animation:pulse 1.2s ease-in-out infinite}
+.strip .w.pop{animation:pop .35s ease-out}
+.strip .blank{display:inline-block;width:2.2em;height:1.1em;border-bottom:3px dashed var(--muted);opacity:.6}
+@keyframes pulse{50%{box-shadow:0 0 0 8px color-mix(in srgb,var(--glow) 25%,transparent)}}
+@keyframes pop{0%{transform:scale(.4)}70%{transform:scale(1.15)}100%{transform:scale(1)}}
+.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+@media (min-width:480px){.cards{grid-template-columns:repeat(3,1fr)}}
+.card{position:relative;background:var(--paper);border-radius:14px;box-shadow:var(--shadow);padding:14px 12px 12px;min-height:72px;font-family:var(--display);font-size:19px;font-weight:700;line-height:1.25;cursor:pointer;border:0;text-align:left;color:var(--ink);transform:rotate(var(--rot));transition:transform .15s,opacity .3s,box-shadow .2s;user-select:none;-webkit-user-select:none;display:flex;flex-wrap:wrap;gap:0 .3em;align-items:baseline}
+.card:active{transform:rotate(var(--rot)) scale(.96)}
+.card:focus-visible{outline:3px solid var(--bot);outline-offset:2px}
+.card .dim{color:var(--muted);font-weight:600}
+.card .own{color:var(--own);font-size:24px;font-weight:800}
+.card.used{opacity:.28;pointer-events:none;transform:rotate(var(--rot)) scale(.95)}
+.card.good{box-shadow:0 0 0 4px var(--good),var(--shadow)}
+.card.shake{animation:shake .4s}
+.card.wiggle{animation:wiggle 1s ease-in-out 2}
+.card .botmark{position:absolute;top:-10px;right:-8px;background:var(--bot);color:#fff;font-size:13px;font-family:var(--body);font-weight:800;padding:3px 8px;border-radius:999px;box-shadow:0 2px 6px rgba(0,0,0,.25);animation:pop .3s ease-out}
+@keyframes shake{0%,100%{transform:rotate(var(--rot)) translateX(0)}25%{transform:rotate(var(--rot)) translateX(-7px)}75%{transform:rotate(var(--rot)) translateX(7px)}}
+@keyframes wiggle{0%,100%{transform:rotate(var(--rot))}25%{transform:rotate(calc(var(--rot) - 4deg)) scale(1.04)}75%{transform:rotate(calc(var(--rot) + 4deg)) scale(1.04)}}
+.hint{text-align:center;color:var(--muted);font-size:15px;min-height:1.4em}
+.hint b{color:var(--bot)}
+.foot{display:flex;justify-content:space-between;align-items:center;gap:10px;color:var(--muted);font-size:14px}
+button.small{font-family:var(--body);font-weight:800;font-size:14px;color:var(--ink);background:var(--paper);border:0;border-radius:999px;padding:8px 14px;box-shadow:var(--shadow);cursor:pointer}
+button.small:focus-visible{outline:3px solid var(--bot);outline-offset:2px}
+.overlay{position:fixed;inset:0;background:color-mix(in srgb,var(--ground) 82%,transparent);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:18px;z-index:5}
+.overlay[hidden]{display:none}
+.modal{background:var(--paper);border-radius:22px;box-shadow:var(--shadow);padding:22px 20px;max-width:440px;width:100%;display:grid;gap:14px;text-align:center}
+.modal h2{font-family:var(--display);font-size:30px;margin:0;line-height:1.05}
+.modal p{margin:0;color:var(--muted);font-size:16px}
+.modal p b{color:var(--ink)}
+.score{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.score div{border-radius:14px;padding:12px;background:var(--ground)}
+.score .n{font-family:var(--display);font-size:34px;font-weight:800;line-height:1}
+.score .l{font-size:13px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin-top:4px}
+.score .you .n{color:var(--good)} .score .bot .n{color:var(--bot)}
+button.big{font-family:var(--display);font-size:22px;font-weight:800;color:#fff;background:var(--own);border:0;border-radius:999px;padding:12px 26px;cursor:pointer;box-shadow:0 4px 0 color-mix(in srgb,var(--own) 70%,#000)}
+button.big:active{transform:translateY(2px);box-shadow:0 2px 0 color-mix(in srgb,var(--own) 70%,#000)}
+button.big:focus-visible{outline:3px solid var(--bot);outline-offset:3px}
+.stars{font-size:26px;letter-spacing:.1em}
+.single{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.single .card{min-height:0;padding:10px 12px;font-size:18px;transform:none;cursor:default}
+.tiny{font-size:13px;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){.strip .w.now,.strip .w.pop,.card.shake,.card.wiggle,.card .botmark{animation:none}}
+</style>
+
+<div class="app">
+  <div class="top">
+    <h1>Copy<span>cat</span></h1>
+    <div style="display:flex;gap:8px;align-items:center">
+      <div class="pill" id="levelpill">level 1</div>
+      <div class="pill bot" id="botpill">GPT‑2 · 0</div>
+    </div>
+  </div>
+  <p class="rule" id="rule"><b>Find the glowing word on a card, tap it.</b> The orange word after it is your next word.</p>
+  <div class="strip" id="strip" aria-live="polite"></div>
+  <div class="cards" id="cards"></div>
+  <p class="hint" id="hint"></p>
+  <div class="foot">
+    <span id="scoreline">you 0 · GPT‑2 0</span>
+    <span style="display:flex;gap:8px"><button class="small" id="sound" aria-pressed="true">sound on</button><button class="small" id="restart">restart</button></span>
+  </div>
+</div>
+
+<div class="overlay" id="overlay" hidden>
+  <div class="modal" id="modal"></div>
+</div>
+
+<script>
+const D = {"model": "gpt2", "levels": [{"text": "The cat sat on the mat and looked at the moon.", "tokens": ["The", " cat", " sat", " on", " the", " mat", " and", " looked", " at", " the", " moon", "."], "bag": ["<sink>", "The cat", " and looked at the", " mat and looked at", " sat on the mat", " looked at the moon", "The cat sat", "The cat sat on", " the mat and looked", " cat sat on the", "The", " at the moon.", " on the mat and"], "bag_tokens": ["<sink>", " cat", " the", " at", " mat", " moon", " sat", " on", " looked", " the", "The", ".", " and"], "slot_of_token": [10, 1, 6, 7, 9, 4, 12, 8, 3, 2, 5, 11], "steps": [{"target": " cat", "produced": " cat", "correct": true, "slot": 1, "look": 0, "look_w": 0.786, "head": 2}, {"target": " sat", "produced": " sat", "correct": true, "slot": 6, "look": 0, "look_w": 0.652, "head": 10}, {"target": " on", "produced": " on", "correct": true, "slot": 7, "look": 7, "look_w": 0.7, "head": 10}, {"target": " the", "produced": " the", "correct": true, "slot": 9, "look": 4, "look_w": 0.434, "head": 2}, {"target": " mat", "produced": " mat", "correct": true, "slot": 4, "look": 4, "look_w": 0.803, "head": 10}, {"target": " and", "produced": " and", "correct": true, "slot": 12, "look": 12, "look_w": 0.459, "head": 10}, {"target": " looked", "produced": " looked", "correct": true, "slot": 8, "look": 8, "look_w": 0.981, "head": 10}, {"target": " at", "produced": " at", "correct": true, "slot": 3, "look": 3, "look_w": 0.971, "head": 10}, {"target": " the", "produced": " the", "correct": true, "slot": 2, "look": 2, "look_w": 0.405, "head": 2}, {"target": " moon", "produced": " moon", "correct": true, "slot": 5, "look": 0, "look_w": 0.358, "head": 1}, {"target": ".", "produced": ".", "correct": true, "slot": 11, "look": 0, "look_w": 0.68, "head": 2}], "gpt2_acc": 1.0, "gpt2_exact": true, "gpt2_free": "The cat sat on the mat and looked at the moon.", "single_word_acc": 0.455, "single_word_free": "The\n\nThe first time I saw the new version of"}, {"text": "My dog likes to run in the park with his red ball.", "tokens": ["My", " dog", " likes", " to", " run", " in", " the", " park", " with", " his", " red", " ball", "."], "bag": ["<sink>", "My dog", " park with his red", " the park with his", " likes to run in", " with his red ball", "My dog likes", "My dog likes to", " run in the park", " in the park with", " dog likes to run", "My", " his red ball.", " to run in the"], "bag_tokens": ["<sink>", " dog", " red", " his", " in", " ball", " likes", " to", " park", " with", " run", "My", ".", " the"], "slot_of_token": [11, 1, 6, 7, 10, 4, 13, 8, 9, 3, 2, 5, 12], "steps": [{"target": " dog", "produced": "Dog", "correct": false, "slot": 1, "look": 1, "look_w": 0.157, "head": 10}, {"target": " likes", "produced": " likes", "correct": true, "slot": 6, "look": 6, "look_w": 0.877, "head": 10}, {"target": " to", "produced": " to", "correct": true, "slot": 7, "look": 7, "look_w": 0.928, "head": 10}, {"target": " run", "produced": " run", "correct": true, "slot": 10, "look": 0, "look_w": 0.526, "head": 10}, {"target": " in", "produced": " in", "correct": true, "slot": 4, "look": 4, "look_w": 0.965, "head": 10}, {"target": " the", "produced": " the", "correct": true, "slot": 13, "look": 0, "look_w": 0.46, "head": 2}, {"target": " park", "produced": " park", "correct": true, "slot": 8, "look": 8, "look_w": 0.833, "head": 10}, {"target": " with", "produced": " with", "correct": true, "slot": 9, "look": 9, "look_w": 0.865, "head": 10}, {"target": " his", "produced": " his", "correct": true, "slot": 3, "look": 3, "look_w": 0.849, "head": 10}, {"target": " red", "produced": " red", "correct": true, "slot": 2, "look": 2, "look_w": 0.842, "head": 10}, {"target": " ball", "produced": " ball", "correct": true, "slot": 5, "look": 5, "look_w": 0.917, "head": 10}, {"target": ".", "produced": ".", "correct": true, "slot": 12, "look": 12, "look_w": 0.464, "head": 10}], "gpt2_acc": 0.917, "gpt2_exact": false, "gpt2_free": "MyDog.com. He's a great dog, and I", "single_word_acc": 0.333, "single_word_free": "MyMyMy\n\nI'm a big fan of the show"}, {"text": "We ate sweet apples under the big old tree.", "tokens": ["We", " ate", " sweet", " apples", " under", " the", " big", " old", " tree", "."], "bag": ["<sink>", " under the big old", " the big old tree", "We ate", " sweet apples under the", "We ate sweet apples", " ate sweet apples under", "We ate sweet", "We", " big old tree.", " apples under the big"], "bag_tokens": ["<sink>", " old", " tree", " ate", " the", " apples", " under", " sweet", "We", ".", " big"], "slot_of_token": [8, 3, 7, 5, 6, 4, 10, 1, 2, 9], "steps": [{"target": " ate", "produced": " ate", "correct": true, "slot": 3, "look": 0, "look_w": 0.663, "head": 10}, {"target": " sweet", "produced": " sweet", "correct": true, "slot": 7, "look": 0, "look_w": 0.668, "head": 11}, {"target": " apples", "produced": " apples", "correct": true, "slot": 5, "look": 5, "look_w": 0.506, "head": 2}, {"target": " under", "produced": " under", "correct": true, "slot": 6, "look": 6, "look_w": 0.91, "head": 10}, {"target": " the", "produced": " the", "correct": true, "slot": 4, "look": 4, "look_w": 0.92, "head": 2}, {"target": " big", "produced": " big", "correct": true, "slot": 10, "look": 10, "look_w": 0.981, "head": 10}, {"target": " old", "produced": " old", "correct": true, "slot": 1, "look": 1, "look_w": 0.985, "head": 10}, {"target": " tree", "produced": " tree", "correct": true, "slot": 2, "look": 2, "look_w": 0.905, "head": 10}, {"target": ".", "produced": ".", "correct": true, "slot": 9, "look": 9, "look_w": 0.52, "head": 2}], "gpt2_acc": 1.0, "gpt2_exact": true, "gpt2_free": "We ate sweet apples under the big old tree.", "single_word_acc": 0.444, "single_word_free": "We are a small group of people who are passionate"}, {"text": "The little boat sailed across the blue lake at noon.", "tokens": ["The", " little", " boat", " sailed", " across", " the", " blue", " lake", " at", " noon", "."], "bag": ["<sink>", " the blue lake at", " blue lake at noon", "The little", "The little boat", " boat sailed across the", "The little boat sailed", " across the blue lake", " little boat sailed across", "The", " lake at noon.", " sailed across the blue"], "bag_tokens": ["<sink>", " at", " noon", " little", " boat", " the", " sailed", " lake", " across", "The", ".", " blue"], "slot_of_token": [9, 3, 4, 6, 8, 5, 11, 7, 1, 2, 10], "steps": [{"target": " little", "produced": " little", "correct": true, "slot": 3, "look": 0, "look_w": 0.779, "head": 11}, {"target": " boat", "produced": " boat", "correct": true, "slot": 4, "look": 4, "look_w": 0.707, "head": 10}, {"target": " sailed", "produced": " sailed", "correct": true, "slot": 6, "look": 6, "look_w": 0.855, "head": 2}, {"target": " across", "produced": " across", "correct": true, "slot": 8, "look": 8, "look_w": 0.913, "head": 10}, {"target": " the", "produced": " the", "correct": true, "slot": 5, "look": 5, "look_w": 0.656, "head": 2}, {"target": " blue", "produced": " blue", "correct": true, "slot": 11, "look": 11, "look_w": 0.686, "head": 10}, {"target": " lake", "produced": " lake", "correct": true, "slot": 7, "look": 7, "look_w": 0.927, "head": 10}, {"target": " at", "produced": " at", "correct": true, "slot": 1, "look": 1, "look_w": 0.785, "head": 10}, {"target": " noon", "produced": " noon", "correct": true, "slot": 2, "look": 2, "look_w": 0.943, "head": 10}, {"target": ".", "produced": ".", "correct": true, "slot": 10, "look": 10, "look_w": 0.856, "head": 2}], "gpt2_acc": 1.0, "gpt2_exact": true, "gpt2_free": "The little boat sailed across the blue lake at noon.", "single_word_acc": 0.5, "single_word_free": "The boat was a small boat with a small crew."}, {"text": "A bird built a nest on top of the old barn.", "tokens": ["A", " bird", " built", " a", " nest", " on", " top", " of", " the", " old", " barn", "."], "bag": ["<sink>", "A bird", " top of the old", " on top of the", " built a nest on", " of the old barn", "A bird built", "A bird built a", " nest on top of", " bird built a nest", "A", " the old barn.", " a nest on top"], "bag_tokens": ["<sink>", " bird", " old", " the", " on", " barn", " built", " a", " of", " nest", "A", ".", " top"], "slot_of_token": [10, 1, 6, 7, 9, 4, 12, 8, 3, 2, 5, 11], "steps": [{"target": " bird", "produced": " bird", "correct": true, "slot": 1, "look": 0, "look_w": 0.561, "head": 5}, {"target": " built", "produced": " nest", "correct": false, "slot": 6, "look": 0, "look_w": 0.538, "head": 10}, {"target": " a", "produced": " a", "correct": true, "slot": 7, "look": 7, "look_w": 0.599, "head": 10}, {"target": " nest", "produced": " nest", "correct": true, "slot": 9, "look": 9, "look_w": 0.892, "head": 2}, {"target": " on", "produced": " on", "correct": true, "slot": 4, "look": 4, "look_w": 0.958, "head": 10}, {"target": " top", "produced": " top", "correct": true, "slot": 12, "look": 12, "look_w": 0.972, "head": 10}, {"target": " of", "produced": " of", "correct": true, "slot": 8, "look": 8, "look_w": 0.964, "head": 10}, {"target": " the", "produced": " the", "correct": true, "slot": 3, "look": 12, "look_w": 0.431, "head": 2}, {"target": " old", "produced": " old", "correct": true, "slot": 2, "look": 2, "look_w": 0.695, "head": 2}, {"target": " barn", "produced": " barn", "correct": true, "slot": 5, "look": 5, "look_w": 0.732, "head": 10}, {"target": ".", "produced": ".", "correct": true, "slot": 11, "look": 11, "look_w": 0.801, "head": 2}], "gpt2_acc": 0.909, "gpt2_exact": false, "gpt2_free": "A bird nest on top of the old barn.\n\n", "single_word_acc": 0.273, "single_word_free": "A\n\n.\n\n.\n\n.\n\n"}, {"text": "Grandma baked warm bread and we ate it with honey.", "tokens": ["Grand", "ma", " baked", " warm", " bread", " and", " we", " ate", " it", " with", " honey", "."], "bag": ["<sink>", "Grandma", " we ate it with", " and we ate it", " baked warm bread and", " ate it with honey", "Grandma baked", "Grandma baked warm", " bread and we ate", "ma baked warm bread", "Grand", " it with honey.", " warm bread and we"], "bag_tokens": ["<sink>", "ma", " with", " it", " and", " honey", " baked", " warm", " ate", " bread", "Grand", ".", " we"], "slot_of_token": [10, 1, 6, 7, 9, 4, 12, 8, 3, 2, 5, 11], "steps": [{"target": "ma", "produced": "ma", "correct": true, "slot": 1, "look": 1, "look_w": 0.896, "head": 10}, {"target": " baked", "produced": " baked", "correct": true, "slot": 6, "look": 6, "look_w": 0.573, "head": 10}, {"target": " warm", "produced": " warm", "correct": true, "slot": 7, "look": 7, "look_w": 0.944, "head": 10}, {"target": " bread", "produced": " bread", "correct": true, "slot": 9, "look": 9, "look_w": 0.933, "head": 10}, {"target": " and", "produced": " and", "correct": true, "slot": 4, "look": 4, "look_w": 0.819, "head": 2}, {"target": " we", "produced": " we", "correct": true, "slot": 12, "look": 12, "look_w": 0.912, "head": 10}, {"target": " ate", "produced": " ate", "correct": true, "slot": 8, "look": 8, "look_w": 0.929, "head": 10}, {"target": " it", "produced": " it", "correct": true, "slot": 3, "look": 3, "look_w": 0.855, "head": 2}, {"target": " with", "produced": " with", "correct": true, "slot": 2, "look": 2, "look_w": 0.911, "head": 10}, {"target": " honey", "produced": " honey", "correct": true, "slot": 5, "look": 5, "look_w": 0.847, "head": 10}, {"target": ".", "produced": ".", "correct": true, "slot": 11, "look": 11, "look_w": 0.873, "head": 2}], "gpt2_acc": 1.0, "gpt2_exact": true, "gpt2_free": "Grandma baked warm bread and we ate it with honey.", "single_word_acc": 0.182, "single_word_free": "GrandGrandGrandGrandGrandGrandGrandGrandGrandGrandGrandGrand"}, {"text": "The moon came out and the frogs began to sing.", "tokens": ["The", " moon", " came", " out", " and", " the", " frogs", " began", " to", " sing", "."], "bag": ["<sink>", " the frogs began to", " frogs began to sing", "The moon", "The moon came", " came out and the", "The moon came out", " and the frogs began", " moon came out and", "The", " began to sing.", " out and the frogs"], "bag_tokens": ["<sink>", " to", " sing", " moon", " came", " the", " out", " began", " and", "The", ".", " frogs"], "slot_of_token": [9, 3, 4, 6, 8, 5, 11, 7, 1, 2, 10], "steps": [{"target": " moon", "produced": " moon", "correct": true, "slot": 3, "look": 0, "look_w": 0.732, "head": 10}, {"target": " came", "produced": " came", "correct": true, "slot": 4, "look": 4, "look_w": 0.555, "head": 10}, {"target": " out", "produced": " out", "correct": true, "slot": 6, "look": 6, "look_w": 0.98, "head": 10}, {"target": " and", "produced": " and", "correct": true, "slot": 8, "look": 8, "look_w": 0.827, "head": 2}, {"target": " the", "produced": " the", "correct": true, "slot": 5, "look": 5, "look_w": 0.861, "head": 2}, {"target": " frogs", "produced": " frogs", "correct": true, "slot": 11, "look": 11, "look_w": 0.595, "head": 10}, {"target": " began", "produced": " began", "correct": true, "slot": 7, "look": 7, "look_w": 0.842, "head": 10}, {"target": " to", "produced": " to", "correct": true, "slot": 1, "look": 1, "look_w": 0.976, "head": 10}, {"target": " sing", "produced": " sing", "correct": true, "slot": 2, "look": 2, "look_w": 0.731, "head": 2}, {"target": ".", "produced": ".", "correct": true, "slot": 10, "look": 10, "look_w": 0.771, "head": 2}], "gpt2_acc": 1.0, "gpt2_exact": true, "gpt2_free": "The moon came out and the frogs began to sing.", "single_word_acc": 0.4, "single_word_free": "The first time I saw the new version of the game"}, {"text": "My sister lost her hat when the wind blew hard.", "tokens": ["My", " sister", " lost", " her", " hat", " when", " the", " wind", " blew", " hard", "."], "bag": ["<sink>", " when the wind blew", " the wind blew hard", "My sister", "My sister lost", " lost her hat when", "My sister lost her", " hat when the wind", " sister lost her hat", "My", " wind blew hard.", " her hat when the"], "bag_tokens": ["<sink>", " blew", " hard", " sister", " lost", " when", " her", " wind", " hat", "My", ".", " the"], "slot_of_token": [9, 3, 4, 6, 8, 5, 11, 7, 1, 2, 10], "steps": [{"target": " sister", "produced": " sister", "correct": true, "slot": 3, "look": 3, "look_w": 0.399, "head": 10}, {"target": " lost", "produced": " lost", "correct": true, "slot": 4, "look": 0, "look_w": 0.453, "head": 10}, {"target": " her", "produced": " her", "correct": true, "slot": 6, "look": 6, "look_w": 0.776, "head": 10}, {"target": " hat", "produced": " hat", "correct": true, "slot": 8, "look": 8, "look_w": 0.604, "head": 10}, {"target": " when", "produced": " when", "correct": true, "slot": 5, "look": 5, "look_w": 0.87, "head": 2}, {"target": " the", "produced": " the", "correct": true, "slot": 11, "look": 11, "look_w": 0.683, "head": 2}, {"target": " wind", "produced": " wind", "correct": true, "slot": 7, "look": 7, "look_w": 0.883, "head": 10}, {"target": " blew", "produced": " blew", "correct": true, "slot": 1, "look": 1, "look_w": 0.968, "head": 10}, {"target": " hard", "produced": " hard", "correct": true, "slot": 2, "look": 2, "look_w": 0.921, "head": 10}, {"target": ".", "produced": ".", "correct": true, "slot": 10, "look": 10, "look_w": 0.87, "head": 2}], "gpt2_acc": 1.0, "gpt2_exact": true, "gpt2_free": "My sister lost her hat when the wind blew hard.", "single_word_acc": 0.3, "single_word_free": "MyMyMy\n\nI'm a little bit of"}, {"text": "The robot found a shiny key under the kitchen table.", "tokens": ["The", " robot", " found", " a", " shiny", " key", " under", " the", " kitchen", " table", "."], "bag": ["<sink>", " key under the kitchen", " under the kitchen table", "The robot", "The robot found", " found a shiny key", "The robot found a", " shiny key under the", " robot found a shiny", "The", " the kitchen table.", " a shiny key under"], "bag_tokens": ["<sink>", " kitchen", " table", " robot", " found", " key", " a", " the", " shiny", "The", ".", " under"], "slot_of_token": [9, 3, 4, 6, 8, 5, 11, 7, 1, 2, 10], "steps": [{"target": " robot", "produced": " robot", "correct": true, "slot": 3, "look": 0, "look_w": 0.558, "head": 10}, {"target": " found", "produced": " found", "correct": true, "slot": 4, "look": 4, "look_w": 0.84, "head": 10}, {"target": " a", "produced": " a", "correct": true, "slot": 6, "look": 6, "look_w": 0.747, "head": 10}, {"target": " shiny", "produced": " shiny", "correct": true, "slot": 8, "look": 8, "look_w": 0.918, "head": 10}, {"target": " key", "produced": " key", "correct": true, "slot": 5, "look": 5, "look_w": 0.806, "head": 10}, {"target": " under", "produced": " under", "correct": true, "slot": 11, "look": 11, "look_w": 0.97, "head": 10}, {"target": " the", "produced": " the", "correct": true, "slot": 7, "look": 7, "look_w": 0.974, "head": 2}, {"target": " kitchen", "produced": " kitchen", "correct": true, "slot": 1, "look": 1, "look_w": 0.803, "head": 10}, {"target": " table", "produced": " table", "correct": true, "slot": 2, "look": 2, "look_w": 0.957, "head": 10}, {"target": ".", "produced": ".", "correct": true, "slot": 10, "look": 10, "look_w": 0.879, "head": 2}], "gpt2_acc": 1.0, "gpt2_exact": true, "gpt2_free": "The robot found a shiny key under the kitchen table.", "single_word_acc": 0.3, "single_word_free": "The\n\n.\n\n.\n\n.\n"}, {"text": "On Sunday we flew a kite that looked like a dragon.", "tokens": ["On", " Sunday", " we", " flew", " a", " k", "ite", " that", " looked", " like", " a", " dragon", "."], "bag": ["<sink>", "On Sunday", " that looked like a", "ite that looked like", " we flew a k", " looked like a dragon", "On Sunday we", "On Sunday we flew", " a kite that", " kite that looked", " Sunday we flew a", "On", " like a dragon.", " flew a kite"], "bag_tokens": ["<sink>", " Sunday", " a", " like", " k", " dragon", " we", " flew", " that", " looked", " a", "On", ".", "ite"], "slot_of_token": [11, 1, 6, 7, 10, 4, 13, 8, 9, 3, 2, 5, 12], "steps": [{"target": " Sunday", "produced": " Sunday", "correct": true, "slot": 1, "look": 0, "look_w": 0.543, "head": 2}, {"target": " we", "produced": " we", "correct": true, "slot": 6, "look": 6, "look_w": 0.566, "head": 2}, {"target": " flew", "produced": " flew", "correct": true, "slot": 7, "look": 7, "look_w": 0.803, "head": 10}, {"target": " a", "produced": " a", "correct": true, "slot": 10, "look": 10, "look_w": 0.862, "head": 10}, {"target": " k", "produced": " k", "correct": true, "slot": 4, "look": 4, "look_w": 0.818, "head": 10}, {"target": "ite", "produced": "ite", "correct": true, "slot": 13, "look": 13, "look_w": 0.915, "head": 10}, {"target": " that", "produced": " that", "correct": true, "slot": 8, "look": 8, "look_w": 0.659, "head": 10}, {"target": " looked", "produced": " looked", "correct": true, "slot": 9, "look": 9, "look_w": 0.983, "head": 10}, {"target": " like", "produced": " like", "correct": true, "slot": 3, "look": 3, "look_w": 0.924, "head": 10}, {"target": " a", "produced": " a", "correct": true, "slot": 2, "look": 2, "look_w": 0.726, "head": 2}, {"target": " dragon", "produced": " dragon", "correct": true, "slot": 5, "look": 5, "look_w": 0.781, "head": 10}, {"target": ".", "produced": ".", "correct": true, "slot": 12, "look": 12, "look_w": 0.625, "head": 2}], "gpt2_acc": 1.0, "gpt2_exact": true, "gpt2_free": "On Sunday we flew a kite that looked like a dragon.", "single_word_acc": 0.417, "single_word_free": "On\n\n.\n\n.\n\n.\n\n."}, {"text": "The train rolled past the farm where the sheep were sleeping.", "tokens": ["The", " train", " rolled", " past", " the", " farm", " where", " the", " sheep", " were", " sleeping", "."], "bag": ["<sink>", "The train", " where the sheep were", " farm where the sheep", " rolled past the farm", " the sheep were sleeping", "The train rolled", "The train rolled past", " the farm where the", " train rolled past the", "The", " sheep were sleeping.", " past the farm where"], "bag_tokens": ["<sink>", " train", " were", " sheep", " farm", " sleeping", " rolled", " past", " the", " the", "The", ".", " where"], "slot_of_token": [10, 1, 6, 7, 9, 4, 12, 8, 3, 2, 5, 11], "steps": [{"target": " train", "produced": " train", "correct": true, "slot": 1, "look": 0, "look_w": 0.621, "head": 2}, {"target": " rolled", "produced": " rolled", "correct": true, "slot": 6, "look": 0, "look_w": 0.428, "head": 2}, {"target": " past", "produced": " past", "correct": true, "slot": 7, "look": 7, "look_w": 0.979, "head": 10}, {"target": " the", "produced": " the", "correct": true, "slot": 9, "look": 9, "look_w": 0.874, "head": 2}, {"target": " farm", "produced": " farm", "correct": true, "slot": 4, "look": 4, "look_w": 0.773, "head": 2}, {"target": " where", "produced": " where", "correct": true, "slot": 12, "look": 12, "look_w": 0.865, "head": 2}, {"target": " the", "produced": " the", "correct": true, "slot": 8, "look": 8, "look_w": 0.671, "head": 2}, {"target": " sheep", "produced": " sheep", "correct": true, "slot": 3, "look": 3, "look_w": 0.771, "head": 2}, {"target": " were", "produced": " were", "correct": true, "slot": 2, "look": 2, "look_w": 0.898, "head": 2}, {"target": " sleeping", "produced": " sleeping", "correct": true, "slot": 5, "look": 5, "look_w": 0.92, "head": 10}, {"target": ".", "produced": ".", "correct": true, "slot": 11, "look": 11, "look_w": 0.944, "head": 2}], "gpt2_acc": 1.0, "gpt2_exact": true, "gpt2_free": "The train rolled past the farm where the sheep were sleeping.", "single_word_acc": 0.545, "single_word_free": "The\n\n.\n\n.\n\n.\n\n"}, {"text": "A tiny mouse carried a big piece of cheese all the way home.", "tokens": ["A", " tiny", " mouse", " carried", " a", " big", " piece", " of", " cheese", " all", " the", " way", " home", "."], "bag": ["<sink>", "A tiny", " of cheese all the", " piece of cheese all", " mouse carried a big", " cheese all the way", "A tiny mouse", "A tiny mouse carried", " a big piece of", " big piece of cheese", " tiny mouse carried a", "A", " all the way home", " carried a big piece", " the way home."], "bag_tokens": ["<sink>", " tiny", " the", " all", " big", " way", " mouse", " carried", " of", " cheese", " a", "A", " home", " piece", "."], "slot_of_token": [11, 1, 6, 7, 10, 4, 13, 8, 9, 3, 2, 5, 12, 14], "steps": [{"target": " tiny", "produced": ",", "correct": false, "slot": 1, "look": 3, "look_w": 0.094, "head": 0}, {"target": " mouse", "produced": " mouse", "correct": true, "slot": 6, "look": 6, "look_w": 0.845, "head": 10}, {"target": " carried", "produced": " carried", "correct": true, "slot": 7, "look": 7, "look_w": 0.678, "head": 10}, {"target": " a", "produced": " a", "correct": true, "slot": 10, "look": 10, "look_w": 0.715, "head": 2}, {"target": " big", "produced": " big", "correct": true, "slot": 4, "look": 4, "look_w": 0.869, "head": 10}, {"target": " piece", "produced": " piece", "correct": true, "slot": 13, "look": 13, "look_w": 0.948, "head": 2}, {"target": " of", "produced": " of", "correct": true, "slot": 8, "look": 8, "look_w": 0.66, "head": 2}, {"target": " cheese", "produced": " cheese", "correct": true, "slot": 9, "look": 9, "look_w": 0.766, "head": 2}, {"target": " all", "produced": " all", "correct": true, "slot": 3, "look": 3, "look_w": 0.702, "head": 2}, {"target": " the", "produced": " the", "correct": true, "slot": 2, "look": 2, "look_w": 0.684, "head": 2}, {"target": " way", "produced": " way", "correct": true, "slot": 5, "look": 5, "look_w": 0.995, "head": 10}, {"target": " home", "produced": " home", "correct": true, "slot": 12, "look": 12, "look_w": 0.935, "head": 10}, {"target": ".", "produced": ".", "correct": true, "slot": 14, "look": 14, "look_w": 0.922, "head": 2}], "gpt2_acc": 0.923, "gpt2_exact": false, "gpt2_free": "A, a tiny mouse, and a tiny mouse.\n\nThe", "single_word_acc": 0.308, "single_word_free": "A\n\n.\n\n.\n\n.\n\n.\n"}, {"text": "The model recited this sentence from a shuffled pile of three word scraps it never saw whole.", "tokens": ["The", " model", " rec", "ited", " this", " sentence", " from", " a", " shuff", "led", " pile", " of", " three", " word", " scraps", " it", " never", " saw", " whole", "."], "bag": ["<sink>", " a shuffled pile", " it never saw whole", " word scraps it never", " of three word scraps", "The", " scraps it never saw", " shuffled pile of", "The model rec", "The model recited", " from a shuffled", " recited this sentence", " this sentence from a", " model recited this", " never saw whole.", "ited this sentence from", " three word scraps it", " sentence from a shuff", "The model", " pile of three word", "led pile of three"], "bag_tokens": ["<sink>", " pile", " whole", " never", " scraps", "The", " saw", " of", " rec", "ited", "led", " sentence", " a", " this", ".", " from", " it", " shuff", " model", " word", " three"], "slot_of_token": [5, 18, 8, 9, 13, 11, 15, 12, 17, 10, 1, 7, 20, 19, 4, 16, 3, 6, 2, 14], "steps": [{"target": " model", "produced": " model", "correct": true, "slot": 18, "look": 0, "look_w": 0.705, "head": 2}, {"target": " rec", "produced": " rec", "correct": true, "slot": 8, "look": 0, "look_w": 0.478, "head": 10}, {"target": "ited", "produced": "ited", "correct": true, "slot": 9, "look": 9, "look_w": 0.996, "head": 10}, {"target": " this", "produced": " this", "correct": true, "slot": 13, "look": 13, "look_w": 0.981, "head": 2}, {"target": " sentence", "produced": " sentence", "correct": true, "slot": 11, "look": 11, "look_w": 0.886, "head": 10}, {"target": " from", "produced": " from", "correct": true, "slot": 15, "look": 15, "look_w": 0.759, "head": 10}, {"target": " a", "produced": " a", "correct": true, "slot": 12, "look": 12, "look_w": 0.807, "head": 10}, {"target": " shuff", "produced": " shuff", "correct": true, "slot": 17, "look": 17, "look_w": 0.846, "head": 10}, {"target": "led", "produced": "led", "correct": true, "slot": 10, "look": 10, "look_w": 0.999, "head": 10}, {"target": " pile", "produced": " pile", "correct": true, "slot": 1, "look": 1, "look_w": 0.887, "head": 10}, {"target": " of", "produced": " of", "correct": true, "slot": 7, "look": 7, "look_w": 0.956, "head": 2}, {"target": " three", "produced": " three", "correct": true, "slot": 20, "look": 20, "look_w": 0.939, "head": 2}, {"target": " word", "produced": " word", "correct": true, "slot": 19, "look": 19, "look_w": 0.888, "head": 2}, {"target": " scraps", "produced": " scraps", "correct": true, "slot": 4, "look": 4, "look_w": 0.953, "head": 10}, {"target": " it", "produced": " it", "correct": true, "slot": 16, "look": 16, "look_w": 0.921, "head": 10}, {"target": " never", "produced": " never", "correct": true, "slot": 3, "look": 3, "look_w": 0.945, "head": 2}, {"target": " saw", "produced": " saw", "correct": true, "slot": 6, "look": 6, "look_w": 0.962, "head": 2}, {"target": " whole", "produced": " whole", "correct": true, "slot": 2, "look": 2, "look_w": 0.985, "head": 10}, {"target": ".", "produced": ".", "correct": true, "slot": 14, "look": 14, "look_w": 0.943, "head": 2}], "gpt2_acc": 1.0, "gpt2_exact": true, "gpt2_free": "The model recited this sentence from a shuffled pile of three word scraps it never saw whole.", "single_word_acc": 0.158, "single_word_free": "The following is a list of all the sentences in the following sentence.\n\n\"I'm a"}]};
+const $ = s => document.querySelector(s);
+const LEVELS = D.levels;
+const KEY = "copycat-best";
+let li = 0, i = 0, wrongs = 0, firstTry = true, you = 0, bot = 0, youLevel = 0, botLevel = 0, total = 0, soundOn = true, interludeShown = false;
+const strip = $("#strip"), cardsEl = $("#cards"), hint = $("#hint");
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* tiny sounds, no assets */
+let actx = null;
+function beep(freq, dur, type = "sine", gain = .18) {
+  if (!soundOn) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = type; o.frequency.value = freq; g.gain.value = gain;
+    o.connect(g); g.connect(actx.destination);
+    const t = actx.currentTime; g.gain.setValueAtTime(gain, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    o.start(t); o.stop(t + dur);
+  } catch (e) {}
+}
+const sfxGood = () => { beep(660, .12); setTimeout(() => beep(880, .16), 90); };
+const sfxBad = () => beep(160, .22, "square", .12);
+const sfxWin = () => [523, 659, 784, 1047].forEach((f, k) => setTimeout(() => beep(f, .2), k * 110));
+
+function lv() { return LEVELS[li]; }
+function clean(t) { return t.replace(/^ /, ""); }
+function cardHTML(slot) {
+  const L = lv(), frag = L.bag[slot], own = L.bag_tokens[slot];
+  const pre = frag.endsWith(own) ? frag.slice(0, frag.length - own.length) : "";
+  const dims = pre.trim().split(/\s+/).filter(Boolean).map(w => `<span class="dim">${esc(w)}</span>`).join("");
+  return `<button class="card" data-slot="${slot}" style="--rot:${((slot * 7) % 5 - 2) * 1.1}deg">${dims}<span class="own">${esc(clean(own))}</span></button>`;
+}
+function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+function renderStrip() {
+  const L = lv();
+  strip.innerHTML = L.tokens.slice(0, i + 1).map((t, k) => `<span class="w${k === i ? " now" : ""}${k === i && k > 0 ? " pop" : ""}">${esc(clean(t))}</span>`).join("") + (i < L.tokens.length - 1 ? `<span class="blank"></span>` : "");
+}
+function renderLevel() {
+  const L = lv(); i = 0; wrongs = 0; firstTry = true; youLevel = 0; botLevel = L.steps.filter(s => s.correct).length;
+  $("#levelpill").textContent = `level ${li + 1} of ${LEVELS.length}`;
+  $("#botpill").textContent = `GPT‑2 · ${botLevel}/${L.steps.length}`;
+  const seed = L.slot_of_token[0];
+  const slots = L.slot_of_token.filter(s => s !== null && s !== 0 && s !== seed);   // the first word is already on the strip
+  const order = slots.slice().sort((a, b) => a - b);            // bag order (already shuffled)
+  cardsEl.innerHTML = order.map(cardHTML).join("");
+  cardsEl.querySelectorAll(".card").forEach(c => c.addEventListener("click", () => tap(c)));
+  renderStrip(); hint.textContent = ""; updateScore();
+}
+function updateScore() { $("#scoreline").textContent = `you ${you + youLevel} · GPT‑2 ${bot + botLevel}`; }
+function tap(card) {
+  const L = lv(), slot = +card.dataset.slot, want = L.slot_of_token[i + 1];
+  if (slot === want) {
+    if (firstTry) youLevel++;
+    const step = L.steps[i];
+    card.classList.add("good", "used");
+    sfxGood();
+    // where GPT-2 looked at this step
+    const lookCard = cardsEl.querySelector(`[data-slot="${step.look}"]`);
+    if (lookCard) { const m = document.createElement("span"); m.className = "botmark"; m.textContent = step.correct ? "GPT‑2 looked here ✓" : "GPT‑2 looked here ✗"; lookCard.appendChild(m); setTimeout(() => m.remove(), 1400); }
+    hint.innerHTML = step.correct ? `GPT‑2 looked at the same kind of card and wrote <b>${esc(clean(step.produced))}</b> too.` : `GPT‑2 slipped here: it wrote <b>${esc(clean(step.produced))}</b> instead of ${esc(clean(step.target))}.`;
+    i++; wrongs = 0; firstTry = true; renderStrip(); updateScore();
+    if (li === 0 && i === 2) $("#rule").style.opacity = ".55";
+    if (i >= L.tokens.length - 1) setTimeout(levelDone, 500);
+  } else {
+    wrongs++; firstTry = false; sfxBad();
+    card.classList.remove("shake"); void card.offsetWidth; card.classList.add("shake");
+    const own = clean(L.tokens[i]);
+    hint.textContent = wrongs === 1 ? `Look for a card where "${own}" comes right before the orange word.` : `Two cards can look alike. Check the word before "${own}" too.`;
+    if (wrongs >= 2) { const right = cardsEl.querySelector(`[data-slot="${want}"]`); if (right) { right.classList.remove("wiggle"); void right.offsetWidth; right.classList.add("wiggle"); } }
+  }
+}
+function stars(y, n) { return y === n ? "★★★" : y >= n - 1 ? "★★☆" : "★☆☆"; }
+function levelDone() {
+  const L = lv(); you += youLevel; bot += botLevel; total += L.steps.length; youLevel = 0; botLevel = 0; updateScore();
+  sfxWin();
+  const n = L.steps.length, yl = L.steps.length ? (you - (you - 0)) : 0;
+  const mine = lastLevelYou = (function () { return arguments[0]; })(youLast);
+  showModal(`<div class="stars">${stars(youLast, n)}</div><h2>${youLast === n ? "Perfect copycat!" : youLast >= n - 1 ? "Nearly perfect!" : "Done!"}</h2>
+    <div class="score"><div class="you"><div class="n">${youLast}/${n}</div><div class="l">you</div></div><div class="bot"><div class="n">${L.steps.filter(s => s.correct).length}/${n}</div><div class="l">GPT‑2</div></div></div>
+    <p>${L.gpt2_exact ? "GPT‑2 wrote this whole sentence from the same shuffled scraps." : `GPT‑2's own attempt from these scraps: <b>${esc(L.gpt2_free.trim())}</b>`}</p>
+    <button class="big" id="next">${li + 1 < LEVELS.length ? "Next" : "See the score"}</button>`);
+  $("#next").addEventListener("click", () => {
+    hideModal();
+    if (li === 2 && !interludeShown) { interludeShown = true; interlude(); return; }
+    if (li + 1 < LEVELS.length) { li++; renderLevel(); } else finale();
+  });
+}
+let youLast = 0;
+const _levelDone = levelDone;
+levelDone = function () { youLast = youLevel; _levelDone(); };
+function interlude() {
+  const L = LEVELS[2];
+  const words = L.tokens.slice(0, 8).map(t => `<button class="card" tabindex="-1"><span class="own">${esc(clean(t))}</span></button>`).join("");
+  showModal(`<h2>What if the cards had one word each?</h2><div class="single">${words}</div>
+    <p>The glowing word is <b>${esc(clean(L.tokens[3]))}</b>. Which card comes next? <b>Nobody can tell.</b> A card with one word has no "word after it".</p>
+    <p>GPT‑2 can't do it either: with one‑word scraps it got <b>${Math.round(L.single_word_acc * 100)}%</b> of this sentence and wrote <b>${esc(L.single_word_free.trim().slice(0, 70))}…</b></p>
+    <p class="tiny">That is why the real model needs two or three words of memory per scrap. Same rule as you.</p>
+    <button class="big" id="cont">Got it</button>`);
+  $("#cont").addEventListener("click", () => { hideModal(); li++; renderLevel(); });
+}
+function finale() {
+  let best = null;
+  try { best = JSON.parse(localStorage.getItem(KEY) || "null"); if (!best || you > best.you) { best = { you, bot, total }; localStorage.setItem(KEY, JSON.stringify(best)); } } catch (e) {}
+  const pct = Math.round(you / total * 100), bpct = Math.round(bot / total * 100);
+  const verdict = you > bot ? "You out‑copied GPT‑2." : you === bot ? "A tie with GPT‑2." : "GPT‑2 edged you this time.";
+  const share = `I played Copycat and got ${you}/${total} words (${pct}%). GPT‑2 got ${bot}/${total}. Can you out‑copy a language model? 🧠🐱`;
+  showModal(`<h2>${verdict}</h2>
+    <div class="score"><div class="you"><div class="n">${pct}%</div><div class="l">you · ${you}/${total}</div></div><div class="bot"><div class="n">${bpct}%</div><div class="l">GPT‑2 · ${bot}/${total}</div></div></div>
+    <p>You just did, by hand, the trick a real language model uses to copy words: find where the current word appeared before, and read what came next. GPT‑2's scores are its real attempts on these exact shuffled scraps.</p>
+    ${best && best.you > you ? `<p class="tiny">Your best so far: ${best.you}/${best.total}.</p>` : ""}
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap"><button class="big" id="again">Play again</button><button class="small" id="share">Copy score to share</button></div>
+    <p class="tiny" id="shared"></p>`);
+  $("#again").addEventListener("click", () => { hideModal(); li = 0; you = 0; bot = 0; total = 0; interludeShown = false; renderLevel(); });
+  $("#share").addEventListener("click", async () => { try { await navigator.clipboard.writeText(share); $("#shared").textContent = "Copied. Paste it anywhere."; } catch (e) { $("#shared").textContent = share; } });
+}
+function showModal(html) { $("#modal").innerHTML = html; $("#overlay").hidden = false; const b = $("#modal button.big"); if (b) b.focus(); }
+function hideModal() { $("#overlay").hidden = true; }
+$("#sound").addEventListener("click", e => { soundOn = !soundOn; e.currentTarget.setAttribute("aria-pressed", String(soundOn)); e.currentTarget.textContent = soundOn ? "sound on" : "sound off"; });
+$("#restart").addEventListener("click", () => { li = 0; you = 0; bot = 0; total = 0; interludeShown = false; hideModal(); renderLevel(); });
+renderLevel();
+</script>

@@ -1,0 +1,1802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Suffering Lexicality Atlas</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg: #020617;
+      --bg-alt: #020617;
+      --bg-soft: rgba(15, 23, 42, 0.9);
+      --card: rgba(15, 23, 42, 0.96);
+      --card-soft: rgba(15, 23, 42, 0.92);
+      --accent: #38bdf8;
+      --accent-soft: rgba(56, 189, 248, 0.25);
+      --accent-strong: #f97316;
+      --text: #e5e7eb;
+      --text-soft: #9ca3af;
+      --border-subtle: rgba(148, 163, 184, 0.4);
+      --radius-lg: 18px;
+      --radius-pill: 999px;
+      --shadow-lg: 0 22px 60px rgba(15, 23, 42, 0.85);
+      --transition-fast: 150ms ease-out;
+      --transition-med: 240ms cubic-bezier(0.19, 1, 0.22, 1);
+      --blur-card: 18px;
+    }
+
+    body.light {
+      --bg: #f3f4f6;
+      --bg-alt: #e5e7eb;
+      --bg-soft: rgba(255, 255, 255, 0.85);
+      --card: rgba(255, 255, 255, 0.98);
+      --card-soft: rgba(255, 255, 255, 0.95);
+      --accent: #2563eb;
+      --accent-soft: rgba(37, 99, 235, 0.18);
+      --accent-strong: #ea580c;
+      --text: #111827;
+      --text-soft: #6b7280;
+      --border-subtle: rgba(148, 163, 184, 0.8);
+      --shadow-lg: 0 18px 45px rgba(148, 163, 184, 0.55);
+      --blur-card: 10px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+        "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 10% -10%, rgba(56, 189, 248, 0.22), transparent 55%),
+        radial-gradient(circle at 90% -20%, rgba(248, 113, 113, 0.16), transparent 55%),
+        radial-gradient(circle at 50% 110%, rgba(94, 234, 212, 0.14), transparent 50%),
+        linear-gradient(135deg, var(--bg-alt), #020617 60%, #020617 100%);
+      display: flex;
+      justify-content: center;
+      padding: 24px 12px;
+      transition: background 320ms ease-in-out, color var(--transition-fast);
+    }
+
+    .app-shell {
+      position: relative;
+      width: 100%;
+      max-width: 1240px;
+      border-radius: 26px;
+      padding: 22px 22px 20px;
+      background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.75), transparent 55%)
+        border-box;
+      background-color: rgba(15, 23, 42, 0.82);
+      backdrop-filter: blur(var(--blur-card)) saturate(140%);
+      box-shadow: var(--shadow-lg);
+      border: 1px solid rgba(148, 163, 184, 0.45);
+      overflow: hidden;
+    }
+
+    body.light .app-shell {
+      background-color: rgba(255, 255, 255, 0.9);
+      background: radial-gradient(circle at top left, rgba(191, 219, 254, 0.7), transparent 55%)
+        border-box;
+    }
+
+    .app-shell::before {
+      content: "";
+      position: absolute;
+      inset: -120px;
+      background:
+        radial-gradient(circle at 0% 0%, rgba(56, 189, 248, 0.2), transparent 55%),
+        radial-gradient(circle at 100% 0%, rgba(168, 85, 247, 0.22), transparent 55%);
+      opacity: 0.35;
+      pointer-events: none;
+      mix-blend-mode: screen;
+    }
+
+    .app-content {
+      position: relative;
+      z-index: 1;
+    }
+
+    .app-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .title-block h1 {
+      font-size: 1.6rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+      background: linear-gradient(120deg, #f9fafb, #e5e7eb, #a5b4fc, #38bdf8);
+      background-size: 200% 200%;
+      -webkit-background-clip: text;
+      color: transparent;
+      animation: shimmer 6s ease-in-out infinite;
+    }
+
+    .title-block p {
+      font-size: 0.9rem;
+      color: var(--text-soft);
+      max-width: 540px;
+    }
+
+    .meta-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .meta-chip {
+      padding: 6px 10px;
+      border-radius: var(--radius-pill);
+      border: 1px solid rgba(148, 163, 184, 0.45);
+      background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.75), rgba(15, 23, 42, 0.9));
+      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.7);
+      font-size: 0.78rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    body.light .meta-chip {
+      background: radial-gradient(circle at top left, rgba(255, 255, 255, 0.9), #e5e7eb);
+      box-shadow: 0 8px 18px rgba(148, 163, 184, 0.6);
+    }
+
+    .meta-chip-label {
+      color: var(--text-soft);
+    }
+
+    .meta-chip-value {
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    .meta-chip-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: radial-gradient(circle, var(--accent), var(--accent-strong));
+      box-shadow: 0 0 14px rgba(56, 189, 248, 0.9);
+    }
+
+    .controls-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .controls-row-main {
+      flex: 1 1 260px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .controls-row-side {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .search-wrapper {
+      position: relative;
+      flex: 1;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 8px 10px 8px 28px;
+      border-radius: var(--radius-pill);
+      border: 1px solid rgba(148, 163, 184, 0.6);
+      background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.98));
+      color: var(--text);
+      font-size: 0.86rem;
+      outline: none;
+      transition: border-color var(--transition-fast), box-shadow var(--transition-fast),
+        background 200ms ease-out, transform 120ms ease-out;
+      box-shadow: 0 10px 22px rgba(15, 23, 42, 0.75);
+    }
+
+    .search-input::placeholder {
+      color: rgba(148, 163, 184, 0.85);
+    }
+
+    .search-wrapper .search-icon {
+      position: absolute;
+      left: 9px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.8rem;
+      color: rgba(148, 163, 184, 0.9);
+    }
+
+    .search-wrapper .kbd-hint {
+      position: absolute;
+      right: 7px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.68rem;
+      color: rgba(148, 163, 184, 0.9);
+      border-radius: 7px;
+      border: 1px solid rgba(148, 163, 184, 0.6);
+      padding: 2px 6px;
+      background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.98));
+    }
+
+    body.light .search-input {
+      background: radial-gradient(circle at top left, #ffffff, #e5e7eb);
+      box-shadow: 0 10px 22px rgba(148, 163, 184, 0.7);
+    }
+
+    body.light .search-wrapper .kbd-hint {
+      background: #f9fafb;
+    }
+
+    .search-input:focus {
+      border-color: rgba(56, 189, 248, 0.9);
+      box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.65), 0 18px 40px rgba(15, 23, 42, 0.9);
+      transform: translateY(-0.5px);
+    }
+
+    .primary-pill-btn,
+    .ghost-pill-btn {
+      border-radius: var(--radius-pill);
+      border: 1px solid rgba(148, 163, 184, 0.7);
+      padding: 6px 11px;
+      background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.98));
+      color: var(--text-soft);
+      font-size: 0.78rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      transition: transform var(--transition-fast), box-shadow var(--transition-fast),
+        border-color var(--transition-fast), background 200ms ease-out, color var(--transition-fast);
+      white-space: nowrap;
+    }
+
+    .primary-pill-btn {
+      background: radial-gradient(circle at top left, var(--accent-soft), rgba(15, 23, 42, 0.95));
+      color: var(--accent);
+      border-color: rgba(56, 189, 248, 0.8);
+      box-shadow: 0 14px 30px rgba(56, 189, 248, 0.3);
+    }
+
+    body.light .primary-pill-btn {
+      background: radial-gradient(circle at top left, rgba(59, 130, 246, 0.12), #ffffff);
+      box-shadow: 0 12px 26px rgba(59, 130, 246, 0.3);
+    }
+
+    .primary-pill-btn span.icon {
+      font-size: 0.9rem;
+    }
+
+    .primary-pill-btn:hover,
+    .ghost-pill-btn:hover {
+      transform: translateY(-0.5px) scale(1.01);
+      box-shadow: 0 14px 32px rgba(15, 23, 42, 0.9);
+      border-color: rgba(56, 189, 248, 0.9);
+      color: #e5f4ff;
+    }
+
+    body.light .primary-pill-btn:hover,
+    body.light .ghost-pill-btn:hover {
+      box-shadow: 0 14px 32px rgba(148, 163, 184, 0.8);
+      color: #0f172a;
+    }
+
+    .ghost-pill-btn {
+      background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.92), rgba(15, 23, 42, 0.98));
+    }
+
+    body.light .ghost-pill-btn {
+      background: #f9fafb;
+    }
+
+    .ghost-pill-btn span.icon {
+      font-size: 0.85rem;
+      opacity: 0.9;
+    }
+
+    .sort-select {
+      border-radius: var(--radius-pill);
+      border: 1px solid rgba(148, 163, 184, 0.7);
+      background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.97));
+      color: var(--text-soft);
+      font-size: 0.78rem;
+      padding: 6px 8px;
+      padding-right: 24px;
+      outline: none;
+      cursor: pointer;
+      appearance: none;
+      position: relative;
+      box-shadow: 0 10px 22px rgba(15, 23, 42, 0.75);
+    }
+
+    body.light .sort-select {
+      background: radial-gradient(circle at top left, #ffffff, #e5e7eb);
+      box-shadow: 0 10px 22px rgba(148, 163, 184, 0.7);
+    }
+
+    .sort-wrapper {
+      position: relative;
+    }
+
+    .sort-wrapper::after {
+      content: "▾";
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      pointer-events: none;
+      font-size: 0.7rem;
+      color: rgba(148, 163, 184, 0.9);
+    }
+
+    .theme-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.76rem;
+      color: var(--text-soft);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .theme-toggle input {
+      display: none;
+    }
+
+    .toggle-track {
+      width: 34px;
+      height: 18px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.7);
+      background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.98));
+      padding: 1px;
+      display: flex;
+      align-items: center;
+      transition: background var(--transition-fast), border-color var(--transition-fast);
+    }
+
+    .toggle-thumb {
+      width: 14px;
+      height: 14px;
+      border-radius: 999px;
+      background: radial-gradient(circle, #f9fafb, #d1d5db);
+      box-shadow: 0 0 10px rgba(248, 250, 252, 0.8);
+      transform: translateX(0);
+      transition: transform var(--transition-fast), box-shadow var(--transition-fast),
+        background var(--transition-fast);
+    }
+
+    .theme-toggle input:checked + .toggle-track .toggle-thumb {
+      transform: translateX(16px);
+      box-shadow: 0 0 16px rgba(250, 250, 250, 0.95);
+    }
+
+    .theme-toggle input:checked + .toggle-track {
+      border-color: rgba(56, 189, 248, 0.9);
+      background: radial-gradient(circle at top left, rgba(56, 189, 248, 0.2), rgba(15, 23, 42, 0.98));
+    }
+
+    .data-source-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 14px;
+      font-size: 0.75rem;
+      color: var(--text-soft);
+    }
+
+    .data-url-input {
+      flex: 1 1 200px;
+      min-width: 0;
+      border-radius: var(--radius-pill);
+      border: 1px dashed rgba(148, 163, 184, 0.7);
+      padding: 6px 9px;
+      background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.94), rgba(15, 23, 42, 0.98));
+      color: var(--text-soft);
+      font-size: 0.76rem;
+      outline: none;
+    }
+
+    .data-url-input::placeholder {
+      color: rgba(148, 163, 184, 0.7);
+    }
+
+    body.light .data-url-input {
+      background: #f9fafb;
+    }
+
+    .file-label {
+      border-radius: var(--radius-pill);
+      border: 1px dashed rgba(148, 163, 184, 0.7);
+      padding: 6px 9px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.98));
+      transition: border-color var(--transition-fast), background var(--transition-fast),
+        transform var(--transition-fast), box-shadow var(--transition-fast);
+    }
+
+    body.light .file-label {
+      background: #f9fafb;
+    }
+
+    .file-label:hover {
+      border-color: rgba(56, 189, 248, 0.85);
+      transform: translateY(-0.5px);
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.9);
+    }
+
+    .file-label span.icon {
+      font-size: 0.85rem;
+      opacity: 0.85;
+    }
+
+    .data-status {
+      min-width: 120px;
+      font-size: 0.73rem;
+      color: rgba(148, 163, 184, 0.9);
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+    }
+
+    .data-status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: rgba(148, 163, 184, 0.5);
+      box-shadow: 0 0 10px rgba(148, 163, 184, 0.7);
+    }
+
+    .data-status-dot.ok {
+      background: radial-gradient(circle, #22c55e, #16a34a);
+      box-shadow: 0 0 16px rgba(34, 197, 94, 0.9);
+    }
+
+    .data-status-dot.bad {
+      background: radial-gradient(circle, #f97373, #b91c1c);
+      box-shadow: 0 0 16px rgba(239, 68, 68, 0.9);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+      gap: 14px;
+      margin-top: 4px;
+    }
+
+    .panel {
+      border-radius: 20px;
+      border: 1px solid rgba(148, 163, 184, 0.7);
+      background: radial-gradient(circle at top left, var(--card-soft), var(--card));
+      padding: 10px 10px 10px;
+      backdrop-filter: blur(var(--blur-card)) saturate(150%);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-size: 0.76rem;
+      color: var(--text-soft);
+    }
+
+    .panel-title {
+      font-size: 0.8rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .panel-title-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: radial-gradient(circle, var(--accent), var(--accent-strong));
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.9);
+      opacity: 0.85;
+    }
+
+    .panel-subtitle {
+      font-size: 0.7rem;
+      color: rgba(148, 163, 184, 0.9);
+      white-space: nowrap;
+    }
+
+    .word-list-body {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+      padding-right: 4px;
+      margin-right: -4px;
+      margin-top: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      scroll-behavior: smooth;
+    }
+
+    .word-row {
+      border-radius: 14px;
+      padding: 7px 9px;
+      border: 1px solid rgba(31, 41, 55, 0.9);
+      background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.99));
+      color: var(--text-soft);
+      font-size: 0.8rem;
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      cursor: pointer;
+      transition: border-color var(--transition-fast), background 200ms ease-out,
+        transform var(--transition-fast), box-shadow var(--transition-fast), color var(--transition-fast);
+      box-shadow: 0 10px 22px rgba(15, 23, 42, 0.95);
+    }
+
+    body.light .word-row {
+      background: radial-gradient(circle at top left, #ffffff, #e5e7eb);
+      border-color: rgba(209, 213, 219, 0.9);
+      box-shadow: 0 10px 24px rgba(148, 163, 184, 0.8);
+    }
+
+    .word-row-main {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      justify-content: space-between;
+    }
+
+    .word-row-word {
+      font-weight: 600;
+      font-size: 0.86rem;
+      color: var(--text);
+    }
+
+    .word-row-meta {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.72rem;
+      color: rgba(148, 163, 184, 0.9);
+    }
+
+    .pill {
+      border-radius: 999px;
+      padding: 2px 7px;
+      border: 1px solid rgba(148, 163, 184, 0.8);
+      background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.95), rgba(15, 23, 42, 0.99));
+      font-size: 0.7rem;
+      color: rgba(209, 213, 219, 0.95);
+      white-space: nowrap;
+    }
+
+    body.light .pill {
+      background: #f9fafb;
+      color: #374151;
+    }
+
+    .word-row-snippet {
+      font-size: 0.74rem;
+      color: rgba(148, 163, 184, 0.98);
+      line-height: 1.25;
+      max-height: 2.5em;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+
+    .word-row:hover {
+      border-color: rgba(56, 189, 248, 0.9);
+      transform: translateY(-0.5px) scale(1.005);
+      box-shadow: 0 14px 30px rgba(15, 23, 42, 0.95);
+      color: var(--text);
+    }
+
+    .word-row.active {
+      border-color: rgba(56, 189, 248, 1);
+      box-shadow: 0 18px 40px rgba(56, 189, 248, 0.6);
+      position: relative;
+      background: radial-gradient(circle at top left, rgba(56, 189, 248, 0.3), rgba(15, 23, 42, 0.98));
+      color: var(--text);
+    }
+
+    body.light .word-row.active {
+      background: radial-gradient(circle at top left, rgba(59, 130, 246, 0.28), #ffffff);
+      box-shadow: 0 18px 40px rgba(59, 130, 246, 0.55);
+    }
+
+    .word-row.active::before {
+      content: "";
+      position: absolute;
+      inset: -1px;
+      border-radius: inherit;
+      border: 1px solid rgba(56, 189, 248, 0.65);
+      pointer-events: none;
+      opacity: 0.85;
+    }
+
+    .detail-chart {
+      display: grid;
+      grid-template-rows: minmax(230px, 1.8fr) minmax(150px, 1.2fr);
+      gap: 10px;
+      min-height: 0;
+    }
+
+    .detail-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 0;
+    }
+
+    .detail-word {
+      font-size: 1.2rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--accent);
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .detail-word-tag {
+      font-size: 0.7rem;
+      color: rgba(148, 163, 184, 0.9);
+      border-radius: 999px;
+      padding: 2px 8px;
+      border: 1px solid rgba(148, 163, 184, 0.7);
+      background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.99));
+    }
+
+    .detail-definition {
+      font-size: 0.88rem;
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .detail-sentence {
+      font-size: 0.82rem;
+      color: rgba(209, 213, 219, 0.94);
+      line-height: 1.6;
+      padding: 8px 10px;
+      border-radius: 12px;
+      border: 1px dashed rgba(148, 163, 184, 0.7);
+      background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.92), rgba(15, 23, 42, 0.98));
+      position: relative;
+    }
+
+    body.light .detail-sentence {
+      color: #111827;
+      background: #f9fafb;
+    }
+
+    .detail-sentence::before {
+      content: "Sentence";
+      position: absolute;
+      top: -8px;
+      left: 12px;
+      font-size: 0.68rem;
+      padding: 1px 6px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.7);
+      background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.99));
+      color: rgba(148, 163, 184, 0.96);
+    }
+
+    body.light .detail-sentence::before {
+      background: #ffffff;
+    }
+
+    .detail-metrics {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 2px;
+      font-size: 0.72rem;
+      color: rgba(148, 163, 184, 0.95);
+    }
+
+    .detail-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .detail-nav-group {
+      display: flex;
+      gap: 6px;
+    }
+
+    .chip-btn {
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.8);
+      padding: 4px 9px;
+      background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.98), rgba(15, 23, 42, 1));
+      font-size: 0.74rem;
+      color: rgba(209, 213, 219, 0.95);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      transition: transform var(--transition-fast), box-shadow var(--transition-fast),
+        border-color var(--transition-fast), background var(--transition-fast);
+      box-shadow: 0 10px 22px rgba(15, 23, 42, 0.95);
+    }
+
+    body.light .chip-btn {
+      background: #f9fafb;
+      color: #111827;
+      box-shadow: 0 9px 20px rgba(148, 163, 184, 0.75);
+    }
+
+    .chip-btn:hover {
+      border-color: rgba(56, 189, 248, 0.9);
+      transform: translateY(-0.5px) scale(1.01);
+      box-shadow: 0 14px 28px rgba(15, 23, 42, 0.95);
+    }
+
+    .chip-btn.primary {
+      border-color: rgba(56, 189, 248, 1);
+      background: radial-gradient(circle at top left, rgba(56, 189, 248, 0.3), rgba(15, 23, 42, 0.99));
+      color: #e0f2fe;
+    }
+
+    body.light .chip-btn.primary {
+      background: radial-gradient(circle at top left, rgba(59, 130, 246, 0.22), #ffffff);
+      color: #0f172a;
+    }
+
+    .chip-btn span.icon {
+      font-size: 0.85rem;
+    }
+
+    .empty-state {
+      padding: 16px 14px;
+      border-radius: 14px;
+      border: 1px dashed rgba(148, 163, 184, 0.7);
+      background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.98));
+      font-size: 0.8rem;
+      color: rgba(148, 163, 184, 0.96);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    body.light .empty-state {
+      background: #f9fafb;
+    }
+
+    .empty-state strong {
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle at top, rgba(15, 23, 42, 0.88), rgba(15, 23, 42, 0.97));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      z-index: 40;
+      backdrop-filter: blur(14px) saturate(200%);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 220ms ease-out;
+    }
+
+    .overlay.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .overlay-card {
+      width: min(540px, 100%);
+      border-radius: 20px;
+      border: 1px solid rgba(148, 163, 184, 0.9);
+      background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.98), rgba(15, 23, 42, 1));
+      padding: 16px 16px 14px;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.95);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    body.light .overlay-card {
+      background: #ffffff;
+      box-shadow: 0 24px 60px rgba(55, 65, 81, 0.9);
+    }
+
+    .overlay-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 0.85rem;
+      color: var(--text-soft);
+    }
+
+    .overlay-title {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-size: 0.78rem;
+    }
+
+    .overlay-title span.icon {
+      font-size: 0.9rem;
+    }
+
+    .overlay-close {
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.9);
+      padding: 3px 8px;
+      font-size: 0.72rem;
+      cursor: pointer;
+      background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.99));
+      color: rgba(209, 213, 219, 0.98);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: transform var(--transition-fast), box-shadow var(--transition-fast),
+        border-color var(--transition-fast), background var(--transition-fast);
+    }
+
+    body.light .overlay-close {
+      background: #f9fafb;
+      color: #111827;
+    }
+
+    .overlay-close:hover {
+      transform: translateY(-0.5px);
+      border-color: rgba(56, 189, 248, 0.95);
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.95);
+    }
+
+    .overlay-question {
+      font-size: 0.86rem;
+      color: var(--text);
+      line-height: 1.4;
+    }
+
+    .overlay-question .accent {
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .overlay-choices {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 2px;
+    }
+
+    .choice-chip {
+      border-radius: 14px;
+      border: 1px solid rgba(148, 163, 184, 0.8);
+      padding: 7px 9px;
+      font-size: 0.8rem;
+      color: rgba(209, 213, 219, 0.98);
+      background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.99));
+      cursor: pointer;
+      transition: border-color var(--transition-fast), background 200ms ease-out,
+        box-shadow var(--transition-fast), transform var(--transition-fast), color var(--transition-fast);
+      text-align: left;
+    }
+
+    body.light .choice-chip {
+      background: #f9fafb;
+      color: #111827;
+    }
+
+    .choice-chip:hover {
+      border-color: rgba(56, 189, 248, 0.95);
+      box-shadow: 0 12px 26px rgba(15, 23, 42, 0.95);
+      transform: translateY(-0.5px);
+    }
+
+    .choice-chip.correct {
+      border-color: rgba(34, 197, 94, 1);
+      background: radial-gradient(circle at top left, rgba(22, 163, 74, 0.4), rgba(15, 23, 42, 0.98));
+      box-shadow: 0 16px 32px rgba(22, 163, 74, 0.8);
+      color: #ecfdf5;
+    }
+
+    body.light .choice-chip.correct {
+      background: radial-gradient(circle at top left, rgba(22, 163, 74, 0.2), #ffffff);
+      color: #064e3b;
+    }
+
+    .choice-chip.incorrect {
+      border-color: rgba(248, 113, 113, 1);
+      background: radial-gradient(circle at top left, rgba(248, 113, 113, 0.4), rgba(15, 23, 42, 0.98));
+      box-shadow: 0 16px 32px rgba(239, 68, 68, 0.85);
+    }
+
+    body.light .choice-chip.incorrect {
+      background: radial-gradient(circle at top left, rgba(248, 113, 113, 0.2), #ffffff);
+      color: #7f1d1d;
+    }
+
+    .overlay-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-top: 4px;
+      font-size: 0.72rem;
+      color: rgba(148, 163, 184, 0.9);
+    }
+
+    .overlay-footer-left {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .overlay-footer-right {
+      display: inline-flex;
+      gap: 6px;
+    }
+
+    .overlay-footer button {
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.8);
+      padding: 3px 8px;
+      font-size: 0.72rem;
+      cursor: pointer;
+      background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.98), rgba(15, 23, 42, 1));
+      color: rgba(209, 213, 219, 0.98);
+      transition: transform var(--transition-fast), box-shadow var(--transition-fast),
+        border-color var(--transition-fast), background var(--transition-fast);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    body.light .overlay-footer button {
+      background: #f9fafb;
+      color: #111827;
+    }
+
+    .overlay-footer button:hover {
+      transform: translateY(-0.5px);
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.95);
+      border-color: rgba(56, 189, 248, 0.95);
+    }
+
+    .kbd {
+      border-radius: 7px;
+      border: 1px solid rgba(148, 163, 184, 0.85);
+      padding: 1px 5px;
+      font-size: 0.68rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+        "Courier New", monospace;
+      background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.99));
+      color: rgba(209, 213, 219, 0.98);
+    }
+
+    body.light .kbd {
+      background: #ffffff;
+      color: #111827;
+    }
+
+    .kbd span {
+      opacity: 0.9;
+    }
+
+    .badge {
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.8);
+      padding: 1px 6px;
+      font-size: 0.68rem;
+      color: rgba(148, 163, 184, 0.95);
+      background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.99));
+    }
+
+    body.light .badge {
+      background: #f9fafb;
+      color: #4b5563;
+    }
+
+    ::-webkit-scrollbar {
+      width: 7px;
+      height: 7px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      border-radius: 999px;
+      background: linear-gradient(to bottom, rgba(148, 163, 184, 0.5), rgba(31, 41, 55, 0.95));
+    }
+
+    body.light ::-webkit-scrollbar-thumb {
+      background: linear-gradient(to bottom, rgba(148, 163, 184, 0.85), rgba(209, 213, 219, 1));
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    @keyframes shimmer {
+      0% {
+        background-position: 0% 50%;
+      }
+      50% {
+        background-position: 100% 50%;
+      }
+      100% {
+        background-position: 0% 50%;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .detail-chart {
+        grid-template-rows: auto auto;
+      }
+      .app-shell {
+        border-radius: 20px;
+        padding: 18px 14px 14px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .app-header {
+        flex-direction: column;
+        gap: 10px;
+      }
+      .meta-chips {
+        justify-content: flex-start;
+      }
+      .controls-row {
+        align-items: stretch;
+      }
+      .controls-row-side {
+        width: 100%;
+        justify-content: space-between;
+      }
+      .data-source-row {
+        align-items: stretch;
+      }
+      .data-status {
+        flex-basis: 100%;
+      }
+    }
+
+    /* Keep the visual (chart) reachable even when definitions are long */
+    @media (min-width: 901px) {
+      /* Right-hand column gets a reasonable band of height */
+      .detail-chart {
+        height: min(520px, 65vh);
+      }
+    
+      /* Make the detail panel scroll internally instead of pushing the chart down */
+      .detail-chart > .panel:first-child {
+        overflow: hidden;
+      }
+    
+      .detail-chart > .panel:first-child .detail-body {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        padding-right: 4px; /* room for scrollbar */
+      }
+    }
+
+    .lexicon-hint {
+      font-size: 0.78rem;
+      color: var(--text-soft);
+      margin: -4px 0 4px;
+    }
+
+    @media (min-width: 901px) {
+      .lexicon-hint {
+        display: none; /* keep it as a mobile/tablet hint if you want */
+      }
+    }
+
+    
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <div class="app-content">
+      <header class="app-header">
+        <div class="title-block">
+          <h1>Lexicality Atlas</h1>
+          <p>
+            Filter, explore, and quiz yourself on the words that encode
+            power, harm, and history.
+          </p>
+        </div>
+        <div class="meta-chips">
+          <div class="meta-chip">
+            <div class="meta-chip-dot"></div>
+            <span class="meta-chip-label">Total words</span>
+            <span class="meta-chip-value" id="metaTotal">0</span>
+          </div>
+          <div class="meta-chip">
+            <span class="meta-chip-label">Visible now</span>
+            <span class="meta-chip-value" id="metaVisible">0</span>
+          </div>
+          <div class="meta-chip">
+            <span class="meta-chip-label">Avg sentence length</span>
+            <span class="meta-chip-value" id="metaSentenceLen">–</span>
+          </div>
+        </div>
+      </header>
+
+      <section class="controls-row">
+        <div class="controls-row-main">
+          <div class="search-wrapper">
+            <span class="search-icon">🔍</span>
+            <input
+              id="searchInput"
+              class="search-input"
+              type="search"
+              placeholder="Search word, definition, or sentence…"
+              autocomplete="off"
+            />
+            <span class="kbd-hint"><span>⌘/Ctrl</span> + <span>K</span></span>
+          </div>
+        </div>
+        <div class="controls-row-side">
+          <div class="sort-wrapper">
+            <select id="sortSelect" class="sort-select">
+              <option value="alpha">Word (A → Z)</option>
+              <option value="lengthSentence">Sentence length</option>
+              <option value="lengthWord">Word length</option>
+              <option value="original">Original order</option>
+              <option value="random">Shuffle</option>
+            </select>
+          </div>
+          <label class="theme-toggle">
+            <input id="themeToggle" type="checkbox" checked />
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            <span>Dark</span>
+          </label>
+        </div>
+      </section>
+
+      <section class="layout">
+        <aside class="panel" id="listPanel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span class="panel-title-dot"></span>
+              <span>Lexicon Rail</span>
+            </div>
+            <button class="ghost-pill-btn" id="randomBtn">
+              <span class="icon">🎲</span>
+              <span>Random word</span>
+            </button>
+          </div>
+          <p class="panel-subtitle lexicon-hint">
+            Tap any word below to see its definition.
+          </p>
+          <div class="word-list-body" id="wordList"></div>
+        </aside>
+
+        <section class="detail-chart">
+          <section class="panel">
+            <div class="panel-header">
+              <div class="panel-title">
+                <span class="panel-title-dot"></span>
+                <span>Detail Lens</span>
+              </div>
+              <span class="panel-subtitle" id="detailSourceLabel">
+                Load your CSV to begin →
+              </span>
+            </div>
+
+            <div class="detail-body" id="detailBody">
+              <div class="empty-state" id="emptyState">
+                <strong>Waiting for words.</strong>
+                <span>
+                  Use <span class="badge">Load URL</span> or
+                  <span class="badge">Upload CSV</span> above
+                  to feed in <span class="badge">Word / Sentence / Definition</span>
+                  rows from <code>Suffering_Lexicality.csv</code>.
+                </span>
+                <span>
+                  Once loaded, you can:
+                  <ul style="margin-left: 1em; margin-top: 4px;">
+                    <li>Search and sort on the left rail</li>
+                    <li>Hit <span class="kbd"><span>↑</span></span> /
+                        <span class="kbd"><span>↓</span></span> to navigate</li>
+                    <li>Press <span class="kbd"><span>Q</span></span> to open quiz mode</li>
+                  </ul>
+                </span>
+              </div>
+
+              <div id="detailContent" style="display: none;">
+                <div class="detail-word" id="detailWord">
+                  <!-- word -->
+                </div>
+                <div class="detail-definition" id="detailDefinition"></div>
+                <div class="detail-sentence" id="detailSentence"></div>
+                <div class="detail-metrics">
+                  <span id="detailMetricSentence"></span>
+                  <span id="detailMetricWordLen"></span>
+                  <span id="detailMetricIndex"></span>
+                </div>
+                <div class="detail-footer">
+                  <div class="detail-nav-group">
+                    <button class="chip-btn" id="prevBtn">
+                      <span class="icon">←</span>
+                      <span>Prev</span>
+                    </button>
+                    <button class="chip-btn" id="nextBtn">
+                      <span class="icon">→</span>
+                      <span>Next</span>
+                    </button>
+                  </div>
+                  <button class="chip-btn primary" id="quizBtn">
+                    <span class="icon">❓</span>
+                    <span>Quiz me</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+        </section>
+      </section>
+    </div>
+  </div>
+
+  <!-- Quiz overlay -->
+  <div class="overlay" id="quizOverlay">
+    <div class="overlay-card">
+      <div class="overlay-header">
+        <div class="overlay-title">
+          <span class="icon">🧠</span>
+          <span>Micro-Drill</span>
+        </div>
+        <button class="overlay-close" id="quizCloseBtn">
+          <span>Esc</span>
+          <span style="opacity: 0.7;">×</span>
+        </button>
+      </div>
+      <div class="overlay-question" id="quizQuestion"></div>
+      <div class="overlay-choices" id="quizChoices"></div>
+      <div class="overlay-footer">
+        <div class="overlay-footer-left">
+          <span>Tip:</span>
+          <span class="kbd"><span>Q</span></span>
+          <span>toggles quiz on the current word.</span>
+        </div>
+        <div class="overlay-footer-right">
+          <button id="quizAnotherBtn">
+            <span>Next random</span>
+            <span class="icon">🎲</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Configuration: auto-try this URL on load (can be relative)
+    const AUTO_LOAD_URL = "data/Suffering_Lexicality.csv";
+
+    let allItems = [];       // [{ word, sentence, definition, sentenceWordCount, wordLength, originalIndex }]
+    let filteredItems = [];  // same shape as allItems, after search/sort
+    let selectedIndex = -1;   // index into filteredItems
+
+    const searchInput     = document.getElementById("searchInput");
+    const sortSelect      = document.getElementById("sortSelect");
+    const themeToggle     = document.getElementById("themeToggle");
+    const wordListEl      = document.getElementById("wordList");
+    const detailSourceLbl = document.getElementById("detailSourceLabel");
+    const emptyState      = document.getElementById("emptyState");
+    const detailContent   = document.getElementById("detailContent");
+    const detailWordEl    = document.getElementById("detailWord");
+    const detailDefinitionEl = document.getElementById("detailDefinition");
+    const detailSentenceEl   = document.getElementById("detailSentence");
+    const detailMetricSentenceEl = document.getElementById("detailMetricSentence");
+    const detailMetricWordLenEl  = document.getElementById("detailMetricWordLen");
+    const detailMetricIndexEl    = document.getElementById("detailMetricIndex");
+    const prevBtn         = document.getElementById("prevBtn");
+    const nextBtn         = document.getElementById("nextBtn");
+    const randomBtn       = document.getElementById("randomBtn");
+    const quizBtn         = document.getElementById("quizBtn");
+    const metaTotalEl     = document.getElementById("metaTotal");
+    const metaVisibleEl   = document.getElementById("metaVisible");
+    const metaSentenceLenEl = document.getElementById("metaSentenceLen");
+
+    const quizOverlay     = document.getElementById("quizOverlay");
+    const quizQuestionEl  = document.getElementById("quizQuestion");
+    const quizChoicesEl   = document.getElementById("quizChoices");
+    const quizCloseBtn    = document.getElementById("quizCloseBtn");
+    const quizAnotherBtn  = document.getElementById("quizAnotherBtn");
+
+    function escapeHTML(str) {
+      if (str == null) return "";
+      return String(str).replace(/[&<>"']/g, ch => {
+        switch (ch) {
+          case "&": return "&amp;";
+          case "<": return "&lt;";
+          case ">": return "&gt;";
+          case '"': return "&quot;";
+          case "'": return "&#39;";
+          default: return ch;
+        }
+      });
+    }
+
+    function computeSentenceWordCount(sentence) {
+      if (!sentence) return 0;
+      const trimmed = sentence.trim();
+      if (!trimmed) return 0;
+      return trimmed.split(/\s+/).length;
+    }
+
+    function parseCSV(text) {
+      const rows = [];
+      let current = "";
+      let row = [];
+      let inQuotes = false;
+
+      for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+
+        if (char === '"') {
+          if (inQuotes && text[i + 1] === '"') {
+            current += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (char === "," && !inQuotes) {
+          row.push(current);
+          current = "";
+        } else if ((char === "\n" || char === "\r") && !inQuotes) {
+          if (current !== "" || row.length) {
+            row.push(current);
+            rows.push(row);
+            row = [];
+            current = "";
+          }
+        } else {
+          current += char;
+        }
+      }
+
+      if (current !== "" || row.length) {
+        row.push(current);
+        rows.push(row);
+      }
+
+      return rows.filter(r => r.length > 0 && r.some(cell => cell.trim() !== ""));
+    }
+
+    function ingestFromCsvText(text, label) {
+      const rows = parseCSV(text);
+
+      const header = rows[0].map(h => h.trim().toLowerCase());
+      const wordIdx = header.findIndex(h => h === "word");
+      const sentenceIdx = header.findIndex(h => h === "sentence");
+      const defIdx = header.findIndex(h => h === "definition");
+
+      const mapped = [];
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        const word = (row[wordIdx] || "").trim();
+        const sentence = (row[sentenceIdx] || "").trim();
+        const definition = (row[defIdx] || "").trim();
+        if (!word && !sentence && !definition) continue;
+        mapped.push({ word, sentence, definition, originalIndex: i - 1 });
+      }
+
+      allItems = mapped.map((item, idx) => ({
+        word: item.word,
+        sentence: item.sentence,
+        definition: item.definition,
+        sentenceWordCount: computeSentenceWordCount(item.sentence),
+        wordLength: item.word ? item.word.length : 0,
+        originalIndex: item.originalIndex != null ? item.originalIndex : idx
+      }));
+
+      selectedIndex = 0;
+      applyFiltersAndRender();
+      detailSourceLbl.textContent = label || "Loaded from CSV";
+    }
+
+    function applyFiltersAndRender() {
+      if (!allItems.length) {
+        wordListEl.innerHTML = "";
+        metaTotalEl.textContent = "0";
+        metaVisibleEl.textContent = "0";
+        metaSentenceLenEl.textContent = "–";
+        emptyState.style.display = "block";
+        detailContent.style.display = "none";
+        return;
+      }
+
+      const q = searchInput.value.trim().toLowerCase();
+      filteredItems = q
+        ? allItems.filter(item => {
+            const blob = `${item.word} ${item.sentence} ${item.definition}`.toLowerCase();
+            return blob.includes(q);
+          })
+        : allItems.slice();
+
+      sortFilteredInPlace();
+
+      if (!filteredItems.length) {
+        wordListEl.innerHTML = "";
+        emptyState.style.display = "block";
+        detailContent.style.display = "none";
+        metaVisibleEl.textContent = "0";
+        return;
+      }
+
+      if (selectedIndex >= filteredItems.length) {
+        selectedIndex = filteredItems.length - 1;
+      }
+
+      renderWordList();
+      renderDetail();
+      updateMetaChips();
+      syncActiveStates();
+    }
+
+    function sortFilteredInPlace() {
+      const mode = sortSelect.value;
+      if (mode === "alpha") {
+        filteredItems.sort((a, b) => a.word.localeCompare(b.word, undefined, { sensitivity: "base" }));
+      } else if (mode === "lengthSentence") {
+        filteredItems.sort((a, b) => b.sentenceWordCount - a.sentenceWordCount);
+      } else if (mode === "lengthWord") {
+        filteredItems.sort((a, b) => b.wordLength - a.wordLength);
+      } else if (mode === "original") {
+        filteredItems.sort((a, b) => a.originalIndex - b.originalIndex);
+      } else if (mode === "random") {
+        for (let i = filteredItems.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [filteredItems[i], filteredItems[j]] = [filteredItems[j], filteredItems[i]];
+        }
+      }
+    }
+
+    function updateMetaChips() {
+      const total = allItems.length;
+      const visible = filteredItems.length;
+      metaTotalEl.textContent = String(total);
+      metaVisibleEl.textContent = String(visible);
+
+      if (!total) {
+        metaSentenceLenEl.textContent = "–";
+        return;
+      }
+      const sum = allItems.reduce((acc, item) => acc + item.sentenceWordCount, 0);
+      const avg = sum / total;
+      metaSentenceLenEl.textContent = `${avg.toFixed(1)} words/sentence`;
+    }
+
+    function renderWordList() {
+      const prevScroll = wordListEl.scrollTop;
+      wordListEl.innerHTML = "";
+
+      filteredItems.forEach((item, idx) => {
+        const row = document.createElement("button");
+        row.type = "button";
+        row.className = "word-row";
+        const sentenceWords = item.sentenceWordCount;
+        const snippet = (item.definition || "").trim();
+        const maxSnippet = 120;
+        const clipped =
+          snippet.length > maxSnippet ? snippet.slice(0, maxSnippet - 1) + "…" : snippet;
+
+        row.innerHTML = `
+          <div class="word-row-main">
+            <span class="word-row-word">${escapeHTML(item.word)}</span>
+            <div class="word-row-meta">
+              <span class="pill">${sentenceWords} w</span>
+            </div>
+          </div>
+          <div class="word-row-snippet">${escapeHTML(clipped)}</div>
+        `;
+
+        row.addEventListener("click", () => {
+          selectedIndex = idx;
+          renderDetail();
+          syncActiveStates();
+          scrollSelectedIntoView();
+          scrollDetailIntoViewIfMobile();
+        });
+
+        wordListEl.appendChild(row);
+      });
+
+      wordListEl.scrollTop = prevScroll;
+    }
+
+    function renderDetail() {
+      // No data at all
+      if (!filteredItems.length) {
+        emptyState.style.display = "block";
+        detailContent.style.display = "none";
+        return;
+      }
+    
+      // We have words, but the user hasn't picked one yet
+      if (selectedIndex < 0 || selectedIndex >= filteredItems.length) {
+        emptyState.style.display = "block";
+        detailContent.style.display = "none";
+        emptyState.innerHTML = `
+          <strong>Tap a word to open it.</strong>
+          <span>
+            Use the <span class="badge">Lexicon Rail</span> above to pick a word;
+            its definition and example sentence will show here.
+          </span>
+          <span>
+            You can also use <span class="badge">↑</span>/<span class="badge">↓</span>
+            or the <span class="badge">Random word</span> button to jump around.
+          </span>
+        `;
+        return;
+      }
+    
+      // Normal detail rendering once a word is selected
+      emptyState.style.display = "none";
+      detailContent.style.display = "block";
+    
+      const item = filteredItems[selectedIndex];
+      const total = filteredItems.length;
+    
+      detailWordEl.innerHTML = `
+        ${escapeHTML(item.word)}
+        <span class="detail-word-tag">${item.wordLength} letters</span>
+      `;
+      detailDefinitionEl.textContent = item.definition || "";
+      detailSentenceEl.textContent   = item.sentence  || "";
+    
+      detailMetricSentenceEl.textContent =
+        `Sentence: ${item.sentenceWordCount} word${item.sentenceWordCount === 1 ? "" : "s"}`;
+      detailMetricWordLenEl.textContent = `Word length: ${item.wordLength}`;
+    
+      const globalIndex = item.originalIndex + 1;
+      detailMetricIndexEl.textContent =
+        `Index: ${globalIndex} · View ${selectedIndex + 1} / ${total}`;
+    }
+
+    function syncActiveStates() {
+      const rows = wordListEl.querySelectorAll(".word-row");
+      rows.forEach((row, idx) => {
+        row.classList.toggle("active", idx === selectedIndex);
+      });
+    }
+
+    function scrollSelectedIntoView() {
+      const activeRow = wordListEl.querySelector(".word-row.active");
+      if (activeRow) {
+        activeRow.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      }
+    }
+
+    function scrollDetailIntoViewIfMobile() {
+      if (window.innerWidth <= 900) {
+        const detailSection = document.querySelector(".detail-chart");
+        if (detailSection) {
+          detailSection.scrollIntoView({
+            behavior: "smooth",
+            block: "start"
+          });
+        }
+      }
+    }
+
+    function goRelative(delta) {
+      if (!filteredItems.length) return;
+      selectedIndex = (selectedIndex + delta + filteredItems.length) % filteredItems.length;
+      renderDetail();
+      syncActiveStates();
+      scrollSelectedIntoView();
+      scrollDetailIntoViewIfMobile();
+    }
+
+    function goRandom() {
+      if (!filteredItems.length) return;
+      selectedIndex = Math.floor(Math.random() * filteredItems.length);
+      renderDetail();
+      syncActiveStates();
+      scrollSelectedIntoView();
+      scrollDetailIntoViewIfMobile();
+    }
+
+    async function fetchCsvFromUrl(url) {
+      if (!url) return;
+      try {
+        const res = await fetch(url);
+        if (!res.ok) {
+          throw new Error("HTTP " + res.status);
+        }
+        const text = await res.text();
+        ingestFromCsvText(text, `URL: ${url}`);
+      } catch (err) {
+        console.error(err);
+        alert("Unable to fetch CSV from:\n" + url + "\n\nCheck the path / CORS / hosting.");
+      }
+    }
+
+    function openQuizOnCurrent() {
+      if (!filteredItems.length) return;
+      const item = filteredItems[selectedIndex];
+      startQuiz(item);
+    }
+
+    function startQuiz(targetItem) {
+      if (!allItems.length) return;
+      const othersPool = allItems.filter(
+        it => it.word !== targetItem.word || it.sentence !== targetItem.sentence
+      );
+      const distractors = [];
+      const maxDistractors = Math.min(3, othersPool.length);
+      const usedIndexes = new Set();
+
+      while (distractors.length < maxDistractors) {
+        const idx = Math.floor(Math.random() * othersPool.length);
+        if (usedIndexes.has(idx)) continue;
+        usedIndexes.add(idx);
+        distractors.push(othersPool[idx]);
+      }
+
+      const options = [targetItem, ...distractors];
+
+      for (let i = options.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [options[i], options[j]] = [options[j], options[i]];
+      }
+
+      quizQuestionEl.innerHTML = `
+        Which definition belongs to
+        <span class="accent">${escapeHTML(targetItem.word)}</span>?
+      `;
+      quizChoicesEl.innerHTML = "";
+
+      options.forEach(option => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "choice-chip";
+        btn.innerHTML = escapeHTML(option.definition || "");
+        btn.addEventListener("click", () => {
+          handleQuizAnswer(targetItem, option, btn);
+        });
+        quizChoicesEl.appendChild(btn);
+      });
+
+      quizOverlay.classList.add("visible");
+    }
+
+    function handleQuizAnswer(targetItem, chosenItem, clickedBtn) {
+      const correct = targetItem.word === chosenItem.word &&
+        (targetItem.definition || "") === (chosenItem.definition || "");
+
+      const buttons = quizChoicesEl.querySelectorAll(".choice-chip");
+      buttons.forEach(btn => {
+        btn.disabled = true;
+        const isThisCorrect =
+          btn.innerHTML === escapeHTML(targetItem.definition || "");
+        if (isThisCorrect) {
+          btn.classList.add("correct");
+        }
+      });
+
+      if (!correct) {
+        clickedBtn.classList.add("incorrect");
+      }
+    }
+
+    function closeQuizOverlay() {
+      quizOverlay.classList.remove("visible");
+    }
+
+    function wireEvents() {
+      searchInput.addEventListener("input", () => {
+        if (!allItems.length) return;
+        applyFiltersAndRender();
+      });
+
+      sortSelect.addEventListener("change", () => {
+        if (!allItems.length) return;
+        applyFiltersAndRender();
+      });
+
+      themeToggle.addEventListener("change", () => {
+        document.body.classList.toggle("light", !themeToggle.checked);
+      });
+
+      prevBtn.addEventListener("click", () => goRelative(-1));
+      nextBtn.addEventListener("click", () => goRelative(1));
+      randomBtn.addEventListener("click", () => goRandom());
+      quizBtn.addEventListener("click", () => openQuizOnCurrent());
+
+      quizCloseBtn.addEventListener("click", () => closeQuizOverlay());
+      quizAnotherBtn.addEventListener("click", () => {
+        goRandom();
+        const current = filteredItems[selectedIndex];
+        startQuiz(current);
+      });
+
+      quizOverlay.addEventListener("click", e => {
+        if (e.target === quizOverlay) closeQuizOverlay();
+      });
+
+      document.addEventListener("keydown", e => {
+        if (e.key === "Escape") {
+          if (quizOverlay.classList.contains("visible")) {
+            closeQuizOverlay();
+          }
+        } else if ((e.key === "k" || e.key === "K") && (e.metaKey || e.ctrlKey)) {
+          e.preventDefault();
+          searchInput.focus();
+          searchInput.select();
+        } else if (e.key === "ArrowDown") {
+          e.preventDefault();
+          goRelative(1);
+        } else if (e.key === "ArrowUp") {
+          e.preventDefault();
+          goRelative(-1);
+        } else if (e.key === "q" || e.key === "Q") {
+          e.preventDefault();
+          if (quizOverlay.classList.contains("visible")) {
+            closeQuizOverlay();
+          } else {
+            openQuizOnCurrent();
+          }
+        }
+      });
+    }
+
+    function bootstrap() {
+      wireEvents();
+      if (AUTO_LOAD_URL) {
+        fetchCsvFromUrl(AUTO_LOAD_URL).catch(() => {
+          // Ignore auto-load failures; user can still upload or adjust path.
+        });
+      }
+    }
+
+    bootstrap();
+  </script>
+</body>
+</html>

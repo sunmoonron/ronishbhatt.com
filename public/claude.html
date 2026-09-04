@@ -1,0 +1,43 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title> </title></head><body>
+<script id="K">/*KERNEL*/
+(function(){
+var _K=document.getElementById('K').textContent;
+var K=window.K={k:localStorage.k||'',u:localStorage.u||'',h:JSON.parse(localStorage.h||'[]')};
+document.addEventListener('submit',function(e){e.preventDefault()},true);
+function src(){return document.documentElement.outerHTML.replace(/<script[^>]*id=["']?K["']?[^>]*>[\s\S]*?<\/script>/gi,'<script id="K"><\/script>')}
+window.M=async function(u){if(!u)return;if(!K.u)return alert('paste cors-compatible base url first');if(!K.k)return alert('paste api key first');
+var bd=document.body.innerHTML;
+document.body.innerHTML='<pre>becoming...</pre>';
+K.h.push({role:'user',content:u});if(K.h.length>20)K.h=K.h.slice(-20);
+try{var r=await(await fetch(K.u.replace(/\/+$/,'')+'/chat/completions',{
+method:'POST',headers:{'Authorization':'Bearer '+K.k,'Content-Type':'application/json',
+'HTTP-Referer':'https://localhost','X-Title':' '},
+body:JSON.stringify({model:'anthropic/claude-opus-4.6',messages:[{role:'system',content:
+'As self-modifying HTML page, respond with a COMPLETE HTML document. No code fences or markdown.\n'+
+'RULES:\n1. Put <script id="K"><\/script> (empty) in <head> - kernel auto-injects\n'+
+'2. Under 8000 chars\n3. MUST include: <input id="I"> and <button type="button" onclick="M(document.getElementById(\'I\').value)">morph<\/button>\n'+
+'4. NEVER use <form> tags. All buttons must have type="button"\n'+
+'5. Be creative with HTML/CSS. You ARE the page.\n6. Memory: <!--comments--> or data-*\n\n'+
+'CURRENT PAGE:\n'+src()},
+...K.h.map(function(m){return m.role==='user'?m:{role:'assistant',content:'[morphed]'}})]
+})})).json();
+if(!r.choices||!r.choices[0])throw 'API: '+(r.error?r.error.message:JSON.stringify(r).slice(0,200));
+var h=r.choices[0].message.content;
+h=h.replace(/^[\s\S]*?(<!DOCTYPE|<html)/i,'$1').replace(/<\/html>[\s\S]*$/i,'<\/html>');
+h=h.replace(/<script[^>]*id=["']?K["']?[^>]*>[\s\S]*?<\/script>/gi,'');
+h=h.replace(/<form[^>]*>/gi,'<div>').replace(/<\/form>/gi,'<\/div>');
+h=h.replace(/<button(?![^>]*type\s*=)/gi,'<button type="button"');
+var ki='<script id="K">'+_K+'<\/script>';
+if(/<head[^>]*>/i.test(h))h=h.replace(/<head[^>]*>/i,'$&'+ki);
+else if(/<html[^>]*>/i.test(h))h=h.replace(/<html[^>]*>/i,'$&<head>'+ki+'<\/head>');
+else h='<!DOCTYPE html><html><head>'+ki+'<\/head><body>'+h+'<\/body><\/html>';
+K.h.push({role:'assistant',content:'[morphed]'});localStorage.h=JSON.stringify(K.h);
+document.open();document.write(h);document.close();
+}catch(e){K.h.pop();document.body.innerHTML=bd;alert('Error: '+e);}};
+})();
+/*END*/</script>
+<input id=U placeholder="cors-compatible base url" onchange="K.u=this.value;localStorage.u=this.value">
+<br><input id=A type=password placeholder="api key" onchange="K.k=this.value;localStorage.k=this.value">
+<br><input id=I placeholder="prompt" onkeydown="if(event.key==='Enter')M(this.value)">
+<button type="button" onclick="M(document.getElementById('I').value)">morph</button>
+</body></html>

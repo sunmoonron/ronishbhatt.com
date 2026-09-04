@@ -1,0 +1,1119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Alphabetic Holonomy Atlas</title>
+  <meta name="description" content="A standalone demonstration of language as a geometric encoding system with backward-compatible alphabetic text.">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f7f4ec;
+      --ink: #18211f;
+      --muted: #5e6864;
+      --line: #c9c2b4;
+      --panel: #fffaf0;
+      --panel-strong: #e9f3ef;
+      --teal: #16766d;
+      --teal-dark: #0e514b;
+      --gold: #d99b23;
+      --red: #bf4f48;
+      --plum: #72518a;
+      --blue: #2f6f9f;
+      --green: #3e7c4f;
+      --shadow: 0 20px 54px rgba(31, 42, 37, 0.14);
+      --radius: 8px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background:
+        linear-gradient(90deg, rgba(22, 118, 109, 0.08) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(22, 118, 109, 0.07) 1px, transparent 1px),
+        var(--paper);
+      background-size: 32px 32px;
+      color: var(--ink);
+    }
+
+    body {
+      min-height: 100vh;
+    }
+
+    button,
+    textarea,
+    input {
+      font: inherit;
+    }
+
+    a {
+      color: var(--teal-dark);
+      text-decoration-thickness: 1px;
+      text-underline-offset: 3px;
+    }
+
+    .app {
+      width: min(1440px, calc(100% - 28px));
+      margin: 18px auto 28px;
+      display: grid;
+      grid-template-columns: minmax(280px, 0.86fr) minmax(440px, 1.4fr) minmax(290px, 0.9fr);
+      gap: 14px;
+      align-items: stretch;
+    }
+
+    .topbar {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 14px;
+      align-items: end;
+      padding: 14px 0 2px;
+      border-bottom: 2px solid rgba(24, 33, 31, 0.12);
+    }
+
+    .title h1 {
+      margin: 0;
+      font-size: clamp(2rem, 5vw, 5.5rem);
+      line-height: 0.9;
+      letter-spacing: 0;
+      max-width: 980px;
+    }
+
+    .title p {
+      margin: 12px 0 0;
+      max-width: 820px;
+      color: var(--muted);
+      font-size: clamp(1rem, 1.2vw, 1.18rem);
+      line-height: 1.55;
+    }
+
+    .stamp {
+      justify-self: end;
+      border: 2px solid var(--ink);
+      padding: 10px 12px;
+      text-align: right;
+      background: rgba(255, 250, 240, 0.76);
+      min-width: 180px;
+      box-shadow: 5px 5px 0 rgba(22, 118, 109, 0.15);
+    }
+
+    .stamp strong,
+    .stamp span {
+      display: block;
+    }
+
+    .stamp strong {
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .stamp span {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    .surface {
+      background: rgba(255, 250, 240, 0.82);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      border-radius: var(--radius);
+      min-width: 0;
+    }
+
+    .editor,
+    .lab,
+    .notes {
+      min-height: 720px;
+    }
+
+    .section-head {
+      padding: 14px 14px 10px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .section-head h2 {
+      margin: 0;
+      font-size: 1rem;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .pill {
+      border: 1px solid rgba(24, 33, 31, 0.22);
+      color: var(--teal-dark);
+      background: rgba(233, 243, 239, 0.68);
+      border-radius: 999px;
+      padding: 5px 9px;
+      font-size: 0.75rem;
+      white-space: nowrap;
+    }
+
+    .editor-body {
+      padding: 14px;
+      display: grid;
+      gap: 14px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 220px;
+      resize: vertical;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 12px;
+      background: #fffdf8;
+      color: var(--ink);
+      line-height: 1.5;
+      outline: none;
+    }
+
+    textarea:focus,
+    input[type="range"]:focus-visible,
+    button:focus-visible {
+      outline: 3px solid rgba(22, 118, 109, 0.24);
+      outline-offset: 2px;
+    }
+
+    .controls {
+      display: grid;
+      gap: 12px;
+    }
+
+    .control {
+      display: grid;
+      grid-template-columns: 80px minmax(0, 1fr) 46px;
+      gap: 8px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--teal);
+    }
+
+    .buttons {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    button {
+      border: 1px solid rgba(24, 33, 31, 0.24);
+      border-radius: var(--radius);
+      background: #fefaf0;
+      color: var(--ink);
+      min-height: 42px;
+      cursor: pointer;
+      transition: transform 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      border-color: var(--teal);
+      background: var(--panel-strong);
+    }
+
+    .button-primary {
+      background: var(--teal);
+      color: white;
+      border-color: var(--teal-dark);
+    }
+
+    .button-primary:hover {
+      background: var(--teal-dark);
+      color: white;
+    }
+
+    .carrier {
+      display: grid;
+      gap: 8px;
+    }
+
+    .carrier h3,
+    .mini h3,
+    .notes h3 {
+      margin: 0;
+      font-size: 0.86rem;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--muted);
+    }
+
+    .carrier-box {
+      border: 1px dashed rgba(24, 33, 31, 0.28);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.5);
+      padding: 10px;
+      min-height: 94px;
+      overflow-wrap: anywhere;
+      line-height: 1.45;
+    }
+
+    .legend {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      font-size: 0.84rem;
+    }
+
+    .legend span {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+    }
+
+    .swatch {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 1px solid rgba(24, 33, 31, 0.2);
+      flex: 0 0 auto;
+    }
+
+    .lab {
+      display: grid;
+      grid-template-rows: auto minmax(420px, 1fr) auto;
+    }
+
+    .canvas-wrap {
+      position: relative;
+      min-height: 480px;
+      border-bottom: 1px solid var(--line);
+      background:
+        linear-gradient(90deg, rgba(24, 33, 31, 0.06) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(24, 33, 31, 0.05) 1px, transparent 1px),
+        radial-gradient(circle at 18% 14%, rgba(217, 155, 35, 0.16), transparent 28%),
+        radial-gradient(circle at 86% 82%, rgba(191, 79, 72, 0.11), transparent 26%),
+        #fdfbf5;
+      background-size: 24px 24px, 24px 24px, auto, auto, auto;
+      overflow: hidden;
+    }
+
+    #atlas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      min-height: 480px;
+    }
+
+    .float-readout {
+      position: absolute;
+      left: 12px;
+      bottom: 12px;
+      right: 12px;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .metric {
+      background: rgba(255, 250, 240, 0.88);
+      border: 1px solid rgba(24, 33, 31, 0.14);
+      border-radius: var(--radius);
+      padding: 8px;
+      min-width: 0;
+    }
+
+    .metric span,
+    .metric strong {
+      display: block;
+    }
+
+    .metric span {
+      color: var(--muted);
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .metric strong {
+      margin-top: 3px;
+      font-size: clamp(1rem, 1.8vw, 1.35rem);
+      line-height: 1.05;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .lab-foot {
+      padding: 12px 14px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .barcode {
+      min-height: 40px;
+      display: grid;
+      grid-template-columns: repeat(48, minmax(2px, 1fr));
+      gap: 2px;
+      align-items: end;
+      overflow: hidden;
+    }
+
+    .bar {
+      min-height: 7px;
+      border-radius: 2px 2px 0 0;
+      background: var(--teal);
+    }
+
+    .signature {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 0.82rem;
+      color: var(--muted);
+      text-align: right;
+      max-width: 230px;
+      overflow-wrap: anywhere;
+    }
+
+    .notes {
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    .note-scroll {
+      overflow: auto;
+      padding: 14px;
+      display: grid;
+      gap: 14px;
+      align-content: start;
+    }
+
+    .claim {
+      background: #1f2c28;
+      color: #fffaf0;
+      border-radius: var(--radius);
+      padding: 14px;
+      box-shadow: 5px 5px 0 rgba(217, 155, 35, 0.26);
+      line-height: 1.45;
+    }
+
+    .claim strong {
+      color: #f8cc73;
+    }
+
+    .mini {
+      border-top: 1px solid var(--line);
+      padding-top: 12px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .mini:first-child {
+      border-top: 0;
+      padding-top: 0;
+    }
+
+    .mini p,
+    .mini li {
+      color: var(--muted);
+      line-height: 1.5;
+      font-size: 0.94rem;
+    }
+
+    .mini p {
+      margin: 0;
+    }
+
+    .mini ul,
+    .mini ol {
+      margin: 0;
+      padding-left: 1.15rem;
+      display: grid;
+      gap: 8px;
+    }
+
+    .formula {
+      background: rgba(233, 243, 239, 0.75);
+      border: 1px solid rgba(22, 118, 109, 0.18);
+      border-radius: var(--radius);
+      padding: 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 0.82rem;
+      color: #24403c;
+      overflow-x: auto;
+    }
+
+    .complexity {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+
+    .complexity th,
+    .complexity td {
+      text-align: left;
+      border-top: 1px solid var(--line);
+      padding: 8px 6px;
+      vertical-align: top;
+    }
+
+    .complexity th {
+      color: var(--ink);
+      font-weight: 700;
+    }
+
+    .complexity td {
+      color: var(--muted);
+    }
+
+    .tokens {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .token {
+      border: 1px solid rgba(24, 33, 31, 0.16);
+      border-radius: 999px;
+      padding: 5px 8px;
+      background: rgba(255, 255, 255, 0.5);
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+
+    .sources {
+      display: grid;
+      gap: 8px;
+      font-size: 0.86rem;
+    }
+
+    .sources a {
+      display: block;
+      line-height: 1.35;
+    }
+
+    @media (max-width: 1100px) {
+      .app {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      }
+
+      .lab {
+        grid-column: 1 / -1;
+        order: 2;
+      }
+
+      .editor {
+        order: 3;
+      }
+
+      .notes {
+        order: 4;
+      }
+
+      .topbar {
+        order: 1;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .app {
+        width: min(100% - 18px, 720px);
+        grid-template-columns: 1fr;
+        margin-top: 8px;
+      }
+
+      .topbar {
+        grid-template-columns: 1fr;
+      }
+
+      .stamp {
+        justify-self: start;
+        text-align: left;
+      }
+
+      .editor,
+      .lab,
+      .notes {
+        min-height: auto;
+      }
+
+      .float-readout {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .lab-foot {
+        grid-template-columns: 1fr;
+      }
+
+      .signature {
+        text-align: left;
+        max-width: none;
+      }
+
+      .buttons,
+      .legend {
+        grid-template-columns: 1fr;
+      }
+
+      .control {
+        grid-template-columns: 72px minmax(0, 1fr) 38px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="title">
+        <h1>Alphabetic Holonomy Atlas</h1>
+        <p>Plain writing stays plain. Underneath, each character is also a small geometric operator. A sentence becomes a path with curvature, area, endpoint, and a compact signature.</p>
+      </div>
+      <div class="stamp" aria-label="proposal status">
+        <strong>April 25, 2026</strong>
+        <span>Novel proposal, not prior-art proof</span>
+      </div>
+    </header>
+
+    <section class="surface editor" aria-label="text carrier and controls">
+      <div class="section-head">
+        <h2>Alphabet Carrier</h2>
+        <span class="pill">backward-compatible</span>
+      </div>
+      <div class="editor-body">
+        <textarea id="textInput" spellcheck="false">Language is not a ladder of grammar. It is a walk through a field: letters tilt the compass, vowels bend the road, punctuation folds the paper, and meaning leaves a track.</textarea>
+
+        <div class="controls" aria-label="geometry controls">
+          <label class="control">
+            <span>twist</span>
+            <input id="twist" type="range" min="0" max="200" value="92">
+            <output id="twistOut">0.92</output>
+          </label>
+          <label class="control">
+            <span>memory</span>
+            <input id="memory" type="range" min="0" max="160" value="54">
+            <output id="memoryOut">0.54</output>
+          </label>
+          <label class="control">
+            <span>fold</span>
+            <input id="fold" type="range" min="0" max="160" value="80">
+            <output id="foldOut">0.80</output>
+          </label>
+        </div>
+
+        <div class="buttons">
+          <button class="button-primary" id="encodeBtn" type="button">encode</button>
+          <button id="seedBtn" type="button">new sample</button>
+          <button id="clearBtn" type="button">clear</button>
+        </div>
+
+        <div class="carrier">
+          <h3>Exact payload</h3>
+          <div class="carrier-box" id="carrierBox"></div>
+        </div>
+
+        <div class="legend" aria-label="path legend">
+          <span><i class="swatch" style="background: var(--teal);"></i>letters translate</span>
+          <span><i class="swatch" style="background: var(--gold);"></i>vowels curve</span>
+          <span><i class="swatch" style="background: var(--red);"></i>punctuation folds</span>
+          <span><i class="swatch" style="background: var(--plum);"></i>spaces lift strands</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="surface lab" aria-label="geometric language atlas">
+      <div class="section-head">
+        <h2>Geometric Sidecar</h2>
+        <span class="pill">streaming O(n)</span>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="atlas"></canvas>
+        <div class="float-readout" aria-label="metrics">
+          <div class="metric"><span>chars</span><strong id="charsMetric">0</strong></div>
+          <div class="metric"><span>arc length</span><strong id="lengthMetric">0</strong></div>
+          <div class="metric"><span>signed area</span><strong id="areaMetric">0</strong></div>
+          <div class="metric"><span>curvature</span><strong id="curvMetric">0</strong></div>
+        </div>
+      </div>
+      <div class="lab-foot">
+        <div class="barcode" id="barcode" aria-label="signature bars"></div>
+        <div class="signature" id="signature">AHA1:empty</div>
+      </div>
+    </section>
+
+    <aside class="surface notes" aria-label="concept notes">
+      <div class="section-head">
+        <h2>Why It Is Different</h2>
+        <span class="pill">not grammar</span>
+      </div>
+      <div class="note-scroll">
+        <div class="claim">
+          <strong>Example:</strong> the word order is a non-commutative walk. "tone" and "note" use the same letters but arrive with different endpoint, area, and accumulated turn. The alphabet remains readable, while the sidecar carries geometry.
+        </div>
+
+        <section class="mini">
+          <h3>Encoding rule</h3>
+          <div class="formula">state = (x, y, theta, mass)
+letter c -> T_c(state)
+word/sentence -> T_n ... T_2 T_1(state)
+signature -> hash(endpoint, area, turn, spectrum)</div>
+          <p>Letters are not tokens to parse. They are local transforms. Vowels inject curvature, consonants translate, punctuation reflects or rotates the frame, and spaces raise the next strand without deleting the old one.</p>
+        </section>
+
+        <section class="mini">
+          <h3>Actual uses</h3>
+          <ul>
+            <li>Fast prefilter for search: reject distant text before paying for embeddings.</li>
+            <li>Prompt linting: high fold density marks conflicting instruction geometry.</li>
+            <li>Human-readable checksums: preserve the exact text and attach a visual signature.</li>
+            <li>Education: make cadence, repetition, and revision visible without grammar labels.</li>
+            <li>Model analysis: compare a model embedding path against a deterministic alphabet path.</li>
+          </ul>
+        </section>
+
+        <section class="mini">
+          <h3>Complexity</h3>
+          <table class="complexity">
+            <thead>
+              <tr><th>Task</th><th>Time</th><th>Space</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>stream encode n chars</td><td>O(n)</td><td>O(1)</td></tr>
+              <tr><td>draw retained path</td><td>O(n)</td><td>O(n)</td></tr>
+              <tr><td>fixed signature compare</td><td>O(1)</td><td>O(1)</td></tr>
+              <tr><td>windowed search index</td><td>O(n)</td><td>O(n / w)</td></tr>
+              <tr><td>naive exact path distance</td><td>O(nm)</td><td>O(min(n,m))</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="mini">
+          <h3>Research boundary</h3>
+          <p>Recent work maps language-model geometry in learned spaces: token topology, shared embedding manifolds, concept polytopes, hyperbolic token structure, representation phases, and reasoning flows. This page moves the geometric layer below the model, down to the alphabet itself.</p>
+          <div class="sources">
+            <a href="https://arxiv.org/abs/2503.15421">Robinson, Dey, Kushner: token topology via structured prompts</a>
+            <a href="https://arxiv.org/abs/2503.21073">Lee, Weber, Viegas, Wattenberg: shared global and local embedding geometry</a>
+            <a href="https://arxiv.org/abs/2406.01506">Park, Choe, Jiang, Veitch: categorical concepts as polytopes</a>
+            <a href="https://arxiv.org/abs/2410.04010">Yang et al.: hyperbolic fine-tuning for LLMs</a>
+            <a href="https://arxiv.org/abs/2509.23024">Li et al.: representation geometry phases in LMs</a>
+            <a href="https://arxiv.org/abs/2510.09782">Zhou et al.: reasoning as flows in representation space</a>
+          </div>
+        </section>
+
+        <section class="mini">
+          <h3>Sidecar fields</h3>
+          <div class="tokens" id="tokenFields"></div>
+        </section>
+      </div>
+    </aside>
+  </main>
+
+  <script>
+    const alphabet = "abcdefghijklmnopqrstuvwxyz";
+    const vowels = new Set(["a", "e", "i", "o", "u"]);
+    const punct = new Set([".", ",", ";", ":", "!", "?", "-", "(", ")", "[", "]", "{", "}", "\"", "'"]);
+    const samples = [
+      "A word is a compass that remembers every turn.",
+      "The alphabet is a public road; geometry is the private weather above it.",
+      "To edit is to pull a curve until the sentence stops fighting itself.",
+      "If grammar is a ladder, holonomy is the shadow of climbing it.",
+      "Letters are old machines: each one moves, twists, and leaves residue."
+    ];
+
+    const els = {
+      input: document.getElementById("textInput"),
+      canvas: document.getElementById("atlas"),
+      twist: document.getElementById("twist"),
+      memory: document.getElementById("memory"),
+      fold: document.getElementById("fold"),
+      twistOut: document.getElementById("twistOut"),
+      memoryOut: document.getElementById("memoryOut"),
+      foldOut: document.getElementById("foldOut"),
+      carrier: document.getElementById("carrierBox"),
+      chars: document.getElementById("charsMetric"),
+      length: document.getElementById("lengthMetric"),
+      area: document.getElementById("areaMetric"),
+      curv: document.getElementById("curvMetric"),
+      signature: document.getElementById("signature"),
+      barcode: document.getElementById("barcode"),
+      tokenFields: document.getElementById("tokenFields"),
+      encode: document.getElementById("encodeBtn"),
+      seed: document.getElementById("seedBtn"),
+      clear: document.getElementById("clearBtn")
+    };
+
+    const ctx = els.canvas.getContext("2d");
+    let lastModel = null;
+
+    function opts() {
+      return {
+        twist: Number(els.twist.value) / 100,
+        memory: Number(els.memory.value) / 100,
+        fold: Number(els.fold.value) / 100
+      };
+    }
+
+    function escapeText(text) {
+      return text.replace(/[&<>"']/g, (ch) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "\"": "&quot;",
+        "'": "&#39;"
+      })[ch]);
+    }
+
+    function classify(ch) {
+      const lower = ch.toLowerCase();
+      if (alphabet.includes(lower)) return vowels.has(lower) ? "vowel" : "letter";
+      if (ch === " " || ch === "\n" || ch === "\t") return "space";
+      if (punct.has(ch)) return "punct";
+      if (/\d/.test(ch)) return "digit";
+      return "symbol";
+    }
+
+    function charAngle(ch) {
+      const lower = ch.toLowerCase();
+      const idx = alphabet.indexOf(lower);
+      if (idx >= 0) return (idx / 26) * Math.PI * 2;
+      const code = ch.codePointAt(0) || 0;
+      const mixed = (code * 2654435761) >>> 0;
+      return (mixed % 4096) / 4096 * Math.PI * 2;
+    }
+
+    function encode(text, options) {
+      let x = 0;
+      let y = 0;
+      let theta = -Math.PI / 2;
+      let mass = 1;
+      let area = 0;
+      let length = 0;
+      let curvature = 0;
+      let centroidX = 0;
+      let centroidY = 0;
+      const points = [{ x, y, theta, ch: "", kind: "start", i: 0 }];
+      const bins = new Array(48).fill(0);
+      const counts = { vowel: 0, letter: 0, space: 0, punct: 0, digit: 0, symbol: 0 };
+
+      Array.from(text).forEach((ch, i) => {
+        const kind = classify(ch);
+        counts[kind] += 1;
+        const angle = charAngle(ch);
+        const code = ch.codePointAt(0) || 0;
+        const previous = { x, y, theta };
+        const alpha = i + 1;
+        const memoryPull = options.memory * Math.sin((centroidX - x) * 0.004 + (centroidY - y) * 0.003);
+
+        if (kind === "space") {
+          theta += (0.16 + (alpha % 3) * 0.015) * options.fold;
+          x += Math.cos(theta + Math.PI / 2) * 6;
+          y += Math.sin(theta + Math.PI / 2) * 6;
+          mass *= 0.992;
+        } else if (kind === "punct") {
+          const flip = (code % 2 === 0 ? 1 : -1);
+          theta += flip * (0.52 + (code % 7) * 0.035) * options.fold;
+          x += Math.cos(theta) * 9;
+          y += Math.sin(theta) * 9;
+          mass += 0.05;
+        } else {
+          const lower = ch.toLowerCase();
+          const idx = alphabet.indexOf(lower);
+          const alphabetic = idx >= 0 ? idx : (code % 26);
+          const vowelBoost = kind === "vowel" ? 1.42 : 1;
+          const digitBoost = kind === "digit" ? 0.78 : 1;
+          const step = (8.5 + (alphabetic % 7) * 1.6) * vowelBoost * digitBoost;
+          const turn = (
+            Math.sin(angle * 2 + alpha * 0.11) * 0.17 +
+            Math.cos(angle * 5 - alpha * 0.07) * 0.06 +
+            (kind === "vowel" ? 0.115 : -0.028) +
+            memoryPull * 0.16
+          ) * options.twist;
+          theta += turn;
+          x += Math.cos(theta + angle * 0.18) * step * mass;
+          y += Math.sin(theta + angle * 0.18) * step * mass;
+          mass = Math.min(1.36, mass + (kind === "vowel" ? 0.012 : 0.005));
+          curvature += Math.abs(turn);
+        }
+
+        const dx = x - previous.x;
+        const dy = y - previous.y;
+        length += Math.hypot(dx, dy);
+        area += previous.x * y - x * previous.y;
+        centroidX += (x - centroidX) / (alpha + 1);
+        centroidY += (y - centroidY) / (alpha + 1);
+
+        const binIndex = Math.abs(Math.floor((theta + angle) * 997 + alpha * 13)) % bins.length;
+        bins[binIndex] += Math.hypot(dx, dy) * (kind === "punct" ? 1.7 : 1);
+        points.push({ x, y, theta, ch, kind, i: alpha });
+      });
+
+      const signedArea = area / 2;
+      const endpoint = Math.hypot(x, y);
+      const normalized = bins.map((v) => Math.round(v));
+      const signature = makeSignature({
+        endpoint,
+        signedArea,
+        curvature,
+        length,
+        counts,
+        bins: normalized
+      });
+
+      return {
+        points,
+        counts,
+        bins: normalized,
+        signature,
+        metrics: {
+          chars: Array.from(text).length,
+          length,
+          signedArea,
+          curvature,
+          endpoint
+        }
+      };
+    }
+
+    function makeSignature(model) {
+      const mix = [
+        Math.round(model.endpoint),
+        Math.round(model.signedArea),
+        Math.round(model.curvature * 100),
+        Math.round(model.length),
+        model.counts.vowel,
+        model.counts.letter,
+        model.counts.space,
+        model.counts.punct
+      ].concat(model.bins.filter((_, i) => i % 5 === 0).slice(0, 8));
+
+      let h = 2166136261;
+      mix.forEach((n) => {
+        h ^= n & 255;
+        h = Math.imul(h, 16777619);
+        h ^= (n >>> 8) & 255;
+        h = Math.imul(h, 16777619);
+      });
+      return "AHA1:" + (h >>> 0).toString(36).padStart(7, "0");
+    }
+
+    function fitBounds(points, width, height) {
+      const xs = points.map((p) => p.x);
+      const ys = points.map((p) => p.y);
+      let minX = Math.min(...xs);
+      let maxX = Math.max(...xs);
+      let minY = Math.min(...ys);
+      let maxY = Math.max(...ys);
+      if (minX === maxX) {
+        minX -= 10;
+        maxX += 10;
+      }
+      if (minY === maxY) {
+        minY -= 10;
+        maxY += 10;
+      }
+      const pad = 56;
+      const scale = Math.min((width - pad * 2) / (maxX - minX), (height - pad * 2) / (maxY - minY));
+      const offsetX = (width - (minX + maxX) * scale) / 2;
+      const offsetY = (height - (minY + maxY) * scale) / 2;
+      return (p) => ({
+        x: p.x * scale + offsetX,
+        y: p.y * scale + offsetY
+      });
+    }
+
+    function colorFor(kind) {
+      if (kind === "vowel") return "#d99b23";
+      if (kind === "punct") return "#bf4f48";
+      if (kind === "space") return "#72518a";
+      if (kind === "digit") return "#2f6f9f";
+      if (kind === "symbol") return "#3e7c4f";
+      return "#16766d";
+    }
+
+    function draw(model) {
+      const rect = els.canvas.getBoundingClientRect();
+      const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+      const width = Math.max(320, Math.floor(rect.width));
+      const height = Math.max(460, Math.floor(rect.height));
+      els.canvas.width = Math.floor(width * dpr);
+      els.canvas.height = Math.floor(height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, width, height);
+
+      ctx.fillStyle = "#fdfbf5";
+      ctx.fillRect(0, 0, width, height);
+      drawGrid(width, height);
+
+      if (model.points.length < 2) {
+        ctx.fillStyle = "#5e6864";
+        ctx.font = "16px system-ui, sans-serif";
+        ctx.fillText("type text to generate a path", 24, 42);
+        return;
+      }
+
+      const project = fitBounds(model.points, width, height);
+      const mapped = model.points.map(project);
+
+      ctx.lineWidth = 1.6;
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      for (let i = 1; i < mapped.length; i += 1) {
+        const p0 = mapped[i - 1];
+        const p1 = mapped[i];
+        const kind = model.points[i].kind;
+        ctx.strokeStyle = colorFor(kind);
+        ctx.globalAlpha = kind === "space" ? 0.38 : 0.88;
+        ctx.beginPath();
+        ctx.moveTo(p0.x, p0.y);
+        ctx.lineTo(p1.x, p1.y);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+
+      mapped.forEach((p, i) => {
+        if (i === 0) return;
+        const source = model.points[i];
+        if (source.kind === "space") return;
+        const r = source.kind === "punct" ? 4.8 : source.kind === "vowel" ? 4.2 : 2.8;
+        ctx.fillStyle = colorFor(source.kind);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      drawEndpoint(mapped[0], "#18211f", "start");
+      drawEndpoint(mapped[mapped.length - 1], "#bf4f48", "end");
+    }
+
+    function drawGrid(width, height) {
+      ctx.save();
+      ctx.strokeStyle = "rgba(24, 33, 31, 0.07)";
+      ctx.lineWidth = 1;
+      for (let x = 0; x < width; x += 24) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
+        ctx.stroke();
+      }
+      for (let y = 0; y < height; y += 24) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function drawEndpoint(p, color, label) {
+      ctx.save();
+      ctx.fillStyle = color;
+      ctx.strokeStyle = "#fffaf0";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = color;
+      ctx.font = "700 11px system-ui, sans-serif";
+      ctx.fillText(label, p.x + 12, p.y + 4);
+      ctx.restore();
+    }
+
+    function renderBarcode(bins) {
+      const max = Math.max(1, ...bins);
+      els.barcode.innerHTML = bins.map((v, i) => {
+        const height = 7 + Math.round((v / max) * 32);
+        const hue = i % 4 === 0 ? "var(--teal)" : i % 4 === 1 ? "var(--gold)" : i % 4 === 2 ? "var(--red)" : "var(--blue)";
+        return `<span class="bar" style="height:${height}px;background:${hue}"></span>`;
+      }).join("");
+    }
+
+    function renderFields(model) {
+      const fields = [
+        ["carrier", "UTF-8 text"],
+        ["endpoint", model.metrics.endpoint.toFixed(1)],
+        ["area", model.metrics.signedArea.toFixed(0)],
+        ["turn", model.metrics.curvature.toFixed(2)],
+        ["vowels", model.counts.vowel],
+        ["folds", model.counts.punct],
+        ["spaces", model.counts.space],
+        ["hash", model.signature]
+      ];
+      els.tokenFields.innerHTML = fields.map(([key, value]) => (
+        `<span class="token">${key}: ${escapeText(String(value))}</span>`
+      )).join("");
+    }
+
+    function formatNumber(value) {
+      if (!Number.isFinite(value)) return "0";
+      const abs = Math.abs(value);
+      if (abs >= 1000000) return (value / 1000000).toFixed(1) + "M";
+      if (abs >= 1000) return Math.round(value).toLocaleString();
+      return abs >= 10 ? value.toFixed(0) : value.toFixed(2);
+    }
+
+    function update() {
+      const options = opts();
+      els.twistOut.value = options.twist.toFixed(2);
+      els.memoryOut.value = options.memory.toFixed(2);
+      els.foldOut.value = options.fold.toFixed(2);
+      const text = els.input.value;
+      const model = encode(text, options);
+      lastModel = model;
+      els.carrier.innerHTML = text ? escapeText(text) : "<span style=\"color:var(--muted)\">empty carrier</span>";
+      els.chars.textContent = model.metrics.chars.toLocaleString();
+      els.length.textContent = formatNumber(model.metrics.length);
+      els.area.textContent = formatNumber(model.metrics.signedArea);
+      els.curv.textContent = formatNumber(model.metrics.curvature);
+      els.signature.textContent = model.signature;
+      renderBarcode(model.bins);
+      renderFields(model);
+      draw(model);
+    }
+
+    function debounce(fn, wait) {
+      let handle = 0;
+      return (...args) => {
+        window.clearTimeout(handle);
+        handle = window.setTimeout(() => fn(...args), wait);
+      };
+    }
+
+    const scheduleUpdate = debounce(update, 30);
+    els.input.addEventListener("input", scheduleUpdate);
+    [els.twist, els.memory, els.fold].forEach((el) => el.addEventListener("input", scheduleUpdate));
+    els.encode.addEventListener("click", update);
+    els.clear.addEventListener("click", () => {
+      els.input.value = "";
+      update();
+      els.input.focus();
+    });
+    els.seed.addEventListener("click", () => {
+      const current = els.input.value;
+      const next = samples.find((sample) => sample !== current) || samples[0];
+      const index = (samples.indexOf(current) + 1 + samples.length) % samples.length;
+      els.input.value = current && samples.includes(current) ? samples[index] : next;
+      update();
+    });
+
+    if ("ResizeObserver" in window) {
+      new ResizeObserver(() => {
+        if (lastModel) draw(lastModel);
+      }).observe(els.canvas);
+    } else {
+      window.addEventListener("resize", () => {
+        if (lastModel) draw(lastModel);
+      });
+    }
+
+    update();
+  </script>
+</body>
+</html>

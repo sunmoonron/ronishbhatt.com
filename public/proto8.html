@@ -1,0 +1,53 @@
+<!doctype html><meta charset=utf-8><meta name=viewport content=width=device-width>
+<title>THRONE</title>
+<style>
+body{background:#000;color:#b49b57;font:16px/1.6 Georgia,serif;max-width:40em;margin:8vh auto;padding:0 1em;text-align:center}
+#m{font-size:2.2em;min-height:1.5em;color:#f2e3bd;overflow-wrap:anywhere}
+input,textarea{background:#0b0b0b;color:inherit;border:1px solid #3a3220;font:inherit;width:100%;box-sizing:border-box;margin:.25em 0;padding:.4em}
+button{background:#1a1408;color:#e8cf8f;border:1px solid #6b5a2e;font:inherit;padding:.4em 2em;cursor:pointer;margin:.5em}
+small{color:#5d5338}#u{display:none}
+</style>
+<h1>⚔ THE THRONE ⚔</h1>
+<p id=m>…</p>
+<p id=d></p>
+<button onclick="u.style.display='block'">USURP</button>
+<div id=u>
+<input id=pk placeholder="your pubkey — 64 hex chars" maxlength=64>
+<input id=ms placeholder="your decree — ≤64 bytes, shown above for as long as you reign" maxlength=64>
+<button onclick=mine()>MINE / HALT</button>
+<p id=st></p>
+<textarea id=out rows=5 placeholder="your unsigned coup appears here — sign & publish with any tool you trust; this page will never touch a key"></textarea>
+</div>
+<p><small>rules: kind 7777 · tag t=throne · NIP-13 proof-of-work · must cite the id it dethrones (tag prev) and out-mine it by ≥1 bit · no accounts · no signer · physics is the moderator</small><br><small id=sz></small></p>
+<script>
+let K=7777,T='throne',E={},C=null,run=0,X=new TextEncoder(),
+S=async s=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',X.encode(s)))].map(b=>b.toString(16).padStart(2,'0')).join(''),
+Z=h=>{let n=0;for(let c of h){let v=parseInt(c,16);if(v){n+=Math.clz32(v)-28;break}n+=4}return n},
+G=(e,k)=>(e.tags.find(t=>t[0]==k)||[])[1],
+ok=e=>{let p=G(e,'prev');return p=='genesis'||(E[p]&&E[p].d<e.d&&ok(E[p]))},
+crown=_=>{C=Object.values(E).filter(ok).sort((a,b)=>b.d-a.d||(a.id<b.id?-1:1))[0]||null;
+m.textContent=C?C.content:'⟨ the throne is vacant ⟩';
+d.textContent=C?'reigning at '+C.d+' bits since '+new Date(C.created_at*1e3).toISOString().slice(0,10):'first coup needs 21 bits of proof-of-work'};
+['wss://relay.damus.io','wss://nos.lol','wss://relay.primal.net'].map(u=>{let w=new WebSocket(u);
+w.onopen=_=>w.send(JSON.stringify(['REQ','t',{kinds:[K],'#t':[T],limit:500}]));
+w.onmessage=async v=>{let[a,,e]=JSON.parse(v.data);
+if(a=='EOSE')return crown();
+if(a!='EVENT'||e.kind!=K||E[e.id]||X.encode(e.content).length>64||!G(e,'prev')||!G(e,'nonce'))return;
+if(e.id!=await S(JSON.stringify([0,e.pubkey,e.created_at,e.kind,e.tags,e.content])))return;
+e.d=Z(e.id);E[e.id]=e}});
+async function mine(){
+if(run)return run=0;
+let p=pk.value.trim(),g=ms.value,tgt=(C?C.d:20)+1,pr=C?C.id:'genesis';
+if(!/^[0-9a-f]{64}$/.test(p))return st.textContent='pubkey must be 64 lowercase hex chars';
+if(X.encode(g).length>64)return st.textContent='decree exceeds 64 bytes';
+run=1;let t0=Date.now(),ct=t0/1e3|0,n=0,best=0;
+while(run){
+let tg=[['t',T],['prev',pr],['nonce',''+n,''+tgt]],
+id=await S(JSON.stringify([0,p,ct,K,tg,g])),b=Z(id);
+if(b>best)best=b;
+if(b>=tgt){run=0;out.value=JSON.stringify({id,pubkey:p,created_at:ct,kind:K,tags:tg,content:g,sig:'<SIGN ME>'});
+st.textContent='⚑ '+b+' bits in '+((Date.now()-t0)/1e3|0)+'s — sign it, broadcast it, wear the crown';return}
+if(!(++n&2047)){st.textContent=(n/(Date.now()-t0)*1e3|0)+' H/s · best '+best+' / need '+tgt;await new Promise(r=>setTimeout(r))}}
+st.textContent='halted'}
+sz.textContent='this entire throne room is '+document.documentElement.outerHTML.length+' bytes';
+</script>

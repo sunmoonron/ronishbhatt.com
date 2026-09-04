@@ -1,0 +1,1387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bitcoin Key Directory - All Private Keys</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #e8e8e8;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            padding: 30px 0;
+            border-bottom: 1px solid #333;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            background: linear-gradient(90deg, #f39c12, #e74c3c, #9b59b6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #888;
+            font-size: 0.9em;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-box {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid #333;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+        
+        .stat-box h3 {
+            color: #f39c12;
+            font-size: 0.8em;
+            margin-bottom: 5px;
+        }
+        
+        .stat-box .value {
+            font-size: 0.75em;
+            word-break: break-all;
+            color: #4ecdc4;
+        }
+        
+        .navigation {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 15px;
+        }
+        
+        .nav-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.9em;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .nav-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .page-input-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .page-input {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid #444;
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            font-family: inherit;
+            width: 300px;
+            font-size: 0.85em;
+        }
+        
+        .page-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .keys-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+            font-size: 0.7em;
+        }
+        
+        .keys-table th {
+            background: rgba(102, 126, 234, 0.3);
+            padding: 15px 10px;
+            text-align: left;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        .keys-table td {
+            padding: 12px 10px;
+            border-bottom: 1px solid #333;
+            word-break: break-all;
+            vertical-align: top;
+        }
+        
+        .keys-table tr:hover {
+            background: rgba(255,255,255,0.05);
+        }
+        
+        .key-number {
+            color: #888;
+            min-width: 80px;
+        }
+        
+        .private-key {
+            color: #e74c3c;
+            font-size: 0.85em;
+        }
+        
+        .public-key {
+            color: #3498db;
+            font-size: 0.75em;
+            max-width: 200px;
+        }
+        
+        .address {
+            color: #2ecc71;
+        }
+        
+        .wif {
+            color: #9b59b6;
+            font-size: 0.9em;
+        }
+        
+        .balance-cell {
+            min-width: 120px;
+        }
+        
+        .balance {
+            color: #f39c12;
+            font-weight: bold;
+        }
+        
+        .check-btn {
+            background: #27ae60;
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8em;
+            margin-top: 5px;
+        }
+        
+        .check-btn:hover {
+            background: #2ecc71;
+        }
+        
+        .check-btn:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 15px;
+            height: 15px;
+            border: 2px solid #444;
+            border-top: 2px solid #f39c12;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .api-section {
+            background: rgba(0,0,0,0.4);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+        
+        .api-section h2 {
+            color: #f39c12;
+            margin-bottom: 15px;
+        }
+        
+        .api-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .api-status {
+            padding: 10px 20px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+        }
+        
+        .rate-limit {
+            color: #e74c3c;
+        }
+        
+        .rate-ok {
+            color: #2ecc71;
+        }
+        
+        select {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid #444;
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            font-family: inherit;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: #333;
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.3s ease;
+        }
+        
+        .warning {
+            background: rgba(231, 76, 60, 0.2);
+            border: 1px solid #e74c3c;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .info-box {
+            background: rgba(52, 152, 219, 0.2);
+            border: 1px solid #3498db;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 30px;
+            color: #666;
+            font-size: 0.8em;
+        }
+        
+        .copy-btn {
+            background: transparent;
+            border: 1px solid #444;
+            color: #888;
+            padding: 2px 6px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.8em;
+            margin-left: 5px;
+        }
+        
+        .copy-btn:hover {
+            background: #444;
+            color: white;
+        }
+        
+        .jump-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 15px;
+        }
+        
+        .jump-btn {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid #444;
+            color: #aaa;
+            padding: 8px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.75em;
+        }
+        
+        .jump-btn:hover {
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
+        
+        #computeProgress {
+            display: none;
+            margin: 20px 0;
+        }
+        
+        .mode-toggle {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+        
+        .mode-btn {
+            padding: 10px 20px;
+            border: 2px solid #667eea;
+            background: transparent;
+            color: #667eea;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .mode-btn.active {
+            background: #667eea;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>₿ Bitcoin Key Directory</h1>
+            <p class="subtitle">Every possible Bitcoin private key, one page at a time</p>
+        </header>
+        
+        <div class="warning">
+            ⚠️ <strong>Educational purposes only!</strong> Never use keys from predictable sources. 
+            All keys on early pages are already compromised by bots.
+        </div>
+        
+        <div class="stats">
+            <div class="stat-box">
+                <h3>Current Page</h3>
+                <div class="value" id="currentPage">1</div>
+            </div>
+            <div class="stat-box">
+                <h3>Total Pages</h3>
+                <div class="value" id="totalPages">Loading...</div>
+            </div>
+            <div class="stat-box">
+                <h3>Keys Per Page</h3>
+                <div class="value">128</div>
+            </div>
+            <div class="stat-box">
+                <h3>Key Range on This Page</h3>
+                <div class="value" id="keyRange">1 - 128</div>
+            </div>
+        </div>
+        
+        <div class="mode-toggle">
+            <button class="mode-btn active" data-mode="private" onclick="setMode('private')">
+                Private Key Mode
+            </button>
+            <button class="mode-btn" data-mode="public" onclick="setMode('public')">
+                Public Key Mode
+            </button>
+        </div>
+        
+        <div class="info-box" id="modeInfo">
+            <strong>Private Key Mode:</strong> Shows sequential private keys (1, 2, 3...) with their derived addresses.
+            This is computationally simpler as we just increment integers.
+        </div>
+        
+        <div class="navigation">
+            <button class="nav-btn" onclick="goToPage(1n)">⏮ First</button>
+            <button class="nav-btn" onclick="prevPage()">◀ Previous</button>
+            
+            <div class="page-input-group">
+                <input type="text" class="page-input" id="pageInput" placeholder="Enter page number (1 to ~9×10⁷⁴)" maxlength="100">
+                <button class="nav-btn" onclick="goToInputPage()">Go Page</button>
+            </div>
+
+            <div class="page-input-group">
+                <input type="text" class="page-input" id="privateKeyInput" placeholder="Enter private key (hex or decimal)" maxlength="100" style="width: 400px;">
+                <button class="nav-btn" onclick="goToPrivateKey()" style="background: linear-gradient(135deg, #f39c12, #e74c3c);">🔑 Find Key</button>
+            </div>
+            
+            <button class="nav-btn" onclick="nextPage()">Next ▶</button>
+            <button class="nav-btn" onclick="goToPage(MAX_PAGE)">Last ⏭</button>
+            <button class="nav-btn" onclick="randomPage()">🎲 Random</button>
+        </div>
+        
+        <div class="jump-buttons">
+            <button class="jump-btn" onclick="goToPage(1n)">Page 1</button>
+            <button class="jump-btn" onclick="goToPage(1000n)">Page 1,000</button>
+            <button class="jump-btn" onclick="goToPage(1000000n)">Page 1M</button>
+            <button class="jump-btn" onclick="goToPage(1000000000n)">Page 1B</button>
+            <button class="jump-btn" onclick="goToPage(BigInt('1' + '0'.repeat(20)))">Page 10²⁰</button>
+            <button class="jump-btn" onclick="goToPage(BigInt('1' + '0'.repeat(40)))">Page 10⁴⁰</button>
+            <button class="jump-btn" onclick="goToPage(BigInt('1' + '0'.repeat(60)))">Page 10⁶⁰</button>
+            <button class="jump-btn" onclick="goToPage(MAX_PAGE)">Last Page</button>
+        </div>
+        
+        <div id="computeProgress">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+            </div>
+            <p style="text-align: center; margin-top: 10px; color: #888;">
+                Computing keys... <span id="progressText">0/128</span>
+            </p>
+        </div>
+        
+        <div class="api-section">
+            <h2>💰 Balance Checker</h2>
+            <div class="api-controls">
+                <select id="apiProvider">
+                    <option value="blockchain">Blockchain.info (1200/min)</option>
+                    <option value="mempool">Mempool.space (Generous limits)</option>
+                    <option value="blockcypher">BlockCypher (200/hour free)</option>
+                </select>
+                <button class="nav-btn" onclick="checkAllBalances()">Check All Balances</button>
+                <button class="nav-btn" onclick="stopChecking()" style="background: #e74c3c;">Stop</button>
+                <div class="api-status">
+                    Requests: <span id="requestCount">0</span> | 
+                    Rate: <span id="rateStatus" class="rate-ok">OK</span> |
+                    Found: <span id="foundCount" style="color: #f39c12;">0 BTC</span>
+                </div>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="apiProgressFill" style="width: 0%"></div>
+            </div>
+        </div>
+        
+        <table class="keys-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Private Key (Hex)</th>
+                    <th>WIF (Compressed)</th>
+                    <th>Public Key</th>
+                    <th>Address (Legacy)</th>
+                    <th>Address (SegWit)</th>
+                    <th>Balance</th>
+                </tr>
+            </thead>
+            <tbody id="keysBody">
+                <!-- Keys will be inserted here -->
+            </tbody>
+        </table>
+        
+        <footer>
+            <p>Total possible private keys: 2²⁵⁶ ≈ 1.16 × 10⁷⁷</p>
+            <p>Time to check all at 1M/second: ~3.7 × 10⁶³ years</p>
+            <p>The universe is only ~1.4 × 10¹⁰ years old</p>
+        </footer>
+    </div>
+    
+    <script>
+        // ============================================
+        // CONSTANTS
+        // ============================================
+        const KEYS_PER_PAGE = 128n;
+        const SECP256K1_ORDER = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141n;
+        const SECP256K1_P = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2Fn;
+        const SECP256K1_GX = 0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798n;
+        const SECP256K1_GY = 0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8n;
+        const MAX_PRIVATE_KEY = SECP256K1_ORDER - 1n;
+        const MAX_PAGE = MAX_PRIVATE_KEY / KEYS_PER_PAGE + 1n;
+        
+        // Base58 alphabet
+        const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+        
+        // Bech32 charset
+        const BECH32_CHARSET = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l';
+        
+        // State
+        let currentPage = 1n;
+        let currentMode = 'private';
+        let isChecking = false;
+        let requestCount = 0;
+        let requestTimestamps = [];
+        
+        // ============================================
+        // BIGINT UTILITIES
+        // ============================================
+        function mod(a, m) {
+            const result = a % m;
+            return result >= 0n ? result : result + m;
+        }
+        
+        function modPow(base, exp, m) {
+            let result = 1n;
+            base = mod(base, m);
+            while (exp > 0n) {
+                if (exp % 2n === 1n) {
+                    result = mod(result * base, m);
+                }
+                exp = exp / 2n;
+                base = mod(base * base, m);
+            }
+            return result;
+        }
+        
+        function modInverse(a, m) {
+            return modPow(a, m - 2n, m);
+        }
+        
+        // ============================================
+        // ELLIPTIC CURVE OPERATIONS (secp256k1)
+        // ============================================
+        const POINT_AT_INFINITY = { x: null, y: null };
+        
+        function isInfinity(p) {
+            return p.x === null && p.y === null;
+        }
+        
+        function pointAdd(p1, p2) {
+            if (isInfinity(p1)) return p2;
+            if (isInfinity(p2)) return p1;
+            
+            if (p1.x === p2.x) {
+                if (mod(p1.y + p2.y, SECP256K1_P) === 0n) {
+                    return POINT_AT_INFINITY;
+                }
+                return pointDouble(p1);
+            }
+            
+            const slope = mod(
+                (p2.y - p1.y) * modInverse(mod(p2.x - p1.x, SECP256K1_P), SECP256K1_P),
+                SECP256K1_P
+            );
+            
+            const x3 = mod(slope * slope - p1.x - p2.x, SECP256K1_P);
+            const y3 = mod(slope * (p1.x - x3) - p1.y, SECP256K1_P);
+            
+            return { x: x3, y: y3 };
+        }
+        
+        function pointDouble(p) {
+            if (isInfinity(p) || p.y === 0n) {
+                return POINT_AT_INFINITY;
+            }
+            
+            const slope = mod(
+                3n * p.x * p.x * modInverse(2n * p.y, SECP256K1_P),
+                SECP256K1_P
+            );
+            
+            const x3 = mod(slope * slope - 2n * p.x, SECP256K1_P);
+            const y3 = mod(slope * (p.x - x3) - p.y, SECP256K1_P);
+            
+            return { x: x3, y: y3 };
+        }
+        
+        function scalarMultiply(k, p) {
+            let result = POINT_AT_INFINITY;
+            let addend = p;
+            
+            k = mod(k, SECP256K1_ORDER);
+            
+            while (k > 0n) {
+                if (k & 1n) {
+                    result = pointAdd(result, addend);
+                }
+                addend = pointDouble(addend);
+                k = k >> 1n;
+            }
+            
+            return result;
+        }
+        
+        const G = { x: SECP256K1_GX, y: SECP256K1_GY };
+        
+        function privateKeyToPublicKey(privateKey) {
+            return scalarMultiply(privateKey, G);
+        }
+        
+        // ============================================
+        // HASH FUNCTIONS
+        // ============================================
+        
+        // SHA-256 implementation
+        function sha256(data) {
+            const K = [
+                0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+                0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+                0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+                0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+                0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+                0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+                0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+                0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
+            ];
+            
+            let H = [
+                0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
+                0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
+            ];
+            
+            const rotr = (x, n) => ((x >>> n) | (x << (32 - n))) >>> 0;
+            const ch = (x, y, z) => ((x & y) ^ (~x & z)) >>> 0;
+            const maj = (x, y, z) => ((x & y) ^ (x & z) ^ (y & z)) >>> 0;
+            const sigma0 = x => (rotr(x, 2) ^ rotr(x, 13) ^ rotr(x, 22)) >>> 0;
+            const sigma1 = x => (rotr(x, 6) ^ rotr(x, 11) ^ rotr(x, 25)) >>> 0;
+            const gamma0 = x => (rotr(x, 7) ^ rotr(x, 18) ^ (x >>> 3)) >>> 0;
+            const gamma1 = x => (rotr(x, 17) ^ rotr(x, 19) ^ (x >>> 10)) >>> 0;
+            
+            // Pre-processing
+            const msgLen = data.length;
+            const bitLen = msgLen * 8;
+            
+            // Padding
+            const padded = new Uint8Array(Math.ceil((msgLen + 9) / 64) * 64);
+            padded.set(data);
+            padded[msgLen] = 0x80;
+            
+            // Length (big-endian 64-bit)
+            const view = new DataView(padded.buffer);
+            view.setUint32(padded.length - 4, bitLen, false);
+            
+            // Process blocks
+            for (let i = 0; i < padded.length; i += 64) {
+                const W = new Uint32Array(64);
+                
+                for (let t = 0; t < 16; t++) {
+                    W[t] = view.getUint32(i + t * 4, false);
+                }
+                
+                for (let t = 16; t < 64; t++) {
+                    W[t] = (gamma1(W[t-2]) + W[t-7] + gamma0(W[t-15]) + W[t-16]) >>> 0;
+                }
+                
+                let [a, b, c, d, e, f, g, h] = H;
+                
+                for (let t = 0; t < 64; t++) {
+                    const T1 = (h + sigma1(e) + ch(e, f, g) + K[t] + W[t]) >>> 0;
+                    const T2 = (sigma0(a) + maj(a, b, c)) >>> 0;
+                    h = g;
+                    g = f;
+                    f = e;
+                    e = (d + T1) >>> 0;
+                    d = c;
+                    c = b;
+                    b = a;
+                    a = (T1 + T2) >>> 0;
+                }
+                
+                H[0] = (H[0] + a) >>> 0;
+                H[1] = (H[1] + b) >>> 0;
+                H[2] = (H[2] + c) >>> 0;
+                H[3] = (H[3] + d) >>> 0;
+                H[4] = (H[4] + e) >>> 0;
+                H[5] = (H[5] + f) >>> 0;
+                H[6] = (H[6] + g) >>> 0;
+                H[7] = (H[7] + h) >>> 0;
+            }
+            
+            const result = new Uint8Array(32);
+            const resultView = new DataView(result.buffer);
+            for (let i = 0; i < 8; i++) {
+                resultView.setUint32(i * 4, H[i], false);
+            }
+            
+            return result;
+        }
+        
+        // RIPEMD-160 implementation
+        function ripemd160(data) {
+            const K1 = [0x00000000, 0x5a827999, 0x6ed9eba1, 0x8f1bbcdc, 0xa953fd4e];
+            const K2 = [0x50a28be6, 0x5c4dd124, 0x6d703ef3, 0x7a6d76e9, 0x00000000];
+            
+            const R1 = [
+                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+                7, 4, 13, 1, 10, 6, 15, 3, 12, 0, 9, 5, 2, 14, 11, 8,
+                3, 10, 14, 4, 9, 15, 8, 1, 2, 7, 0, 6, 13, 11, 5, 12,
+                1, 9, 11, 10, 0, 8, 12, 4, 13, 3, 7, 15, 14, 5, 6, 2,
+                4, 0, 5, 9, 7, 12, 2, 10, 14, 1, 3, 8, 11, 6, 15, 13
+            ];
+            
+            const R2 = [
+                5, 14, 7, 0, 9, 2, 11, 4, 13, 6, 15, 8, 1, 10, 3, 12,
+                6, 11, 3, 7, 0, 13, 5, 10, 14, 15, 8, 12, 4, 9, 1, 2,
+                15, 5, 1, 3, 7, 14, 6, 9, 11, 8, 12, 2, 10, 0, 4, 13,
+                8, 6, 4, 1, 3, 11, 15, 0, 5, 12, 2, 13, 9, 7, 10, 14,
+                12, 15, 10, 4, 1, 5, 8, 7, 6, 2, 13, 14, 0, 3, 9, 11
+            ];
+            
+            const S1 = [
+                11, 14, 15, 12, 5, 8, 7, 9, 11, 13, 14, 15, 6, 7, 9, 8,
+                7, 6, 8, 13, 11, 9, 7, 15, 7, 12, 15, 9, 11, 7, 13, 12,
+                11, 13, 6, 7, 14, 9, 13, 15, 14, 8, 13, 6, 5, 12, 7, 5,
+                11, 12, 14, 15, 14, 15, 9, 8, 9, 14, 5, 6, 8, 6, 5, 12,
+                9, 15, 5, 11, 6, 8, 13, 12, 5, 12, 13, 14, 11, 8, 5, 6
+            ];
+            
+            const S2 = [
+                8, 9, 9, 11, 13, 15, 15, 5, 7, 7, 8, 11, 14, 14, 12, 6,
+                9, 13, 15, 7, 12, 8, 9, 11, 7, 7, 12, 7, 6, 15, 13, 11,
+                9, 7, 15, 11, 8, 6, 6, 14, 12, 13, 5, 14, 13, 13, 7, 5,
+                15, 5, 8, 11, 14, 14, 6, 14, 6, 9, 12, 9, 12, 5, 15, 8,
+                8, 5, 12, 9, 12, 5, 14, 6, 8, 13, 6, 5, 15, 13, 11, 11
+            ];
+            
+            const rotl = (x, n) => ((x << n) | (x >>> (32 - n))) >>> 0;
+            
+            const f = (j, x, y, z) => {
+                if (j < 16) return (x ^ y ^ z) >>> 0;
+                if (j < 32) return ((x & y) | (~x & z)) >>> 0;
+                if (j < 48) return ((x | ~y) ^ z) >>> 0;
+                if (j < 64) return ((x & z) | (y & ~z)) >>> 0;
+                return (x ^ (y | ~z)) >>> 0;
+            };
+            
+            // Padding
+            const msgLen = data.length;
+            const bitLen = BigInt(msgLen * 8);
+            const padLen = (msgLen % 64 < 56 ? 56 : 120) - (msgLen % 64);
+            
+            const padded = new Uint8Array(msgLen + padLen + 8);
+            padded.set(data);
+            padded[msgLen] = 0x80;
+            
+            const view = new DataView(padded.buffer);
+            view.setUint32(padded.length - 8, Number(bitLen & 0xFFFFFFFFn), true);
+            view.setUint32(padded.length - 4, Number(bitLen >> 32n), true);
+            
+            let h0 = 0x67452301;
+            let h1 = 0xefcdab89;
+            let h2 = 0x98badcfe;
+            let h3 = 0x10325476;
+            let h4 = 0xc3d2e1f0;
+            
+            for (let i = 0; i < padded.length; i += 64) {
+                const X = new Uint32Array(16);
+                for (let j = 0; j < 16; j++) {
+                    X[j] = view.getUint32(i + j * 4, true);
+                }
+                
+                let al = h0, bl = h1, cl = h2, dl = h3, el = h4;
+                let ar = h0, br = h1, cr = h2, dr = h3, er = h4;
+                
+                for (let j = 0; j < 80; j++) {
+                    const rnd = Math.floor(j / 16);
+                    
+                    let t = (al + f(j, bl, cl, dl) + X[R1[j]] + K1[rnd]) >>> 0;
+                    t = (rotl(t, S1[j]) + el) >>> 0;
+                    al = el;
+                    el = dl;
+                    dl = rotl(cl, 10);
+                    cl = bl;
+                    bl = t;
+                    
+                    t = (ar + f(79 - j, br, cr, dr) + X[R2[j]] + K2[rnd]) >>> 0;
+                    t = (rotl(t, S2[j]) + er) >>> 0;
+                    ar = er;
+                    er = dr;
+                    dr = rotl(cr, 10);
+                    cr = br;
+                    br = t;
+                }
+                
+                const t = (h1 + cl + dr) >>> 0;
+                h1 = (h2 + dl + er) >>> 0;
+                h2 = (h3 + el + ar) >>> 0;
+                h3 = (h4 + al + br) >>> 0;
+                h4 = (h0 + bl + cr) >>> 0;
+                h0 = t;
+            }
+            
+            const result = new Uint8Array(20);
+            const resultView = new DataView(result.buffer);
+            resultView.setUint32(0, h0, true);
+            resultView.setUint32(4, h1, true);
+            resultView.setUint32(8, h2, true);
+            resultView.setUint32(12, h3, true);
+            resultView.setUint32(16, h4, true);
+            
+            return result;
+        }
+        
+        function hash160(data) {
+            return ripemd160(sha256(data));
+        }
+        
+        function doubleSha256(data) {
+            return sha256(sha256(data));
+        }
+        
+        // ============================================
+        // ENCODING FUNCTIONS
+        // ============================================
+        
+        function bigintToBytes(n, length) {
+            const bytes = new Uint8Array(length);
+            for (let i = length - 1; i >= 0; i--) {
+                bytes[i] = Number(n & 0xFFn);
+                n = n >> 8n;
+            }
+            return bytes;
+        }
+        
+        function bytesToHex(bytes) {
+            return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+        
+        function hexToBytes(hex) {
+            const bytes = new Uint8Array(hex.length / 2);
+            for (let i = 0; i < bytes.length; i++) {
+                bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+            }
+            return bytes;
+        }
+        
+        function base58Encode(bytes) {
+            let num = 0n;
+            for (const byte of bytes) {
+                num = num * 256n + BigInt(byte);
+            }
+            
+            let result = '';
+            while (num > 0n) {
+                result = BASE58_ALPHABET[Number(num % 58n)] + result;
+                num = num / 58n;
+            }
+            
+            // Leading zeros
+            for (const byte of bytes) {
+                if (byte === 0) result = '1' + result;
+                else break;
+            }
+            
+            return result;
+        }
+        
+        function base58CheckEncode(prefix, data) {
+            const prefixedData = new Uint8Array(prefix.length + data.length);
+            prefixedData.set(prefix);
+            prefixedData.set(data, prefix.length);
+            
+            const checksum = doubleSha256(prefixedData).slice(0, 4);
+            
+            const result = new Uint8Array(prefixedData.length + 4);
+            result.set(prefixedData);
+            result.set(checksum, prefixedData.length);
+            
+            return base58Encode(result);
+        }
+        
+        // Bech32 encoding
+        function bech32Polymod(values) {
+            const GEN = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3];
+            let chk = 1;
+            for (const v of values) {
+                const b = chk >> 25;
+                chk = ((chk & 0x1ffffff) << 5) ^ v;
+                for (let i = 0; i < 5; i++) {
+                    chk ^= ((b >> i) & 1) ? GEN[i] : 0;
+                }
+            }
+            return chk;
+        }
+        
+        function bech32HrpExpand(hrp) {
+            const ret = [];
+            for (const c of hrp) {
+                ret.push(c.charCodeAt(0) >> 5);
+            }
+            ret.push(0);
+            for (const c of hrp) {
+                ret.push(c.charCodeAt(0) & 31);
+            }
+            return ret;
+        }
+        
+        function bech32CreateChecksum(hrp, data) {
+            const values = bech32HrpExpand(hrp).concat(data);
+            const polymod = bech32Polymod(values.concat([0, 0, 0, 0, 0, 0])) ^ 1;
+            const ret = [];
+            for (let i = 0; i < 6; i++) {
+                ret.push((polymod >> (5 * (5 - i))) & 31);
+            }
+            return ret;
+        }
+        
+        function bech32Encode(hrp, data) {
+            const combined = data.concat(bech32CreateChecksum(hrp, data));
+            let ret = hrp + '1';
+            for (const d of combined) {
+                ret += BECH32_CHARSET[d];
+            }
+            return ret;
+        }
+        
+        function convertBits(data, fromBits, toBits, pad) {
+            let acc = 0;
+            let bits = 0;
+            const ret = [];
+            const maxv = (1 << toBits) - 1;
+            
+            for (const value of data) {
+                acc = (acc << fromBits) | value;
+                bits += fromBits;
+                while (bits >= toBits) {
+                    bits -= toBits;
+                    ret.push((acc >> bits) & maxv);
+                }
+            }
+            
+            if (pad) {
+                if (bits > 0) {
+                    ret.push((acc << (toBits - bits)) & maxv);
+                }
+            }
+            
+            return ret;
+        }
+        
+        // ============================================
+        // KEY/ADDRESS GENERATION
+        // ============================================
+        
+        function privateKeyToWIF(privateKey, compressed = true) {
+            const keyBytes = bigintToBytes(privateKey, 32);
+            const prefix = new Uint8Array([0x80]);
+            
+            if (compressed) {
+                const data = new Uint8Array(33);
+                data.set(keyBytes);
+                data[32] = 0x01;
+                return base58CheckEncode(prefix, data);
+            }
+            
+            return base58CheckEncode(prefix, keyBytes);
+        }
+        
+        function publicKeyToBytes(pubKey, compressed = true) {
+            if (compressed) {
+                const prefix = pubKey.y % 2n === 0n ? 0x02 : 0x03;
+                const bytes = new Uint8Array(33);
+                bytes[0] = prefix;
+                bytes.set(bigintToBytes(pubKey.x, 32), 1);
+                return bytes;
+            } else {
+                const bytes = new Uint8Array(65);
+                bytes[0] = 0x04;
+                bytes.set(bigintToBytes(pubKey.x, 32), 1);
+                bytes.set(bigintToBytes(pubKey.y, 32), 33);
+                return bytes;
+            }
+        }
+        
+        function publicKeyToAddress(pubKey, compressed = true) {
+            const pubKeyBytes = publicKeyToBytes(pubKey, compressed);
+            const hash = hash160(pubKeyBytes);
+            return base58CheckEncode(new Uint8Array([0x00]), hash);
+        }
+        
+        function publicKeyToSegwitAddress(pubKey) {
+            const pubKeyBytes = publicKeyToBytes(pubKey, true);
+            const hash = hash160(pubKeyBytes);
+            const words = [0].concat(convertBits(Array.from(hash), 8, 5, true));
+            return bech32Encode('bc', words);
+        }
+        
+        function generateKeyData(privateKey) {
+            const pubKey = privateKeyToPublicKey(privateKey);
+            
+            return {
+                privateKeyHex: bytesToHex(bigintToBytes(privateKey, 32)),
+                wif: privateKeyToWIF(privateKey, true),
+                publicKeyHex: bytesToHex(publicKeyToBytes(pubKey, true)),
+                addressLegacy: publicKeyToAddress(pubKey, true),
+                addressSegwit: publicKeyToSegwitAddress(pubKey)
+            };
+        }
+        
+        // ============================================
+        // UI FUNCTIONS
+        // ============================================
+        
+        function formatBigInt(n) {
+            const str = n.toString();
+            if (str.length <= 20) {
+                return str.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+            }
+            const exp = str.length - 1;
+            return `${str[0]}.${str.slice(1, 6)}... × 10^${exp}`;
+        }
+        
+        function setMode(mode) {
+            currentMode = mode;
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.mode === mode);
+            });
+            
+            const infoBox = document.getElementById('modeInfo');
+            if (mode === 'private') {
+                infoBox.innerHTML = '<strong>Private Key Mode:</strong> Shows sequential private keys (1, 2, 3...) with their derived addresses. This is computationally simpler as we just increment integers.';
+            } else {
+                infoBox.innerHTML = '<strong>Public Key Mode:</strong> Same keys, but emphasizing the public key derivation. Both modes require the same EC operations, so neither is truly "easier" for showing addresses.';
+            }
+            
+            loadPage(currentPage);
+        }
+        
+        async function loadPage(page) {
+            currentPage = page;
+            
+            document.getElementById('currentPage').textContent = formatBigInt(page);
+            document.getElementById('totalPages').textContent = formatBigInt(MAX_PAGE);
+            
+            const startKey = (page - 1n) * KEYS_PER_PAGE + 1n;
+            const endKey = page * KEYS_PER_PAGE;
+            document.getElementById('keyRange').textContent = 
+                `${formatBigInt(startKey)} - ${formatBigInt(endKey > MAX_PRIVATE_KEY ? MAX_PRIVATE_KEY : endKey)}`;
+            
+            const keysBody = document.getElementById('keysBody');
+            keysBody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px;"><div class="loading"></div> Computing keys...</td></tr>';
+            
+            document.getElementById('computeProgress').style.display = 'block';
+            
+            // Use setTimeout to allow UI to update
+            await new Promise(resolve => setTimeout(resolve, 10));
+            
+            const keys = [];
+            const batchSize = 16;
+            const totalKeys = Number(KEYS_PER_PAGE);
+            
+            for (let i = 0; i < totalKeys; i += batchSize) {
+                for (let j = i; j < Math.min(i + batchSize, totalKeys); j++) {
+                    const keyNum = startKey + BigInt(j);
+                    if (keyNum > MAX_PRIVATE_KEY) break;
+                    
+                    try {
+                        const keyData = generateKeyData(keyNum);
+                        keys.push({
+                            num: keyNum,
+                            ...keyData
+                        });
+                    } catch (e) {
+                        console.error(`Error generating key ${keyNum}:`, e);
+                    }
+                }
+                
+                const progress = Math.min(100, ((i + batchSize) / totalKeys) * 100);
+                document.getElementById('progressFill').style.width = progress + '%';
+                document.getElementById('progressText').textContent = 
+                    `${Math.min(i + batchSize, totalKeys)}/${totalKeys}`;
+                
+                await new Promise(resolve => setTimeout(resolve, 0));
+            }
+            
+            document.getElementById('computeProgress').style.display = 'none';
+            
+            renderKeys(keys);
+        }
+        
+        function renderKeys(keys) {
+            const keysBody = document.getElementById('keysBody');
+            
+            let html = '';
+            for (const key of keys) {
+                html += `
+                    <tr data-address="${key.addressLegacy}">
+                        <td class="key-number">${key.num.toString()}</td>
+                        <td class="private-key">
+                            ${key.privateKeyHex}
+                            <button class="copy-btn" onclick="copyToClipboard('${key.privateKeyHex}')">📋</button>
+                        </td>
+                        <td class="wif">
+                            ${key.wif}
+                            <button class="copy-btn" onclick="copyToClipboard('${key.wif}')">📋</button>
+                        </td>
+                        <td class="public-key">${key.publicKeyHex}</td>
+                        <td class="address">
+                            ${key.addressLegacy}
+                            <button class="copy-btn" onclick="copyToClipboard('${key.addressLegacy}')">📋</button>
+                        </td>
+                        <td class="address">
+                            ${key.addressSegwit}
+                            <button class="copy-btn" onclick="copyToClipboard('${key.addressSegwit}')">📋</button>
+                        </td>
+                        <td class="balance-cell">
+                            <span class="balance" data-address="${key.addressLegacy}">-</span>
+                            <br>
+                            <button class="check-btn" onclick="checkBalance('${key.addressLegacy}')">Check</button>
+                        </td>
+                    </tr>
+                `;
+            }
+            
+            keysBody.innerHTML = html;
+        }
+        
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                // Could add a toast notification here
+            });
+        }
+        
+        function prevPage() {
+            if (currentPage > 1n) {
+                loadPage(currentPage - 1n);
+            }
+        }
+        
+        function nextPage() {
+            if (currentPage < MAX_PAGE) {
+                loadPage(currentPage + 1n);
+            }
+        }
+        
+        function goToPage(page) {
+            if (page >= 1n && page <= MAX_PAGE) {
+                loadPage(page);
+            }
+        }
+        
+        function goToInputPage() {
+            const input = document.getElementById('pageInput').value.trim();
+            try {
+                const page = BigInt(input);
+                if (page >= 1n && page <= MAX_PAGE) {
+                    loadPage(page);
+                } else {
+                    alert(`Page must be between 1 and ${MAX_PAGE}`);
+                }
+            } catch (e) {
+                alert('Invalid page number');
+            }
+        }
+        function goToPrivateKey() {
+            let input = document.getElementById('privateKeyInput').value.trim();
+                
+            try {
+                let privateKey;
+                
+                // Check if hex (starts with 0x or contains a-f)
+                if (input.startsWith('0x') || input.startsWith('0X')) {
+                    privateKey = BigInt(input);
+                } else if (/^[0-9a-fA-F]+$/.test(input) && /[a-fA-F]/.test(input)) {
+                    // Has hex letters, treat as hex
+                    privateKey = BigInt('0x' + input);
+                } else {
+                    // Pure decimal
+                    privateKey = BigInt(input);
+                }
+                
+                if (privateKey < 1n || privateKey > MAX_PRIVATE_KEY) {
+                    alert(`Private key must be between 1 and ${MAX_PRIVATE_KEY}`);
+                    return;
+                }
+                
+                const page = (privateKey - 1n) / KEYS_PER_PAGE + 1n;
+                const positionOnPage = Number((privateKey - 1n) % KEYS_PER_PAGE) + 1;
+                
+                loadPage(page);
+                
+                // Highlight the specific key after rendering
+                setTimeout(() => {
+                    const rows = document.querySelectorAll('#keysBody tr');
+                    if (rows[positionOnPage - 1]) {
+                        rows[positionOnPage - 1].style.background = 'rgba(243, 156, 18, 0.3)';
+                        rows[positionOnPage - 1].style.boxShadow = '0 0 20px rgba(243, 156, 18, 0.5)';
+                        rows[positionOnPage - 1].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                    alert(`🔑 Found! Key #${positionOnPage} on this page`);
+                }, 2000);
+                
+            } catch (e) {
+                alert('Invalid private key format. Use hex (with or without 0x) or decimal.');
+                console.error(e);
+            }
+        }
+        
+        function randomPage() {
+            // Generate a random 256-bit number and mod by MAX_PAGE
+            const randomBytes = new Uint8Array(32);
+            crypto.getRandomValues(randomBytes);
+            let randomNum = 0n;
+            for (const byte of randomBytes) {
+                randomNum = randomNum * 256n + BigInt(byte);
+            }
+            const page = (randomNum % MAX_PAGE) + 1n;
+            loadPage(page);
+        }
+        
+        // ============================================
+        // BALANCE CHECKING (with rate limiting)
+        // ============================================
+        
+        const RATE_LIMIT = 1200; // requests per minute
+        const RATE_WINDOW = 60000; // 1 minute in ms
+        
+        function checkRateLimit() {
+            const now = Date.now();
+            requestTimestamps = requestTimestamps.filter(t => now - t < RATE_WINDOW);
+            return requestTimestamps.length < RATE_LIMIT;
+        }
+        
+        function recordRequest() {
+            requestTimestamps.push(Date.now());
+            requestCount++;
+            document.getElementById('requestCount').textContent = requestCount;
+            
+            const remaining = RATE_LIMIT - requestTimestamps.length;
+            const statusEl = document.getElementById('rateStatus');
+            if (remaining < 100) {
+                statusEl.textContent = `${remaining} left`;
+                statusEl.className = 'rate-limit';
+            } else {
+                statusEl.textContent = 'OK';
+                statusEl.className = 'rate-ok';
+            }
+        }
+        
+        async function checkBalance(address) {
+            if (!checkRateLimit()) {
+                alert('Rate limit reached. Please wait a minute.');
+                return;
+            }
+            
+            const provider = document.getElementById('apiProvider').value;
+            const balanceEl = document.querySelector(`span.balance[data-address="${address}"]`);
+            
+            if (balanceEl) {
+                balanceEl.innerHTML = '<div class="loading"></div>';
+            }
+            
+            try {
+                let balance = 0;
+                
+                recordRequest();
+                
+                if (provider === 'blockchain') {
+                    const response = await fetch(`https://blockchain.info/balance?active=${address}&cors=true`);
+                    const data = await response.json();
+                    balance = data[address]?.final_balance || 0;
+                } else if (provider === 'mempool') {
+                    const response = await fetch(`https://mempool.space/api/address/${address}`);
+                    const data = await response.json();
+                    balance = (data.chain_stats?.funded_txo_sum || 0) - (data.chain_stats?.spent_txo_sum || 0);
+                } else if (provider === 'blockcypher') {
+                    const response = await fetch(`https://api.blockcypher.com/v1/btc/main/addrs/${address}/balance`);
+                    const data = await response.json();
+                    balance = data.final_balance || 0;
+                }
+                
+                const btcBalance = balance / 100000000;
+                
+                if (balanceEl) {
+                    balanceEl.textContent = btcBalance.toFixed(8) + ' BTC';
+                    if (balance > 0) {
+                        balanceEl.style.color = '#2ecc71';
+                        balanceEl.style.fontWeight = 'bold';
+                    }
+                }
+                
+                return balance;
+            } catch (error) {
+                console.error('Error checking balance:', error);
+                if (balanceEl) {
+                    balanceEl.textContent = 'Error';
+                    balanceEl.style.color = '#e74c3c';
+                }
+                return null;
+            }
+        }
+        
+        async function checkAllBalances() {
+            if (isChecking) return;
+            isChecking = true;
+            
+            const addresses = Array.from(document.querySelectorAll('span.balance')).map(el => el.dataset.address);
+            const progressEl = document.getElementById('apiProgressFill');
+            let totalFound = 0;
+            
+            for (let i = 0; i < addresses.length; i++) {
+                if (!isChecking) break;
+                
+                // Wait for rate limit
+                while (!checkRateLimit()) {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    if (!isChecking) break;
+                }
+                
+                if (!isChecking) break;
+                
+                const balance = await checkBalance(addresses[i]);
+                if (balance > 0) {
+                    totalFound += balance / 100000000;
+                    document.getElementById('foundCount').textContent = totalFound.toFixed(8) + ' BTC';
+                }
+                
+                progressEl.style.width = ((i + 1) / addresses.length * 100) + '%';
+                
+                // Small delay between requests
+                await new Promise(resolve => setTimeout(resolve, 50));
+            }
+            
+            isChecking = false;
+        }
+        
+        function stopChecking() {
+            isChecking = false;
+        }
+        
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('totalPages').textContent = formatBigInt(MAX_PAGE);
+            
+            // Check for page param in URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const pageParam = urlParams.get('page');
+            
+            if (pageParam) {
+                try {
+                    const page = BigInt(pageParam);
+                    if (page >= 1n && page <= MAX_PAGE) {
+                        loadPage(page);
+                        return;
+                    }
+                } catch (e) {}
+            }
+            
+            loadPage(1n);
+        });
+        
+        // Handle Enter key in page input
+        document.getElementById('pageInput')?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                goToInputPage();
+            }
+        });
+    </script>
+</body>
+</html>

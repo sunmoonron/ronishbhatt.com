@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GLM5 Dialectic — Two Minds, One Truth</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  min-height:100vh;
+  background:#04040f;
+  color:#c8d8ff;
+  font-family:'Georgia',serif;
+  overflow-x:hidden;
+}
+
+canvas#bg {
+  position:fixed; top:0; left:0;
+  width:100%; height:100%;
+  pointer-events:none; z-index:0;
+}
+
+.wrap {
+  position:relative; z-index:1;
+  max-width:1200px; margin:0 auto; padding:30px 20px;
+}
+
+/* ── HEADER ── */
+header { text-align:center; margin-bottom:32px; }
+h1 {
+  font-size:2.8rem; font-weight:400; letter-spacing:8px;
+  background:linear-gradient(90deg,#4488ff,#ffffff,#ff4444);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  background-clip:text;
+  filter:drop-shadow(0 0 18px rgba(100,160,255,0.4));
+}
+.tagline { font-size:0.85rem; letter-spacing:4px; color:#556688; margin-top:6px; }
+
+/* ── SETUP PANEL ── */
+#setup {
+  background:rgba(255,255,255,0.03);
+  border:1px solid rgba(255,255,255,0.08);
+  border-radius:16px; padding:24px; margin-bottom:28px;
+}
+.setup-row { display:flex; gap:12px; flex-wrap:wrap; }
+#topic-input {
+  flex:1; min-width:200px;
+  background:rgba(0,0,0,0.5);
+  border:1px solid rgba(100,160,255,0.3);
+  border-radius:8px; padding:12px 16px;
+  color:#dde8ff; font-size:1rem; font-family:'Georgia',serif;
+  outline:none; transition:border-color 0.3s;
+}
+#topic-input:focus { border-color:#4488ff; }
+#topic-input::placeholder { color:#334455; }
+.btn {
+  padding:12px 28px; border:none; border-radius:8px;
+  font-size:0.95rem; font-family:'Georgia',serif;
+  cursor:pointer; letter-spacing:1px; transition:all 0.25s;
+}
+.btn-go {
+  background:linear-gradient(135deg,#1a3a8f,#2255cc);
+  color:#c0d8ff;
+  box-shadow:0 4px 20px rgba(30,80,200,0.35);
+}
+.btn-go:hover { box-shadow:0 6px 28px rgba(30,80,200,0.55); transform:translateY(-1px); }
+.btn-go:disabled { opacity:0.4; cursor:not-allowed; transform:none; }
+.btn-reset {
+  background:transparent; color:#556688;
+  border:1px solid #223344;
+}
+.btn-reset:hover { border-color:#4488ff; color:#88aacc; }
+
+/* ── ROUND INDICATOR ── */
+#round-bar {
+  display:flex; justify-content:center; gap:10px;
+  margin-bottom:20px;
+}
+.round-pip {
+  width:32px; height:32px; border-radius:50%;
+  border:2px solid #223344;
+  display:flex; align-items:center; justify-content:center;
+  font-size:0.75rem; color:#445566; transition:all 0.4s;
+}
+.round-pip.active { border-color:#4488ff; color:#88ccff; background:rgba(68,136,255,0.12); }
+.round-pip.done-t { border-color:#2266cc; background:rgba(34,102,204,0.25); color:#aaccff; }
+.round-pip.done-a { border-color:#cc2222; background:rgba(204,34,34,0.25); color:#ffaaaa; }
+.round-pip.done-tie { border-color:#888; background:rgba(128,128,128,0.2); color:#bbbbbb; }
+
+/* ── ARENA ── */
+.arena {
+  display:grid;
+  grid-template-columns:1fr 60px 1fr;
+  gap:0; align-items:start;
+  margin-bottom:20px;
+}
+
+/* debate panels */
+.debater {
+  border-radius:12px; padding:20px;
+  min-height:320px; transition:box-shadow 0.4s;
+}
+.debater-t {
+  background:rgba(20,30,80,0.6);
+  border:1px solid rgba(68,136,255,0.25);
+}
+.debater-a {
+  background:rgba(80,20,20,0.6);
+  border:1px solid rgba(255,68,68,0.25);
+}
+.debater.speaking-t { box-shadow:0 0 30px rgba(68,136,255,0.25); }
+.debater.speaking-a { box-shadow:0 0 30px rgba(255,68,68,0.25); }
+
+.debater-name {
+  font-size:0.75rem; letter-spacing:4px; margin-bottom:14px;
+  display:flex; align-items:center; gap:8px;
+}
+.name-t { color:#4488ff; }
+.name-a { color:#ff4444; }
+.dot {
+  width:8px; height:8px; border-radius:50%;
+  animation:pulse-dot 1.2s ease-in-out infinite;
+  display:none;
+}
+.dot-t { background:#4488ff; }
+.dot-a { background:#ff4444; }
+.dot.on { display:inline-block; }
+@keyframes pulse-dot {
+  0%,100%{opacity:1;transform:scale(1)}
+  50%{opacity:0.4;transform:scale(0.6)}
+}
+
+.argument-text {
+  font-size:0.92rem; line-height:1.75; color:#b8cce8;
+  min-height:200px; white-space:pre-wrap;
+}
+.argument-text .round-block { margin-bottom:14px; }
+.argument-text .round-label {
+  font-size:0.7rem; letter-spacing:2px;
+  opacity:0.4; margin-bottom:4px;
+}
+.cursor {
+  display:inline-block; width:2px; height:1em;
+  background:currentColor; animation:blink 0.65s step-end infinite;
+  vertical-align:text-bottom; margin-left:1px;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+/* ── TENSION METER ── */
+.tension-wrap {
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  padding:10px 0; gap:8px;
+}
+.tension-label { font-size:0.6rem; letter-spacing:2px; color:#334455; }
+.tension-bar-outer {
+  width:12px; height:280px;
+  background:rgba(255,255,255,0.05);
+  border-radius:6px; overflow:hidden;
+  position:relative;
+  border:1px solid rgba(255,255,255,0.07);
+}
+.tension-fill {
+  position:absolute; bottom:0; left:0; right:0;
+  transition:height 0.8s cubic-bezier(0.34,1.56,0.64,1);
+  border-radius:6px;
+}
+#tension-score {
+  font-size:0.65rem; color:#556677; letter-spacing:1px; text-align:center;
+}
+
+/* ── JUDGE PANEL ── */
+#judge-panel {
+  background:rgba(40,30,0,0.6);
+  border:1px solid rgba(255,215,0,0.15);
+  border-radius:12px; padding:20px;
+  margin-bottom:20px;
+}
+.judge-header {
+  font-size:0.7rem; letter-spacing:4px; color:#aa8800;
+  margin-bottom:12px; display:flex; align-items:center; gap:8px;
+}
+.judge-dot { width:7px; height:7px; border-radius:50%; background:#ffd700; display:none; }
+.judge-dot.on { display:inline-block; animation:pulse-dot 1.2s ease-in-out infinite; }
+#judge-text {
+  font-size:0.88rem; line-height:1.7; color:#ccaa44;
+  min-height:60px; white-space:pre-wrap;
+}
+
+/* ── VERDICT ── */
+#verdict {
+  display:none; text-align:center; padding:30px 20px;
+  background:rgba(0,0,0,0.5);
+  border-radius:16px; margin-bottom:20px;
+  border:1px solid rgba(255,255,255,0.1);
+  animation:fadein 0.8s ease;
+}
+@keyframes fadein { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:none} }
+#verdict-title { font-size:2rem; letter-spacing:6px; margin-bottom:12px; }
+#verdict-text { font-size:0.9rem; color:#889aaa; line-height:1.7; max-width:600px; margin:0 auto; }
+
+/* ── STATUS BAR ── */
+#status {
+  text-align:center; font-size:0.75rem; letter-spacing:2px;
+  color:#334455; height:24px; transition:color 0.3s;
+}
+#status.active { color:#4488ff; }
+#status.error { color:#ff4444; }
+
+/* ── Q&A PANEL ── */
+#qa-panel {
+  display:none;
+  background:rgba(10,10,22,0.75);
+  border:1px solid rgba(255,255,255,0.08);
+  border-radius:14px; padding:22px;
+  margin-bottom:20px;
+  animation:fadein 0.6s ease;
+}
+.qa-top-row {
+  display:flex; align-items:center; justify-content:space-between;
+  flex-wrap:wrap; gap:12px; margin-bottom:16px;
+}
+.qa-section-label {
+  font-size:0.65rem; letter-spacing:5px; color:#445566;
+}
+.qa-targets {
+  display:flex; gap:7px; flex-wrap:wrap;
+}
+.qa-pill {
+  padding:6px 14px; border-radius:20px;
+  font-family:'Georgia',serif; font-size:0.75rem; letter-spacing:2px;
+  cursor:pointer; transition:all 0.2s; border:1px solid transparent;
+  background:rgba(255,255,255,0.04); color:#445566;
+  user-select:none;
+}
+.qa-pill:hover { color:#889aaa; border-color:rgba(255,255,255,0.12); }
+.qa-pill.active-t { background:rgba(68,136,255,0.18); color:#88bbff; border-color:rgba(68,136,255,0.45); }
+.qa-pill.active-a { background:rgba(255,68,68,0.18); color:#ffaaaa; border-color:rgba(255,68,68,0.45); }
+.qa-pill.active-j { background:rgba(255,215,0,0.15); color:#ffdd66; border-color:rgba(255,215,0,0.4); }
+.qa-pill.active-all {
+  background:linear-gradient(90deg,rgba(68,136,255,0.2),rgba(255,215,0,0.15),rgba(255,68,68,0.2));
+  color:#ccd8ff; border-color:rgba(255,255,255,0.25);
+}
+#qa-log { margin-bottom:14px; }
+.qa-question-row {
+  font-size:0.75rem; letter-spacing:1px; color:#3a4f66;
+  margin-bottom:8px; padding-bottom:6px;
+  border-bottom:1px solid rgba(255,255,255,0.05);
+}
+.qa-responses {
+  display:grid; gap:10px; margin-bottom:16px;
+}
+.qa-responses.count-1 { grid-template-columns:1fr; }
+.qa-responses.count-2 { grid-template-columns:1fr 1fr; }
+.qa-responses.count-3 { grid-template-columns:1fr 1fr 1fr; }
+.qa-resp-block {
+  border-radius:8px; padding:12px 14px;
+  font-size:0.88rem; line-height:1.75; min-height:36px;
+}
+.qa-resp-block.resp-t { background:rgba(20,40,100,0.5); border:1px solid rgba(68,136,255,0.2); }
+.qa-resp-block.resp-a { background:rgba(80,15,15,0.5); border:1px solid rgba(255,68,68,0.2); }
+.qa-resp-block.resp-j { background:rgba(50,40,5,0.5); border:1px solid rgba(255,215,0,0.18); }
+.qa-resp-label {
+  font-size:0.62rem; letter-spacing:3px; margin-bottom:7px;
+  display:flex; align-items:center; gap:6px;
+}
+.qa-resp-label.lbl-t { color:#4488ff; }
+.qa-resp-label.lbl-a { color:#ff4444; }
+.qa-resp-label.lbl-j { color:#ccaa33; }
+.resp-dot { width:6px; height:6px; border-radius:50%; display:none; }
+.resp-dot.on { display:inline-block; animation:pulse-dot 1s ease-in-out infinite; }
+.resp-dot-t { background:#4488ff; }
+.resp-dot-a { background:#ff4444; }
+.resp-dot-j { background:#ffd700; }
+.qa-resp-text { color:#b8cce8; white-space:pre-wrap; }
+.qa-bottom-row { display:flex; gap:10px; }
+#qa-input {
+  flex:1;
+  background:rgba(0,0,0,0.4);
+  border:1px solid rgba(255,255,255,0.1);
+  border-radius:8px; padding:10px 14px;
+  color:#dde8ff; font-size:0.92rem; font-family:'Georgia',serif;
+  outline:none; transition:border-color 0.3s;
+}
+#qa-input:focus { border-color:rgba(255,255,255,0.3); }
+#btn-qa {
+  padding:10px 24px; border:none; border-radius:8px;
+  font-size:0.88rem; font-family:'Georgia',serif; letter-spacing:1px;
+  cursor:pointer; transition:all 0.25s;
+  background:rgba(255,255,255,0.08); color:#889aaa;
+  border:1px solid rgba(255,255,255,0.12);
+}
+#btn-qa:hover:not(:disabled) { background:rgba(255,255,255,0.14); color:#c8d8ff; }
+#btn-qa:disabled { opacity:0.3; cursor:not-allowed; }
+@media(max-width:600px){
+  .qa-responses.count-2,.qa-responses.count-3 { grid-template-columns:1fr; }
+}
+
+/* ── RESPONSIVE ── */
+@media(max-width:700px){
+  .arena { grid-template-columns:1fr; }
+  .tension-wrap { display:none; }
+  h1 { font-size:2rem; }
+}
+</style>
+</head>
+<body>
+
+<canvas id="bg"></canvas>
+
+<div class="wrap">
+  <header>
+    <h1>DIALECTIC</h1>
+    <div class="tagline">TWO MINDS · THREE ROUNDS · ONE TRUTH</div>
+  </header>
+
+  <div id="setup">
+    <div class="setup-row">
+      <input id="topic-input" type="text"
+        placeholder="Enter a proposition to debate…  e.g. 'AGI will be net beneficial for humanity'"
+        value="">
+      <button class="btn btn-go" id="btn-start" onclick="startDebate()">Begin</button>
+      <button class="btn btn-reset" id="btn-reset" onclick="resetAll()">Reset</button>
+    </div>
+  </div>
+
+  <div id="round-bar">
+    <div class="round-pip" id="pip-1">I</div>
+    <div class="round-pip" id="pip-2">II</div>
+    <div class="round-pip" id="pip-3">III</div>
+  </div>
+
+  <div class="arena">
+    <!-- THESIS (left) -->
+    <div class="debater debater-t" id="panel-t">
+      <div class="debater-name name-t">
+        <div class="dot dot-t" id="dot-t"></div>
+        THESIS
+      </div>
+      <div class="argument-text" id="text-t"></div>
+    </div>
+
+    <!-- Tension meter (center) -->
+    <div class="tension-wrap">
+      <div class="tension-label">T</div>
+      <div class="tension-bar-outer">
+        <div class="tension-fill" id="tension-fill" style="height:50%;background:linear-gradient(to top,#4488ff,#2255cc);"></div>
+      </div>
+      <div class="tension-label">A</div>
+      <div id="tension-score">—</div>
+    </div>
+
+    <!-- ANTITHESIS (right) -->
+    <div class="debater debater-a" id="panel-a">
+      <div class="debater-name name-a">
+        <div class="dot dot-a" id="dot-a"></div>
+        ANTITHESIS
+      </div>
+      <div class="argument-text" id="text-a"></div>
+    </div>
+  </div>
+
+  <div id="judge-panel">
+    <div class="judge-header">
+      <div class="judge-dot" id="dot-j"></div>
+      ARBITER
+    </div>
+    <div id="judge-text">Awaiting debate…</div>
+  </div>
+
+  <div id="verdict">
+    <div id="verdict-title"></div>
+    <div id="verdict-text"></div>
+  </div>
+
+  <!-- Q&A probe panel -->
+  <div id="qa-panel">
+    <div class="qa-top-row">
+      <span class="qa-section-label">PROBE</span>
+      <div class="qa-targets">
+        <div class="qa-pill" id="pill-t"  onclick="toggleTarget('t')">THESIS</div>
+        <div class="qa-pill" id="pill-a"  onclick="toggleTarget('a')">ANTITHESIS</div>
+        <div class="qa-pill" id="pill-j"  onclick="toggleTarget('j')">ARBITER</div>
+        <div class="qa-pill" id="pill-all" onclick="toggleTarget('all')">ALL</div>
+      </div>
+    </div>
+    <div id="qa-log"></div>
+    <div class="qa-bottom-row">
+      <input id="qa-input" type="text" placeholder="Ask a question…">
+      <button id="btn-qa" onclick="askSelected()">Ask</button>
+    </div>
+  </div>
+
+  <div id="status">Enter a topic and press Begin.</div>
+</div>
+
+<script>
+/* ─────────────────────────────────────────────────────────────
+   CONFIG
+───────────────────────────────────────────────────────────── */
+const API_KEY = 'rp-ak-f763e6b7b7c32a04b5669c78';
+const API_URL = 'https://aicohort.org/v1/chat/completions';
+const MODEL   = 'research-model';
+
+/* ─────────────────────────────────────────────────────────────
+   STATE
+───────────────────────────────────────────────────────────── */
+let running = false;
+let abortCtrl = null;
+let scoreT = 0, scoreA = 0;
+let thesisHistory = [], antithesisHistory = [];
+let currentRound = 0;
+
+/* ─────────────────────────────────────────────────────────────
+   BACKGROUND CANVAS — drifting particles
+───────────────────────────────────────────────────────────── */
+(function initBG() {
+  const cvs = document.getElementById('bg');
+  const ctx = cvs.getContext('2d');
+  const stars = Array.from({length: 120}, () => ({
+    x: Math.random(), y: Math.random(),
+    r: Math.random() * 1.2 + 0.2,
+    s: (Math.random() - 0.5) * 0.00008,
+    o: Math.random() * 0.5 + 0.1
+  }));
+
+  function draw() {
+    cvs.width  = window.innerWidth;
+    cvs.height = window.innerHeight;
+    ctx.clearRect(0, 0, cvs.width, cvs.height);
+    stars.forEach(s => {
+      s.x = (s.x + s.s + 1) % 1;
+      ctx.beginPath();
+      ctx.arc(s.x * cvs.width, s.y * cvs.height, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(160,190,255,${s.o})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+/* ─────────────────────────────────────────────────────────────
+   WEB AUDIO — ambient + events
+───────────────────────────────────────────────────────────── */
+let audioCtx = null;
+let droneGain = null;
+
+function ensureAudio() {
+  if (audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  droneGain = audioCtx.createGain();
+  droneGain.gain.value = 0;
+  droneGain.connect(audioCtx.destination);
+
+  // subtle beating drone
+  [80, 80.3, 160, 240].forEach((freq, i) => {
+    const osc = audioCtx.createOscillator();
+    const g   = audioCtx.createGain();
+    osc.frequency.value = freq;
+    osc.type = i < 2 ? 'sine' : 'triangle';
+    g.gain.value = i < 2 ? 0.04 : 0.015;
+    osc.connect(g);
+    g.connect(droneGain);
+    osc.start();
+  });
+}
+
+function droneFade(targetVol, ms = 800) {
+  ensureAudio();
+  const t = audioCtx.currentTime;
+  droneGain.gain.setTargetAtTime(targetVol, t, ms / 1000);
+}
+
+function playPing(freq = 440, vol = 0.18) {
+  ensureAudio();
+  const osc = audioCtx.createOscillator();
+  const env = audioCtx.createGain();
+  osc.frequency.value = freq;
+  osc.type = 'sine';
+  env.gain.setValueAtTime(vol, audioCtx.currentTime);
+  env.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
+  osc.connect(env);
+  env.connect(audioCtx.destination);
+  osc.start();
+  osc.stop(audioCtx.currentTime + 1.2);
+}
+
+function playFanfare(win) {
+  ensureAudio();
+  const notes = win === 't'
+    ? [261, 329, 392, 523]
+    : [261, 311, 370, 523];
+  notes.forEach((f, i) => {
+    setTimeout(() => playPing(f, 0.15), i * 140);
+  });
+}
+
+/* ─────────────────────────────────────────────────────────────
+   API — streaming fetch with SSE parser
+───────────────────────────────────────────────────────────── */
+async function streamCall(messages, temperature, onChunk) {
+  const resp = await fetch(API_URL, {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + API_KEY,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      messages,
+      stream: true,
+      max_tokens: 4000,
+      temperature
+    }),
+    signal: abortCtrl.signal
+  });
+
+  if (!resp.ok) {
+    const err = await resp.text();
+    throw new Error('API ' + resp.status + ': ' + err.slice(0, 120));
+  }
+
+  const reader  = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let full   = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop();
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      const data = line.slice(6).trim();
+      if (data === '[DONE]') return full;
+      try {
+        const p = JSON.parse(data);
+        const chunk = p.choices?.[0]?.delta?.content ?? '';
+        if (chunk) { onChunk(chunk); full += chunk; }
+      } catch (_) {}
+    }
+  }
+  return full;
+}
+
+/* Non-streaming fallback */
+async function callAPI(messages, temperature) {
+  const resp = await fetch(API_URL, {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + API_KEY,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      messages,
+      max_tokens: 300,
+      temperature
+    }),
+    signal: abortCtrl.signal
+  });
+  if (!resp.ok) throw new Error('API ' + resp.status);
+  const j = await resp.json();
+  return j.choices?.[0]?.message?.content ?? '';
+}
+
+/* ─────────────────────────────────────────────────────────────
+   RENDERING HELPERS
+───────────────────────────────────────────────────────────── */
+function setStatus(msg, cls = '') {
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = cls;
+}
+
+let cursorT = null, cursorA = null, cursorJ = null;
+
+function appendBlock(side, roundNum) {
+  const el = document.getElementById('text-' + side);
+  const block = document.createElement('div');
+  block.className = 'round-block';
+  const lbl = document.createElement('div');
+  lbl.className = 'round-label';
+  lbl.textContent = 'ROUND ' + ['I','II','III'][roundNum - 1];
+  block.appendChild(lbl);
+  const span = document.createElement('span');
+  block.appendChild(span);
+  el.appendChild(block);
+
+  // cursor
+  const cur = document.createElement('span');
+  cur.className = 'cursor';
+  if (side === 't') cur.style.background = '#4488ff';
+  else cur.style.background = '#ff4444';
+  block.appendChild(cur);
+
+  return { span, cursor: cur };
+}
+
+function appendJudgeBlock(roundNum) {
+  const el = document.getElementById('judge-text');
+  if (roundNum === 1) el.textContent = '';
+  const block = document.createElement('div');
+  block.style.marginBottom = '10px';
+  const lbl = document.createElement('div');
+  lbl.style.cssText = 'font-size:0.65rem;letter-spacing:2px;opacity:0.4;margin-bottom:3px;';
+  lbl.textContent = 'ROUND ' + ['I','II','III'][roundNum - 1];
+  const span = document.createElement('span');
+  block.appendChild(lbl);
+  block.appendChild(span);
+  el.appendChild(block);
+
+  const cur = document.createElement('span');
+  cur.className = 'cursor';
+  cur.style.background = '#ffd700';
+  block.appendChild(cur);
+
+  return { span, cursor: cur };
+}
+
+function setSpeaking(side, on) {
+  const panels = ['panel-t', 'panel-a'];
+  panels.forEach(id => {
+    document.getElementById(id).classList.remove('speaking-t', 'speaking-a');
+  });
+  const dotT = document.getElementById('dot-t');
+  const dotA = document.getElementById('dot-a');
+  const dotJ = document.getElementById('dot-j');
+  dotT.classList.remove('on');
+  dotA.classList.remove('on');
+  dotJ.classList.remove('on');
+
+  if (side === 't') {
+    document.getElementById('panel-t').classList.add('speaking-t');
+    dotT.classList.add('on');
+  } else if (side === 'a') {
+    document.getElementById('panel-a').classList.add('speaking-a');
+    dotA.classList.add('on');
+  } else if (side === 'j') {
+    dotJ.classList.add('on');
+  }
+}
+
+function updateTension() {
+  const total = scoreT + scoreA || 1;
+  const pct   = scoreT / total * 100;
+  const fill  = document.getElementById('tension-fill');
+
+  // Height = thesis % (bottom = thesis, top = antithesis)
+  fill.style.height = pct + '%';
+  if (pct > 55) {
+    fill.style.background = 'linear-gradient(to top,#4488ff,#2255cc)';
+  } else if (pct < 45) {
+    fill.style.background = 'linear-gradient(to top,#cc2222,#ff4444)';
+  } else {
+    fill.style.background = 'linear-gradient(to top,#4488ff,#cc2222)';
+  }
+  document.getElementById('tension-score').textContent = scoreT + '–' + scoreA;
+}
+
+function setPip(round, winner) {
+  const pip = document.getElementById('pip-' + round);
+  pip.classList.remove('active');
+  if (winner === 't') pip.classList.add('done-t');
+  else if (winner === 'a') pip.classList.add('done-a');
+  else pip.classList.add('done-tie');
+}
+
+function removeCursor(cur) {
+  if (cur && cur.parentNode) cur.parentNode.removeChild(cur);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   SYSTEM PROMPTS
+───────────────────────────────────────────────────────────── */
+function sysThesis(topic) {
+  return `You are THESIS, an advocate arguing FOR the proposition: "${topic}".
+Be incisive, confident, and intellectually rigorous. 2-4 sentences per argument.
+Never use bullet points. Speak in flowing prose. Do not break character.`;
+}
+
+function sysAntithesis(topic) {
+  return `You are ANTITHESIS, arguing AGAINST: "${topic}".
+Challenge assumptions, expose weaknesses, and present steel-manned counter-evidence.
+2-4 sentences. Flowing prose only. Never use bullet points. Stay in character.`;
+}
+
+function sysJudge(topic) {
+  return `You are an impartial ARBITER judging a debate on: "${topic}".
+After each exchange, briefly state which side made the stronger argument THIS round and why.
+End with exactly: ROUND WINNER: THESIS or ROUND WINNER: ANTITHESIS or ROUND WINNER: TIE
+Keep it to 3 sentences.`;
+}
+
+function sysFinalJudge(topic) {
+  return `You are the ARBITER. The debate on "${topic}" has concluded.
+Deliver a final verdict: who won overall, and why. Summarise the decisive argument.
+End with exactly: FINAL WINNER: THESIS or FINAL WINNER: ANTITHESIS or FINAL WINNER: TIE
+Keep it to 4 sentences.`;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   MAIN DEBATE LOOP
+───────────────────────────────────────────────────────────── */
+async function startDebate() {
+  const topic = document.getElementById('topic-input').value.trim();
+  if (!topic) {
+    document.getElementById('topic-input').focus();
+    return;
+  }
+
+  resetAll(false);
+  running = true;
+  abortCtrl = new AbortController();
+  document.getElementById('btn-start').disabled = true;
+  droneFade(0.6);
+
+  thesisHistory     = [{ role:'system', content: sysThesis(topic) }];
+  antithesisHistory = [{ role:'system', content: sysAntithesis(topic) }];
+  const judgeHistory = [{ role:'system', content: sysJudge(topic) }];
+
+  try {
+    for (let round = 1; round <= 3; round++) {
+      currentRound = round;
+      document.getElementById('pip-' + round).classList.add('active');
+
+      /* ── THESIS speaks ── */
+      const tPrompt = round === 1
+        ? `Open the debate. Argue for: "${topic}".`
+        : `This is round ${round}. Respond to the antithesis and strengthen your case.`;
+
+      thesisHistory.push({ role:'user', content: tPrompt });
+      setStatus('THESIS is arguing…', 'active');
+      setSpeaking('t');
+      playPing(330, 0.12);
+
+      const { span: tSpan, cursor: tCur } = appendBlock('t', round);
+      let tText = '';
+      try {
+        tText = await streamCall(thesisHistory, 0.8, chunk => {
+          tSpan.textContent += chunk;
+          document.getElementById('panel-t').scrollTop = 999999;
+        });
+      } catch(e) {
+        if (e.name === 'AbortError') return;
+        // fallback non-streaming
+        setStatus('Retrying…', 'active');
+        tText = await callAPI(thesisHistory, 0.8);
+        tSpan.textContent = tText;
+      }
+      removeCursor(tCur);
+      thesisHistory.push({ role:'assistant', content: tText });
+      antithesisHistory.push({ role:'user', content: 'THESIS said: ' + tText + '\n\nNow rebut this.' });
+
+      /* ── ANTITHESIS speaks ── */
+      setStatus('ANTITHESIS is responding…', 'active');
+      setSpeaking('a');
+      playPing(220, 0.12);
+
+      const { span: aSpan, cursor: aCur } = appendBlock('a', round);
+      let aText = '';
+      try {
+        aText = await streamCall(antithesisHistory, 0.82, chunk => {
+          aSpan.textContent += chunk;
+          document.getElementById('panel-a').scrollTop = 999999;
+        });
+      } catch(e) {
+        if (e.name === 'AbortError') return;
+        aText = await callAPI(antithesisHistory, 0.82);
+        aSpan.textContent = aText;
+      }
+      removeCursor(aCur);
+      antithesisHistory.push({ role:'assistant', content: aText });
+      thesisHistory.push({ role:'user', content: 'ANTITHESIS said: ' + aText + '\n\nAddress this in the next round.' });
+
+      /* ── JUDGE scores ── */
+      setStatus('Arbiter deliberating…', 'active');
+      setSpeaking('j');
+      playPing(550, 0.08);
+
+      judgeHistory.push({
+        role: 'user',
+        content: `Round ${round} exchange:\nTHESIS: ${tText}\n\nANTITHESIS: ${aText}\n\nScore this round.`
+      });
+
+      const { span: jSpan, cursor: jCur } = appendJudgeBlock(round);
+      let jText = '';
+      try {
+        jText = await streamCall(judgeHistory, 0.5, chunk => {
+          jSpan.textContent += chunk;
+        });
+      } catch(e) {
+        if (e.name === 'AbortError') return;
+        jText = await callAPI(judgeHistory, 0.5);
+        jSpan.textContent = jText;
+      }
+      removeCursor(jCur);
+      judgeHistory.push({ role:'assistant', content: jText });
+
+      // parse winner
+      const jUpper = jText.toUpperCase();
+      let rWinner = 'tie';
+      if (/ROUND WINNER:\s*THESIS/.test(jUpper))     { scoreT++; rWinner = 't'; }
+      else if (/ROUND WINNER:\s*ANTITHESIS/.test(jUpper)) { scoreA++; rWinner = 'a'; }
+      setPip(round, rWinner);
+      updateTension();
+
+      await sleep(800);
+    }
+
+    /* ── FINAL VERDICT ── */
+    setStatus('Final verdict incoming…', 'active');
+    setSpeaking('j');
+
+    const finalJudgeHistory = [
+      { role:'system', content: sysFinalJudge(topic) },
+      {
+        role:'user',
+        content: [
+          'Here is the full debate:',
+          ...thesisHistory.filter(m => m.role !== 'system').map((m,i) => `[${i}] THESIS: ${m.content}`),
+          ...antithesisHistory.filter(m => m.role !== 'system').map((m,i) => `[${i}] ANTITHESIS: ${m.content}`),
+          `Current score: THESIS ${scoreT} – ANTITHESIS ${scoreA}.`,
+          'Deliver your final verdict.'
+        ].join('\n\n')
+      }
+    ];
+
+    const { span: vjSpan, cursor: vjCur } = appendJudgeBlock('F');
+
+    // patch appendJudgeBlock for final
+    vjSpan.parentNode.querySelector('div').textContent = 'FINAL';
+
+    let finalText = '';
+    try {
+      finalText = await streamCall(finalJudgeHistory, 0.4, chunk => {
+        vjSpan.textContent += chunk;
+      });
+    } catch(e) {
+      if (e.name === 'AbortError') return;
+      finalText = await callAPI(finalJudgeHistory, 0.4);
+      vjSpan.textContent = finalText;
+    }
+    removeCursor(vjCur);
+
+    // parse final winner
+    const fu = finalText.toUpperCase();
+    let overallWinner = 'tie';
+    if (/FINAL WINNER:\s*THESIS/.test(fu))     overallWinner = 't';
+    else if (/FINAL WINNER:\s*ANTITHESIS/.test(fu)) overallWinner = 'a';
+    else if (scoreT > scoreA)  overallWinner = 't';
+    else if (scoreA > scoreT)  overallWinner = 'a';
+
+    showVerdict(overallWinner, topic, finalText);
+    droneFade(0);
+    setSpeaking(null);
+    setStatus('Debate concluded.', '');
+
+  } catch(err) {
+    if (err.name !== 'AbortError') {
+      setStatus('Error: ' + err.message, 'error');
+      console.error(err);
+    }
+    droneFade(0, 400);
+    setSpeaking(null);
+  } finally {
+    running = false;
+    document.getElementById('btn-start').disabled = false;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   VERDICT
+───────────────────────────────────────────────────────────── */
+// probe state
+let qaHistories = { t: [], a: [], j: [] };
+let qaTargets = new Set(['t']); // which agents are selected
+
+function showVerdict(winner, topic, judgeText) {
+  const el = document.getElementById('verdict');
+  const title = document.getElementById('verdict-title');
+  const text  = document.getElementById('verdict-text');
+
+  if (winner === 't') {
+    title.textContent = 'THESIS PREVAILS';
+    title.style.color = '#4488ff';
+    playFanfare('t');
+  } else if (winner === 'a') {
+    title.textContent = 'ANTITHESIS PREVAILS';
+    title.style.color = '#ff4444';
+    playFanfare('a');
+  } else {
+    title.textContent = 'EQUIPOISE';
+    title.style.color = '#aaaaaa';
+  }
+
+  // strip the "FINAL WINNER: ..." line for display
+  const clean = judgeText.replace(/FINAL WINNER:[^\n]*/i, '').trim();
+  text.textContent = clean || ('The proposition "' + topic + '" was contested to a draw.');
+  el.style.display = 'block';
+  el.scrollIntoView({ behavior:'smooth', block:'nearest' });
+
+  // seed probe histories from debate context
+  qaHistories.t = thesisHistory.slice();
+  qaHistories.a = antithesisHistory.slice();
+  qaHistories.j = [
+    { role: 'system', content: sysFinalJudge(topic) + '\nYou may now answer direct questions about the debate.' }
+  ];
+
+  // default selection: winner (or all on tie)
+  qaTargets = new Set(winner === 'tie' ? ['t','a','j'] : [winner]);
+  renderPills();
+
+  document.getElementById('qa-panel').style.display = 'block';
+  document.getElementById('qa-input').placeholder = 'Ask a question…';
+  document.getElementById('qa-panel').scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
+/* ─────────────────────────────────────────────────────────────
+   PROBE — target selector + parallel ask
+───────────────────────────────────────────────────────────── */
+const AGENT_META = {
+  t: { label:'THESIS',     cls:'resp-t', lblCls:'lbl-t', dotCls:'resp-dot-t', color:'#4488ff' },
+  a: { label:'ANTITHESIS', cls:'resp-a', lblCls:'lbl-a', dotCls:'resp-dot-a', color:'#ff4444' },
+  j: { label:'ARBITER',    cls:'resp-j', lblCls:'lbl-j', dotCls:'resp-dot-j', color:'#ffd700' },
+};
+
+function renderPills() {
+  ['t','a','j'].forEach(k => {
+    const pill = document.getElementById('pill-' + k);
+    pill.className = 'qa-pill' + (qaTargets.has(k) ? ' active-' + k : '');
+  });
+  const allActive = qaTargets.size === 3;
+  const allPill = document.getElementById('pill-all');
+  allPill.className = 'qa-pill' + (allActive ? ' active-all' : '');
+}
+
+function toggleTarget(key) {
+  if (key === 'all') {
+    if (qaTargets.size === 3) {
+      // cycle back to first available
+      qaTargets = new Set(['t']);
+    } else {
+      qaTargets = new Set(['t','a','j']);
+    }
+  } else {
+    if (qaTargets.has(key) && qaTargets.size > 1) {
+      qaTargets.delete(key);
+    } else {
+      qaTargets.add(key);
+    }
+  }
+  renderPills();
+}
+
+async function askSelected() {
+  const inp = document.getElementById('qa-input');
+  const q   = inp.value.trim();
+  if (!q || running) return;
+
+  const targets = [...qaTargets];
+  const btn = document.getElementById('btn-qa');
+  btn.disabled = true;
+  inp.value = '';
+  running = true;
+  abortCtrl = new AbortController();
+
+  const log = document.getElementById('qa-log');
+
+  // question row
+  const qRow = document.createElement('div');
+  qRow.className = 'qa-question-row';
+  qRow.textContent = '↳ ' + q;
+  log.appendChild(qRow);
+
+  // response grid
+  const grid = document.createElement('div');
+  grid.className = 'qa-responses count-' + targets.length;
+  log.appendChild(grid);
+
+  // build one block per target
+  const blocks = {};
+  targets.forEach(k => {
+    const meta = AGENT_META[k];
+    const block = document.createElement('div');
+    block.className = 'qa-resp-block ' + meta.cls;
+
+    const lbl = document.createElement('div');
+    lbl.className = 'qa-resp-label ' + meta.lblCls;
+    const dot = document.createElement('span');
+    dot.className = 'resp-dot ' + meta.dotCls + ' on';
+    dot.id = 'qdot-' + k;
+    lbl.appendChild(dot);
+    lbl.appendChild(document.createTextNode(meta.label));
+    block.appendChild(lbl);
+
+    const textSpan = document.createElement('div');
+    textSpan.className = 'qa-resp-text';
+    block.appendChild(textSpan);
+
+    const cur = document.createElement('span');
+    cur.className = 'cursor';
+    cur.style.background = meta.color;
+    block.appendChild(cur);
+
+    grid.appendChild(block);
+    blocks[k] = { textSpan, cur };
+  });
+
+  log.scrollTop = 999999;
+
+  // fire all selected agents in parallel
+  const tasks = targets.map(k => {
+    qaHistories[k].push({ role: 'user', content: q });
+    return (async () => {
+      let answer = '';
+      try {
+        answer = await streamCall(qaHistories[k], 0.75, chunk => {
+          blocks[k].textSpan.textContent += chunk;
+          log.scrollTop = 999999;
+        });
+      } catch(e) {
+        if (e.name === 'AbortError') return;
+        answer = await callAPI(qaHistories[k], 0.75);
+        blocks[k].textSpan.textContent = answer;
+      }
+      qaHistories[k].push({ role: 'assistant', content: answer });
+      removeCursor(blocks[k].cur);
+      document.getElementById('qdot-' + k)?.classList.remove('on');
+    })();
+  });
+
+  try {
+    await Promise.all(tasks);
+  } catch(err) {
+    if (err.name !== 'AbortError') setStatus('Error: ' + err.message, 'error');
+  } finally {
+    running = false;
+    btn.disabled = false;
+    inp.focus();
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   RESET
+───────────────────────────────────────────────────────────── */
+function resetAll(clearInput = true) {
+  if (running && abortCtrl) abortCtrl.abort();
+  running = false;
+  scoreT = scoreA = 0;
+  currentRound = 0;
+  thesisHistory = antithesisHistory = [];
+
+  if (clearInput) document.getElementById('topic-input').value = '';
+  document.getElementById('text-t').innerHTML = '';
+  document.getElementById('text-a').innerHTML = '';
+  document.getElementById('judge-text').textContent = 'Awaiting debate…';
+  document.getElementById('verdict').style.display = 'none';
+  document.getElementById('qa-panel').style.display = 'none';
+  document.getElementById('qa-log').innerHTML = '';
+  qaHistories = { t: [], a: [], j: [] };
+  qaTargets = new Set(['t']);
+  renderPills();
+
+  ['pip-1','pip-2','pip-3'].forEach(id => {
+    const el = document.getElementById(id);
+    el.className = 'round-pip';
+  });
+
+  document.getElementById('tension-fill').style.height = '50%';
+  document.getElementById('tension-fill').style.background = 'linear-gradient(to top,#4488ff,#2255cc)';
+  document.getElementById('tension-score').textContent = '—';
+  setSpeaking(null);
+  setStatus('Enter a topic and press Begin.', '');
+  document.getElementById('btn-start').disabled = false;
+  droneFade(0, 300);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   UTIL
+───────────────────────────────────────────────────────────── */
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+/* Enter key on input */
+document.getElementById('topic-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !running) startDebate();
+});
+</script>
+</body>
+</html>

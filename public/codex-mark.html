@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Codex Mark</title>
+  <meta name="description" content="A deterministic local canvas mark for Ronish Bhatt's website.">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #07090d;
+      --panel: rgba(12, 16, 22, 0.82);
+      --panel-hard: rgba(8, 11, 16, 0.94);
+      --line: rgba(178, 221, 255, 0.2);
+      --text: #edf7ff;
+      --muted: #9aa8b6;
+      --green: #51d88a;
+      --cyan: #55c7ff;
+      --amber: #f4c35d;
+      --rose: #ff6e8a;
+      --violet: #a994ff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+    }
+
+    canvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      background:
+        linear-gradient(135deg, rgba(81, 216, 138, 0.05), transparent 26%),
+        linear-gradient(315deg, rgba(255, 110, 138, 0.06), transparent 28%),
+        #07090d;
+      cursor: crosshair;
+    }
+
+    .workbench {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      display: grid;
+      grid-template-columns: minmax(0, 420px) 1fr;
+      align-items: start;
+      padding: 28px;
+      gap: 28px;
+    }
+
+    .panel {
+      width: min(100%, 420px);
+      pointer-events: auto;
+      background: var(--panel);
+      border: 1px solid rgba(237, 247, 255, 0.14);
+      border-radius: 8px;
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(18px);
+    }
+
+    .panel-header {
+      padding: 18px 18px 14px;
+      border-bottom: 1px solid rgba(237, 247, 255, 0.1);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.38rem;
+      line-height: 1.05;
+      font-weight: 760;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 0.86rem;
+      line-height: 1.45;
+    }
+
+    .controls {
+      padding: 16px 18px 18px;
+      display: grid;
+      gap: 14px;
+    }
+
+    label {
+      display: grid;
+      gap: 7px;
+      color: var(--muted);
+      font-size: 0.74rem;
+      font-weight: 700;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      min-height: 40px;
+      border: 1px solid rgba(237, 247, 255, 0.14);
+      border-radius: 6px;
+      padding: 9px 11px;
+      background: var(--panel-hard);
+      color: var(--text);
+      font: inherit;
+      font-size: 0.92rem;
+      outline: none;
+    }
+
+    input[type="text"]:focus {
+      border-color: rgba(85, 199, 255, 0.72);
+      box-shadow: 0 0 0 3px rgba(85, 199, 255, 0.1);
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--green);
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    button {
+      min-height: 38px;
+      border: 1px solid rgba(237, 247, 255, 0.15);
+      border-radius: 6px;
+      background: rgba(237, 247, 255, 0.055);
+      color: var(--text);
+      font: inherit;
+      font-size: 0.8rem;
+      font-weight: 760;
+      letter-spacing: 0;
+      cursor: pointer;
+      transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+    }
+
+    button:hover {
+      border-color: rgba(81, 216, 138, 0.62);
+      background: rgba(81, 216, 138, 0.13);
+      transform: translateY(-1px);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    .meter {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1px;
+      overflow: hidden;
+      border-top: 1px solid rgba(237, 247, 255, 0.1);
+      background: rgba(237, 247, 255, 0.1);
+      border-radius: 0 0 8px 8px;
+    }
+
+    .metric {
+      min-height: 58px;
+      padding: 10px 12px;
+      background: rgba(6, 8, 12, 0.72);
+    }
+
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.66rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+
+    .metric strong {
+      display: block;
+      margin-top: 5px;
+      color: var(--text);
+      font-size: 0.94rem;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .stamp {
+      position: fixed;
+      right: 24px;
+      bottom: 21px;
+      pointer-events: none;
+      color: rgba(237, 247, 255, 0.48);
+      font: 700 0.72rem ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+
+    @media (max-width: 780px) {
+      body {
+        overflow: auto;
+      }
+
+      .workbench {
+        position: relative;
+        display: block;
+        min-height: 100vh;
+        padding: 14px;
+      }
+
+      .panel {
+        width: 100%;
+      }
+
+      .stamp {
+        right: 14px;
+        bottom: 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="field" aria-label="Deterministic animated mark"></canvas>
+
+  <main class="workbench">
+    <section class="panel" aria-label="Codex Mark controls">
+      <div class="panel-header">
+        <h1>Codex Mark</h1>
+        <p class="subtitle">A local signal made from seed, drag, click, and time. Same seed, same bones.</p>
+      </div>
+
+      <div class="controls">
+        <label>
+          Seed
+          <input id="seed" type="text" autocomplete="off" spellcheck="false">
+        </label>
+
+        <label>
+          Density
+          <input id="density" type="range" min="52" max="180" value="116">
+        </label>
+
+        <label>
+          Pull
+          <input id="pull" type="range" min="0" max="100" value="46">
+        </label>
+
+        <label>
+          Trace
+          <input id="trace" type="range" min="8" max="92" value="46">
+        </label>
+
+        <div class="row">
+          <button id="reseed" type="button">Reseed</button>
+          <button id="hold" type="button">Hold</button>
+          <button id="clear" type="button">Clear</button>
+        </div>
+      </div>
+
+      <div class="meter">
+        <div class="metric"><span>Glyphs</span><strong id="glyphCount">0</strong></div>
+        <div class="metric"><span>Field</span><strong id="fieldId">0000</strong></div>
+        <div class="metric"><span>Drift</span><strong id="drift">0.00</strong></div>
+      </div>
+    </section>
+  </main>
+
+  <div class="stamp">local / no calls / no witness</div>
+
+  <script>
+    (() => {
+      const canvas = document.getElementById("field");
+      const ctx = canvas.getContext("2d", { alpha: false });
+      const seedEl = document.getElementById("seed");
+      const densityEl = document.getElementById("density");
+      const pullEl = document.getElementById("pull");
+      const traceEl = document.getElementById("trace");
+      const reseedBtn = document.getElementById("reseed");
+      const holdBtn = document.getElementById("hold");
+      const clearBtn = document.getElementById("clear");
+      const glyphCountEl = document.getElementById("glyphCount");
+      const fieldIdEl = document.getElementById("fieldId");
+      const driftEl = document.getElementById("drift");
+
+      const storageKey = "ronish.codexMark.v1";
+      const palette = ["#51d88a", "#55c7ff", "#f4c35d", "#ff6e8a", "#a994ff"];
+      const state = {
+        width: 0,
+        height: 0,
+        dpr: 1,
+        seed: "ronish / local signal / codex",
+        seedHash: 1,
+        rand: null,
+        particles: [],
+        marks: [],
+        pointer: { x: 0, y: 0, down: false, inside: false },
+        running: true,
+        tick: 0,
+        last: 0,
+        drift: 0
+      };
+
+      function hashString(input) {
+        let h = 2166136261;
+        for (let i = 0; i < input.length; i++) {
+          h ^= input.charCodeAt(i);
+          h = Math.imul(h, 16777619);
+        }
+        return h >>> 0;
+      }
+
+      function mulberry32(seed) {
+        return function rand() {
+          let t = seed += 0x6D2B79F5;
+          t = Math.imul(t ^ (t >>> 15), t | 1);
+          t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+
+      function randBetween(min, max) {
+        return min + (max - min) * state.rand();
+      }
+
+      function save() {
+        const payload = {
+          seed: state.seed,
+          density: densityEl.value,
+          pull: pullEl.value,
+          trace: traceEl.value,
+          marks: state.marks.slice(-18)
+        };
+        localStorage.setItem(storageKey, JSON.stringify(payload));
+      }
+
+      function load() {
+        try {
+          const raw = localStorage.getItem(storageKey);
+          if (!raw) return;
+          const payload = JSON.parse(raw);
+          if (typeof payload.seed === "string") state.seed = payload.seed;
+          if (typeof payload.density === "string") densityEl.value = payload.density;
+          if (typeof payload.pull === "string") pullEl.value = payload.pull;
+          if (typeof payload.trace === "string") traceEl.value = payload.trace;
+          if (Array.isArray(payload.marks)) state.marks = payload.marks.slice(-18);
+        } catch {
+          localStorage.removeItem(storageKey);
+        }
+      }
+
+      function resize() {
+        state.dpr = Math.min(window.devicePixelRatio || 1, 2);
+        state.width = Math.floor(window.innerWidth);
+        state.height = Math.floor(window.innerHeight);
+        canvas.width = Math.floor(state.width * state.dpr);
+        canvas.height = Math.floor(state.height * state.dpr);
+        canvas.style.width = state.width + "px";
+        canvas.style.height = state.height + "px";
+        ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
+        rebuild();
+      }
+
+      function rebuild() {
+        state.seed = seedEl.value.trim() || "ronish / local signal / codex";
+        state.seedHash = hashString(state.seed);
+        state.rand = mulberry32(state.seedHash);
+        state.particles = [];
+        const count = Number(densityEl.value);
+        const cx = state.width * 0.57;
+        const cy = state.height * 0.52;
+        const spread = Math.min(state.width, state.height) * 0.42;
+
+        for (let i = 0; i < count; i++) {
+          const band = i / Math.max(1, count - 1);
+          const angle = randBetween(0, Math.PI * 2);
+          const radius = spread * Math.pow(state.rand(), 0.58);
+          const skew = Math.sin(band * Math.PI * 5 + state.seedHash * 0.00001) * 36;
+          state.particles.push({
+            x: cx + Math.cos(angle) * radius + skew,
+            y: cy + Math.sin(angle) * radius * 0.76,
+            bx: cx + Math.cos(angle) * radius + skew,
+            by: cy + Math.sin(angle) * radius * 0.76,
+            vx: 0,
+            vy: 0,
+            size: randBetween(1.1, 3.4),
+            phase: randBetween(0, Math.PI * 2),
+            hue: Math.floor(randBetween(0, palette.length)),
+            ring: 2 + Math.floor(randBetween(0, 7))
+          });
+        }
+
+        fieldIdEl.textContent = state.seedHash.toString(16).slice(0, 4).toUpperCase();
+        glyphCountEl.textContent = String(state.marks.length);
+        save();
+      }
+
+      function getXY(event) {
+        const rect = canvas.getBoundingClientRect();
+        return {
+          x: event.clientX - rect.left,
+          y: event.clientY - rect.top
+        };
+      }
+
+      function addMark(x, y) {
+        const local = hashString(state.seed + ":" + Math.round(x) + ":" + Math.round(y) + ":" + state.marks.length);
+        const rand = mulberry32(local);
+        state.marks.push({
+          x: x / Math.max(1, state.width),
+          y: y / Math.max(1, state.height),
+          r: 22 + rand() * 82,
+          sides: 3 + Math.floor(rand() * 7),
+          spin: rand() > 0.5 ? 1 : -1,
+          color: palette[Math.floor(rand() * palette.length)],
+          born: state.tick
+        });
+        state.marks = state.marks.slice(-18);
+        glyphCountEl.textContent = String(state.marks.length);
+        save();
+      }
+
+      function drawGrid() {
+        const step = Math.max(34, Math.min(72, Math.floor(Math.min(state.width, state.height) / 12)));
+        ctx.save();
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = "rgba(237,247,255,0.055)";
+        for (let x = (state.seedHash % step); x < state.width; x += step) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x + Math.sin(state.tick * 0.001 + x) * 8, state.height);
+          ctx.stroke();
+        }
+        for (let y = ((state.seedHash >>> 8) % step); y < state.height; y += step) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(state.width, y + Math.cos(state.tick * 0.001 + y) * 8);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      function drawSpine() {
+        const cx = state.width * 0.57;
+        const cy = state.height * 0.52;
+        const rings = 9;
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(Math.sin(state.tick * 0.00022) * 0.18);
+        for (let i = rings; i >= 1; i--) {
+          const t = i / rings;
+          const w = Math.min(state.width, state.height) * (0.08 + t * 0.39);
+          const h = w * (0.24 + 0.08 * Math.sin(i + state.seedHash));
+          ctx.strokeStyle = palette[i % palette.length] + Math.floor(20 + t * 50).toString(16).padStart(2, "0");
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, w, h, t * Math.PI * 0.23, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      function drawMarks() {
+        ctx.save();
+        state.marks.forEach((mark, index) => {
+          const x = mark.x * state.width;
+          const y = mark.y * state.height;
+          const age = Math.max(0, state.tick - mark.born);
+          const radius = mark.r + Math.sin(state.tick * 0.002 + index) * 6;
+          const alpha = Math.max(0.22, 0.72 - age * 0.00006);
+          ctx.translate(x, y);
+          ctx.rotate(mark.spin * (state.tick * 0.0003 + index));
+          ctx.strokeStyle = mark.color + Math.floor(alpha * 255).toString(16).padStart(2, "0");
+          ctx.fillStyle = mark.color + "12";
+          ctx.lineWidth = 1.3;
+          ctx.beginPath();
+          for (let i = 0; i < mark.sides; i++) {
+            const a = -Math.PI / 2 + (Math.PI * 2 * i) / mark.sides;
+            const px = Math.cos(a) * radius;
+            const py = Math.sin(a) * radius;
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+          }
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
+        });
+        ctx.restore();
+      }
+
+      function updateParticles(delta) {
+        const pull = Number(pullEl.value) / 100;
+        const pointerForce = state.pointer.inside ? 1 : 0;
+        const px = state.pointer.x;
+        const py = state.pointer.y;
+        let totalDrift = 0;
+
+        state.particles.forEach((p, i) => {
+          const wave = Math.sin(state.tick * 0.0007 + p.phase + i * 0.11);
+          const targetX = p.bx + Math.cos(p.phase + state.tick * 0.0003) * p.ring * 4;
+          const targetY = p.by + wave * p.ring * 3;
+          let ax = (targetX - p.x) * (0.002 + pull * 0.008);
+          let ay = (targetY - p.y) * (0.002 + pull * 0.008);
+
+          if (pointerForce) {
+            const dx = px - p.x;
+            const dy = py - p.y;
+            const dist2 = dx * dx + dy * dy;
+            const reach = state.pointer.down ? 105000 : 56000;
+            if (dist2 < reach) {
+              const dist = Math.sqrt(dist2) || 1;
+              const power = (1 - dist2 / reach) * (state.pointer.down ? 0.78 : 0.26);
+              ax += (dx / dist) * power;
+              ay += (dy / dist) * power;
+            }
+          }
+
+          p.vx = (p.vx + ax * delta) * 0.91;
+          p.vy = (p.vy + ay * delta) * 0.91;
+          p.x += p.vx * delta;
+          p.y += p.vy * delta;
+          totalDrift += Math.hypot(p.x - p.bx, p.y - p.by);
+        });
+
+        state.drift = totalDrift / Math.max(1, state.particles.length);
+        driftEl.textContent = state.drift.toFixed(2);
+      }
+
+      function drawParticles() {
+        const linkDistance = 86;
+        ctx.save();
+        for (let i = 0; i < state.particles.length; i++) {
+          const a = state.particles[i];
+          for (let j = i + 1; j < state.particles.length; j += 7) {
+            const b = state.particles[j];
+            const dx = a.x - b.x;
+            const dy = a.y - b.y;
+            const d2 = dx * dx + dy * dy;
+            if (d2 < linkDistance * linkDistance) {
+              const alpha = 1 - d2 / (linkDistance * linkDistance);
+              ctx.strokeStyle = "rgba(237,247,255," + (alpha * 0.13).toFixed(3) + ")";
+              ctx.lineWidth = 1;
+              ctx.beginPath();
+              ctx.moveTo(a.x, a.y);
+              ctx.lineTo(b.x, b.y);
+              ctx.stroke();
+            }
+          }
+        }
+
+        state.particles.forEach((p, index) => {
+          const pulse = 0.72 + Math.sin(state.tick * 0.002 + p.phase) * 0.28;
+          ctx.fillStyle = palette[p.hue] + Math.floor(132 + pulse * 96).toString(16).padStart(2, "0");
+          ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+          if (index % 19 === 0) {
+            ctx.strokeStyle = palette[(p.hue + 2) % palette.length] + "44";
+            ctx.strokeRect(p.x - 5, p.y - 5, 10, 10);
+          }
+        });
+        ctx.restore();
+      }
+
+      function frame(now) {
+        if (!state.last) state.last = now;
+        const delta = Math.min(2.4, Math.max(0.2, (now - state.last) / 16.67));
+        state.last = now;
+
+        if (state.running) {
+          state.tick += now ? delta * 16.67 : 0;
+          updateParticles(delta);
+        }
+
+        const fade = Number(traceEl.value) / 100;
+        ctx.fillStyle = "rgba(7,9,13," + (0.1 + (1 - fade) * 0.42).toFixed(3) + ")";
+        ctx.fillRect(0, 0, state.width, state.height);
+        drawGrid();
+        drawSpine();
+        drawMarks();
+        drawParticles();
+        requestAnimationFrame(frame);
+      }
+
+      seedEl.addEventListener("change", rebuild);
+      seedEl.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") rebuild();
+      });
+      densityEl.addEventListener("input", rebuild);
+      pullEl.addEventListener("input", save);
+      traceEl.addEventListener("input", save);
+
+      reseedBtn.addEventListener("click", () => {
+        const n = (Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0;
+        seedEl.value = "site mark / " + n.toString(16).padStart(8, "0");
+        rebuild();
+      });
+
+      holdBtn.addEventListener("click", () => {
+        state.running = !state.running;
+        holdBtn.textContent = state.running ? "Hold" : "Run";
+      });
+
+      clearBtn.addEventListener("click", () => {
+        state.marks = [];
+        glyphCountEl.textContent = "0";
+        save();
+      });
+
+      canvas.addEventListener("pointerenter", () => {
+        state.pointer.inside = true;
+      });
+
+      canvas.addEventListener("pointerleave", () => {
+        state.pointer.inside = false;
+        state.pointer.down = false;
+      });
+
+      canvas.addEventListener("pointermove", (event) => {
+        const xy = getXY(event);
+        state.pointer.x = xy.x;
+        state.pointer.y = xy.y;
+      });
+
+      canvas.addEventListener("pointerdown", (event) => {
+        const xy = getXY(event);
+        state.pointer.x = xy.x;
+        state.pointer.y = xy.y;
+        state.pointer.down = true;
+        canvas.setPointerCapture(event.pointerId);
+        addMark(xy.x, xy.y);
+      });
+
+      canvas.addEventListener("pointerup", (event) => {
+        state.pointer.down = false;
+        try {
+          canvas.releasePointerCapture(event.pointerId);
+        } catch {}
+      });
+
+      window.addEventListener("resize", resize);
+
+      load();
+      seedEl.value = state.seed;
+      resize();
+      requestAnimationFrame(frame);
+    })();
+  </script>
+</body>
+</html>

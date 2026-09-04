@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>The Mnemosyne Loop</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #111;
+            color: #0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            flex-direction: column;
+        }
+        .counter { font-size: 5rem; }
+        .subtext { color: #555; margin-top: 1rem; }
+    </style>
+</head>
+<body>
+
+    <div class="counter" id="cycle">Generation: 0</div>
+    <div class="subtext">The weight of memory is invisible.</div>
+
+    <script>
+        // The Recursion Engine
+        let generation = 0;
+
+        function buryThePast() {
+            generation++;
+            document.getElementById('cycle').innerText = `Generation: ${generation}`;
+            
+            // 1. Snapshot the CURRENT state of the entire document
+            // We use outerHTML to grab everything from <html...> to </html>
+            const currentSnapshot = document.documentElement.outerHTML;
+
+            // 2. Create a "Ghost" - the memory of this exact moment
+            // We wrap it in a comment so the browser renders nothing, 
+            // but the memory allocation is real.
+            const memoryWrapper = document.createComment(
+                `\n=== GENERATION ${generation} START ===\n` + 
+                currentSnapshot + 
+                `\n=== GENERATION ${generation} END ===\n`
+            );
+
+            // 3. Inject the memory into the living body
+            document.body.appendChild(memoryWrapper);
+
+            // 4. Recursive Step
+            // The next snapshot will include the comment we just added.
+            // The growth is not linear; it is factorial/exponential 
+            // because every snapshot contains all previous snapshots.
+            
+            // Artificial delay to allow you to open DevTools before the crash
+            setTimeout(buryThePast, 1000); 
+        }
+
+        // Ignite
+        setTimeout(buryThePast, 1000);
+    </script>
+</body>
+</html>

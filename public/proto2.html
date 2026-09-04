@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Recursive Following</title>
+  <style>
+    * { margin: 0; padding: 0; }
+    body { background: #030303; overflow: hidden; }
+    canvas { display: block; cursor: none; }
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <script>
+    const c = document.getElementById('c');
+    const ctx = c.getContext('2d');
+    let w, h;
+    const resize = () => { w = c.width = innerWidth; h = c.height = innerHeight; };
+    resize();
+    addEventListener('resize', resize);
+
+    let mx = w / 2, my = h / 2;
+    addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+    addEventListener('touchmove', e => { 
+      e.preventDefault(); 
+      mx = e.touches[0].clientX; 
+      my = e.touches[0].clientY; 
+    }, { passive: false });
+
+    const N = 80;
+    const points = Array.from({ length: N }, () => ({ x: w / 2, y: h / 2 }));
+
+    function draw() {
+      ctx.fillStyle = 'rgba(3,3,3,0.08)';
+      ctx.fillRect(0, 0, w, h);
+
+      let targetX = mx, targetY = my;
+
+      for (let i = 0; i < N; i++) {
+        const p = points[i];
+        const ease = 0.12 - i * 0.001;
+        
+        p.x += (targetX - p.x) * ease;
+        p.y += (targetY - p.y) * ease;
+
+        const t = i / N;
+        const size = 18 * (1 - t * 0.85);
+        const alpha = 1 - t * 0.9;
+        const hue = 220 + t * 60;
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
+        ctx.fillStyle = `hsla(${hue}, 50%, 55%, ${alpha * 0.6})`;
+        ctx.fill();
+
+        if (i > 0) {
+          ctx.beginPath();
+          ctx.moveTo(points[i - 1].x, points[i - 1].y);
+          ctx.lineTo(p.x, p.y);
+          ctx.strokeStyle = `hsla(${hue}, 40%, 45%, ${alpha * 0.2})`;
+          ctx.lineWidth = size * 0.3;
+          ctx.stroke();
+        }
+
+        targetX = p.x;
+        targetY = p.y;
+      }
+
+      ctx.beginPath();
+      ctx.arc(mx, my, 4, 0, Math.PI * 2);
+      ctx.fillStyle = '#fff';
+      ctx.fill();
+
+      requestAnimationFrame(draw);
+    }
+    draw();
+  </script>
+</body>
+</html>

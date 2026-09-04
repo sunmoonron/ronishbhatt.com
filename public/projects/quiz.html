@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Study Coach – Certification Prep</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Tailwind via CDN so we don't hand-write mountains of CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100">
+  <div class="max-w-6xl mx-auto px-4 py-6 space-y-4">
+    <!-- HEADER -->
+    <header class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h1 class="text-2xl font-semibold tracking-tight">
+           Study Coach
+        </h1>
+        <p class="text-xs text-slate-400 max-w-xl">
+          Retrieval-first, spaced & interleaved practice with confidence-based feedback.
+        </p>
+      </div>
+      <div class="flex items-center gap-3 text-xs">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-emerald-500/60 bg-emerald-500/10">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span>Learning engine ready</span>
+        </div>
+        <span id="metaBankLabel" class="text-slate-400 hidden sm:inline"></span>
+      </div>
+    </header>
+
+    <!-- SOURCE / MODE PANEL -->
+    <section class="bg-slate-900/70 border border-slate-800 rounded-2xl p-4 space-y-3">
+      <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div class="flex flex-wrap gap-3 items-center">
+          <div class="space-y-1">
+            <label for="bankSelect" class="text-xs uppercase tracking-wide text-slate-400">
+              1 · Question bank
+            </label>
+            <div class="flex items-center gap-2">
+              <select id="bankSelect"
+                      class="text-sm bg-slate-950/70 border border-slate-700 rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-sky-500/70">
+              </select>
+              <button id="loadBankBtn"
+                      class="text-xs px-3 py-1.5 rounded-full bg-sky-500 text-slate-950 font-medium hover:bg-sky-400 transition">
+                Load bank
+              </button>
+            </div>
+          </div>
+
+          <div class="space-y-1">
+            <label for="subjectFilter" class="text-xs uppercase tracking-wide text-slate-400">
+              2 · Domain filter
+            </label>
+            <select id="subjectFilter"
+                    class="text-sm bg-slate-950/70 border border-slate-700 rounded-xl px-3 py-1.5 max-w-xs focus:outline-none focus:ring-2 focus:ring-sky-500/70">
+              <option value="all">All domains (interleaved)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="space-y-1">
+          <span class="text-xs uppercase tracking-wide text-slate-400">
+            3 · Mode
+          </span>
+          <div class="inline-flex rounded-full border border-slate-700 bg-slate-950/80 overflow-hidden text-xs">
+            <button id="modeLearnBtn"
+                    class="px-3 py-1.5 font-medium bg-slate-800 text-sky-300">
+              Learn (smart queue)
+            </button>
+            <button id="modeCramBtn"
+                    class="px-3 py-1.5 text-slate-300 hover:bg-slate-800">
+              Cram (pure random)
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <p class="text-[11px] text-slate-500">
+        This page runs entirely in your browser. JSON lives on your server; performance & stats are stored locally in
+        <code class="text-sky-300">localStorage</code>.
+      </p>
+    </section>
+
+    <!-- MAIN LAYOUT -->
+    <main class="grid gap-4 lg:grid-cols-[minmax(0,1.8fr)_minmax(0,1.2fr)]">
+      <!-- QUESTION PANEL -->
+      <section class="bg-slate-900/70 border border-slate-800 rounded-2xl p-4 space-y-4">
+        <!-- Info bar -->
+        <div class="flex flex-wrap gap-2 items-center justify-between text-[11px] text-slate-400">
+          <div class="flex flex-wrap gap-2 items-center">
+            <span id="metaQuestionCounter"
+                  class="inline-flex items-center gap-1 rounded-full border border-slate-700 px-2 py-0.5 bg-slate-950/70">
+              Q – / –
+            </span>
+            <span id="metaSeenCounter"
+                  class="inline-flex items-center gap-1 rounded-full border border-slate-700 px-2 py-0.5 bg-slate-950/70">
+              Seen: – / –
+            </span>
+            <span id="metaSpacedTag"
+                  class="inline-flex items-center gap-1 rounded-full border border-emerald-600/70 px-2 py-0.5 bg-emerald-500/10 text-emerald-300">
+              Spacing: warming up
+            </span>
+          </div>
+          <div class="flex flex-wrap gap-2 items-center">
+            <span id="metaSubject"
+                  class="inline-flex items-center gap-1 rounded-full border border-slate-700 px-2 py-0.5 bg-slate-950/70">
+              Domain: –
+            </span>
+            <span id="metaMode"
+                  class="inline-flex items-center gap-1 rounded-full border border-slate-700 px-2 py-0.5 bg-slate-950/70">
+              Mode: –
+            </span>
+          </div>
+        </div>
+
+        <!-- Prompt -->
+        <div class="space-y-3">
+          <div>
+            <p class="text-[11px] uppercase tracking-wide text-slate-400 mb-1">
+              Step 1 · Predict the idea in your own words
+            </p>
+            <textarea id="predictionInput"
+                      class="w-full text-sm bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 resize-y min-h-[56px] focus:outline-none focus:ring-2 focus:ring-sky-500/70"
+                      placeholder="Type a one-line guess or key idea before peeking at the options. This is pure retrieval practice – no one sees this but you."></textarea>
+          </div>
+
+          <div>
+            <p class="text-[11px] uppercase tracking-wide text-slate-400 mb-1 flex items-center justify-between">
+              <span>Step 2 · Choose the best answer(s)</span>
+              <span class="flex items-center gap-1">
+                <!-- New hint button -->
+                <button id="multiHintBtn"
+                        class="hidden text-[10px] px-2 py-0.5 rounded-full border border-slate-700 hover:bg-slate-800/80">
+                  Hint
+                </button>
+                <!-- We’ll only use this to show the hint text -->
+                <span id="metaQuestionType" class="text-[10px] text-slate-500"></span>
+              </span>
+            </p>
+
+            <div id="choicesContainer" class="space-y-2"></div>
+          </div>
+
+          <!-- Confidence row -->
+          <div>
+            <p class="text-[11px] uppercase tracking-wide text-slate-400 mb-1">
+              Step 3 · How sure are you?
+            </p>
+            <div id="confidenceButtons"
+                 class="inline-flex rounded-full border border-slate-700 bg-slate-950/80 overflow-hidden text-[11px]">
+              <button type="button" data-confidence="1"
+                      class="px-3 py-1.5 flex items-center gap-1 text-slate-300 hover:bg-slate-800">
+                🤔 <span>Not sure</span>
+              </button>
+              <button type="button" data-confidence="2"
+                      class="px-3 py-1.5 flex items-center gap-1 bg-slate-800 text-sky-300">
+                🙂 <span>Somewhat</span>
+              </button>
+              <button type="button" data-confidence="3"
+                      class="px-3 py-1.5 flex items-center gap-1 text-slate-300 hover:bg-slate-800">
+                🚀 <span>Got this</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Buttons -->
+        <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800">
+          <div class="flex flex-wrap gap-2">
+            <button id="checkBtn"
+                    class="px-3 py-1.5 rounded-full bg-sky-500 text-slate-950 text-sm font-semibold hover:bg-sky-400 transition">
+              Check answer
+            </button>
+            <button id="showBtn"
+                    class="px-3 py-1.5 rounded-full border border-slate-700 bg-slate-950/80 text-xs hover:bg-slate-800/80">
+              Show answer (give up)
+            </button>
+          </div>
+          <button id="nextBtn"
+                  class="px-3 py-1.5 rounded-full border border-slate-700 bg-slate-900/80 text-xs hover:bg-slate-800/80">
+            Next question →
+          </button>
+        </div>
+
+        <!-- Feedback -->
+        <div class="space-y-2 pt-1">
+          <div id="feedback" class="text-sm font-medium min-h-[1.5rem]"></div>
+          <div id="metaConfidenceHint" class="text-xs text-slate-400 min-h-[1.1rem]"></div>
+          <div id="explanation"
+               class="text-sm text-slate-300/90 border border-slate-800 rounded-xl bg-slate-950/60 px-3 py-2.5 hidden">
+          </div>
+        </div>
+      </section>
+
+      <!-- SIDEBAR -->
+      <aside class="space-y-4">
+        <!-- Session stats -->
+        <section class="bg-slate-900/70 border border-slate-800 rounded-2xl p-4 space-y-3">
+          <h2 class="text-sm font-semibold">
+            Session overview
+          </h2>
+          <div class="grid grid-cols-2 gap-3 text-xs">
+            <div class="space-y-1">
+              <div class="text-slate-400">This session</div>
+              <div id="sessionStats" class="text-slate-100 text-sm font-medium">
+                Questions: – · Accuracy: – %
+              </div>
+              <div id="sessionStreak" class="text-slate-400 text-[11px]">
+                Streak: –
+              </div>
+            </div>
+            <div class="space-y-1">
+              <div class="text-slate-400">All-time (this bank)</div>
+              <div id="lifetimeStats" class="text-slate-100 text-sm font-medium">
+                Attempts: – · Accuracy: – %
+              </div>
+              <div id="masteryStats" class="text-slate-400 text-[11px]">
+                Mastered: – / –
+              </div>
+            </div>
+          </div>
+
+          <!-- Progress bar -->
+          <div class="mt-2 space-y-1">
+            <div class="flex justify-between text-[11px] text-slate-400">
+              <span>Daily goal (20 questions)</span>
+              <span id="goalLabel">0 / 20</span>
+            </div>
+            <div class="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
+              <div id="goalBar" class="h-full bg-sky-500" style="width:0%"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Domain mastery -->
+        <section class="bg-slate-900/70 border border-slate-800 rounded-2xl p-4 space-y-3">
+          <div class="flex items-center justify-between gap-2">
+            <h2 class="text-sm font-semibold">
+              Domains & interleaving
+            </h2>
+            <span class="text-[11px] text-slate-400">Click to focus a domain</span>
+          </div>
+          <div id="domainList" class="space-y-1.5 max-h-64 overflow-y-auto text-xs">
+            <!-- Filled by JS -->
+          </div>
+        </section>
+
+        <!-- Quick sheet / notes -->
+        <section class="bg-slate-900/70 border border-slate-800 rounded-2xl p-4 space-y-3">
+          <div class="flex items-center justify-between gap-2">
+            <h2 class="text-sm font-semibold">
+              Quick sheet
+            </h2>
+            <button id="exportNotesBtn"
+                    class="text-[11px] px-2 py-1 rounded-full border border-slate-700 hover:bg-slate-800/70">
+              Export
+            </button>
+          </div>
+          <p class="text-[11px] text-slate-400">
+            Hit “Save to quick sheet” on tricky questions to build a mini-crib.
+          </p>
+          <div id="notesList" class="space-y-1 max-h-48 overflow-y-auto text-xs">
+            <!-- Filled by JS -->
+          </div>
+        </section>
+      </aside>
+    </main>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // ---------------- CONFIG ----------------
+      const QUIZ_SOURCES = [
+        { id: 'complete', label: 'Easy Exam', path: 'data/complete.json' },
+        { id: 'pass', label: 'Easier Exam', path: 'data/pass.json' },
+        // add more here: { id: 'xyz', label: 'My Bank', path: 'json/my-bank.json' }
+      ];
+
+      const STORAGE_PREFIX = 'certCoach_v1_';
+      const DAILY_GOAL = 20;
+
+      // Spacing intervals (ms) per box level (0..5) – super simple Leitner
+      const BOX_INTERVALS = [
+        0,                   // level 0 (unused)
+        5 * 60 * 1000,       // level 1: 5 minutes
+        60 * 60 * 1000,      // level 2: 1 hour
+        6 * 60 * 60 * 1000,  // level 3: 6 hours
+        24 * 60 * 60 * 1000, // level 4: 1 day
+        3 * 24 * 60 * 60 * 1000 // level 5: 3 days
+      ];
+
+      // ---------------- STATE ----------------
+      const state = {
+        sourceId: null,
+        sourceLabel: '',
+        allQuestions: [],
+        stats: {},          // per question: {attempts, correct, wrong, level, nextDue, lastSeen, totalConf, confSamples, subjectName}
+        notes: [],          // {id, promptText, keyPoint}
+        subjectFilter: 'all',
+        mode: 'learn',      // 'learn' | 'cram'
+        currentQuestion: null,
+        currentWasGraded: false,
+        currentConfidence: 2,
+        lastSubject: null,
+        session: {
+          startedAt: null,
+          answered: 0,
+          correct: 0,
+          streak: 0
+        }
+      };
+
+      // ---------------- DOM ----------------
+      const bankSelect = document.getElementById('bankSelect');
+      const loadBankBtn = document.getElementById('loadBankBtn');
+      const subjectFilterEl = document.getElementById('subjectFilter');
+      const modeLearnBtn = document.getElementById('modeLearnBtn');
+      const modeCramBtn = document.getElementById('modeCramBtn');
+
+      const metaBankLabel = document.getElementById('metaBankLabel');
+      const metaQuestionCounter = document.getElementById('metaQuestionCounter');
+      const metaSeenCounter = document.getElementById('metaSeenCounter');
+      const metaSpacedTag = document.getElementById('metaSpacedTag');
+      const metaSubject = document.getElementById('metaSubject');
+      const metaMode = document.getElementById('metaMode');
+      const metaQuestionType = document.getElementById('metaQuestionType');
+      const multiHintBtn = document.getElementById('multiHintBtn');
+
+      const predictionInput = document.getElementById('predictionInput');
+      const choicesContainer = document.getElementById('choicesContainer');
+      const confidenceButtons = document.querySelectorAll('#confidenceButtons button');
+
+      const checkBtn = document.getElementById('checkBtn');
+      const showBtn = document.getElementById('showBtn');
+      const nextBtn = document.getElementById('nextBtn');
+
+      const feedbackEl = document.getElementById('feedback');
+      const metaConfidenceHint = document.getElementById('metaConfidenceHint');
+      const explanationEl = document.getElementById('explanation');
+
+      const sessionStatsEl = document.getElementById('sessionStats');
+      const sessionStreakEl = document.getElementById('sessionStreak');
+      const lifetimeStatsEl = document.getElementById('lifetimeStats');
+      const masteryStatsEl = document.getElementById('masteryStats');
+      const goalBarEl = document.getElementById('goalBar');
+      const goalLabelEl = document.getElementById('goalLabel');
+
+      const domainListEl = document.getElementById('domainList');
+      const notesListEl = document.getElementById('notesList');
+      const exportNotesBtn = document.getElementById('exportNotesBtn');
+
+      // ---------------- HELPERS ----------------
+      function shuffleInPlace(arr) {
+        for (let i = arr.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+      }
+
+      function parseRawQuestions(json, sourceId) {
+        let data = json;
+        if (!Array.isArray(data) && data && Array.isArray(data.result)) {
+          data = data.result;
+        }
+        if (!Array.isArray(data)) return [];
+    
+        return data
+          .filter(q => q && q.prompt && q.choices && q.choices.length)
+          .map((q, index) => {
+            const rawChoices = q.choices || [];
+            const correctCount = rawChoices.filter(c => c.isCorrect).length;
+          
+            const lowerType = (q.type || '').toLowerCase();
+            // ✅ treat only “Multiple Correct Response” as multi,
+            //     not every string containing "multiple"
+            const isMulti =
+              correctCount > 1 ||
+              lowerType === 'multiple correct response' ||
+              lowerType === 'multiple response';
+          
+            const choices = rawChoices.map((c, idx) => ({
+              id: c.id || `choice_${idx}`,
+              textHtml: c.text || '',
+              isCorrect: !!c.isCorrect
+            }));
+        
+            // ⭐ NEW: randomize choice order per question
+            shuffleInPlace(choices);
+        
+            return {
+              id: q.objectId || q.serial || `${sourceId}_${index}`,
+              sourceId,
+              subjectName: (q.subject && q.subject.name) || 'Uncategorized',
+              promptHtml: q.prompt || '',
+              explanationHtml: q.explanation || '',
+              type: q.type || (isMulti ? 'Multiple Correct Response' : 'Multiple Choice'),
+              choices,
+              correctCount: correctCount || 1,
+              meta: {
+                serial: q.serial,
+                compositeKey: q.compositeKey,
+                bloom: q.bloomTaxonomyLevel || null,
+                subtopicId: q.subtopicId || null
+              },
+              isMulti
+            };
+          });
+      }
+
+
+      function storageKey() {
+        return state.sourceId ? STORAGE_PREFIX + state.sourceId : null;
+      }
+
+      function saveStats() {
+        const key = storageKey();
+        if (!key) return;
+        const payload = {
+          stats: state.stats,
+          notes: state.notes
+        };
+        try {
+          localStorage.setItem(key, JSON.stringify(payload));
+        } catch (e) {
+          console.warn('Could not save stats', e);
+        }
+      }
+
+      function loadStats() {
+        const key = storageKey();
+        state.stats = {};
+        state.notes = [];
+        if (!key) return;
+        try {
+          const raw = localStorage.getItem(key);
+          if (!raw) return;
+          const payload = JSON.parse(raw);
+          state.stats = payload.stats || {};
+          state.notes = payload.notes || [];
+        } catch (e) {
+          console.warn('Could not load stats', e);
+        }
+      }
+
+      function resetSession() {
+        state.session = {
+          startedAt: Date.now(),
+          answered: 0,
+          correct: 0,
+          streak: 0
+        };
+      }
+
+      function humanPercent(num) {
+        if (!isFinite(num)) return '0';
+        return num.toFixed(0);
+      }
+
+      function clearFeedback() {
+        feedbackEl.textContent = '';
+        feedbackEl.className = 'text-sm font-medium min-h-[1.5rem]';
+        metaConfidenceHint.textContent = '';
+        explanationEl.innerHTML = '';
+        explanationEl.classList.add('hidden');
+      }
+
+      function setMode(mode) {
+        state.mode = mode;
+        if (mode === 'learn') {
+          modeLearnBtn.classList.add('bg-slate-800', 'text-sky-300', 'font-medium');
+          modeCramBtn.classList.remove('bg-slate-800', 'text-sky-300', 'font-medium');
+        } else {
+          modeCramBtn.classList.add('bg-slate-800', 'text-sky-300', 'font-medium');
+          modeLearnBtn.classList.remove('bg-slate-800', 'text-sky-300', 'font-medium');
+        }
+        metaMode.textContent = 'Mode: ' + (mode === 'learn' ? 'Learn' : 'Cram');
+      }
+
+      // ---------------- DOMAIN FILTER ----------------
+      function computeSubjects() {
+        const map = new Map();
+        state.allQuestions.forEach(q => {
+          if (!map.has(q.subjectName)) {
+            map.set(q.subjectName, { subjectName: q.subjectName, total: 0, attempts: 0, correct: 0 });
+          }
+          const agg = map.get(q.subjectName);
+          agg.total += 1;
+          const s = state.stats[q.id];
+          if (s) {
+            agg.attempts += s.attempts || 0;
+            agg.correct += s.correct || 0;
+          }
+        });
+        return Array.from(map.values()).sort((a, b) => a.subjectName.localeCompare(b.subjectName));
+      }
+
+      function renderSubjectFilter() {
+        subjectFilterEl.innerHTML = '';
+        const optionAll = document.createElement('option');
+        optionAll.value = 'all';
+        optionAll.textContent = 'All domains (interleaved)';
+        subjectFilterEl.appendChild(optionAll);
+
+        computeSubjects().forEach(d => {
+          const opt = document.createElement('option');
+          opt.value = d.subjectName;
+          const acc = d.attempts ? ` · acc ${humanPercent((d.correct / d.attempts) * 100)}%` : '';
+          opt.textContent = `${d.subjectName} (${d.total})${acc}`;
+          subjectFilterEl.appendChild(opt);
+        });
+
+        subjectFilterEl.value = state.subjectFilter || 'all';
+      }
+
+      function renderDomainList() {
+        domainListEl.innerHTML = '';
+        const domains = computeSubjects();
+
+        domains.forEach(d => {
+          const row = document.createElement('button');
+          row.type = 'button';
+          row.className =
+            'w-full text-left px-2.5 py-1.5 rounded-xl border border-slate-800 bg-slate-950/60 hover:bg-slate-800/70 flex items-center justify-between gap-2';
+          if (state.subjectFilter === d.subjectName) {
+            row.classList.add('border-sky-500/70', 'bg-sky-950/40');
+          }
+
+          const left = document.createElement('div');
+          left.className = 'flex flex-col';
+          left.innerHTML = `
+            <span class="text-[11px] font-medium text-slate-100">${d.subjectName}</span>
+            <span class="text-[10px] text-slate-400">Items: ${d.total}, Attempts: ${d.attempts || 0}</span>
+          `;
+
+          const right = document.createElement('div');
+          right.className = 'flex flex-col items-end gap-1 min-w-[72px]';
+          const accPct = d.attempts ? (d.correct / d.attempts) * 100 : 0;
+          const barOuter = document.createElement('div');
+          barOuter.className = 'w-full h-1.5 rounded-full bg-slate-800 overflow-hidden';
+          const barInner = document.createElement('div');
+          barInner.className = 'h-full rounded-full ' +
+            (accPct >= 80 ? 'bg-emerald-400' : accPct >= 50 ? 'bg-sky-400' : 'bg-amber-400');
+          barInner.style.width = `${Math.min(100, accPct)}%`;
+          barOuter.appendChild(barInner);
+
+          const label = document.createElement('span');
+          label.className = 'text-[10px] text-slate-300';
+          label.textContent = `${humanPercent(accPct)}%`;
+
+          right.appendChild(barOuter);
+          right.appendChild(label);
+
+          row.appendChild(left);
+          row.appendChild(right);
+
+          row.addEventListener('click', () => {
+            state.subjectFilter = (state.subjectFilter === d.subjectName) ? 'all' : d.subjectName;
+            renderSubjectFilter();
+            renderDomainList();
+            pickAndRenderNextQuestion();
+          });
+
+          domainListEl.appendChild(row);
+        });
+
+        if (!domains.length) {
+          const p = document.createElement('p');
+          p.className = 'text-[11px] text-slate-500';
+          p.textContent = 'Load a bank to see domains & interleaving stats.';
+          domainListEl.appendChild(p);
+        }
+      }
+
+      // ---------------- STATS PANEL ----------------
+      function renderStatsPanels() {
+        // Session
+        const s = state.session;
+        const sessionAcc = s.answered ? (s.correct / s.answered) * 100 : 0;
+        sessionStatsEl.textContent =
+          `Questions: ${s.answered || 0} · Accuracy: ${humanPercent(sessionAcc)}%`;
+        sessionStreakEl.textContent = `Streak: ${s.streak || 0}`;
+
+        // Lifetime
+        let attempts = 0;
+        let correct = 0;
+        let mastered = 0;
+
+        Object.entries(state.stats).forEach(([id, st]) => {
+          attempts += st.attempts || 0;
+          correct += st.correct || 0;
+          if ((st.level || 1) >= 4 && (st.correct || 0) >= 3) {
+            mastered += 1;
+          }
+        });
+
+        const lifetimeAcc = attempts ? (correct / attempts) * 100 : 0;
+        const totalQuestions = state.allQuestions.length || 0;
+
+        lifetimeStatsEl.textContent =
+          `Attempts: ${attempts || 0} · Accuracy: ${humanPercent(lifetimeAcc)}%`;
+        masteryStatsEl.textContent =
+          `Mastered: ${mastered} / ${totalQuestions || 0}`;
+
+        // Goal bar
+        const goalProgress = Math.min(1, (s.answered || 0) / DAILY_GOAL);
+        goalBarEl.style.width = `${goalProgress * 100}%`;
+        goalLabelEl.textContent = `${s.answered || 0} / ${DAILY_GOAL}`;
+      }
+
+      // ---------------- QUESTION SELECTION ----------------
+      function selectNextQuestion() {
+        const pool = state.allQuestions.filter(q => {
+          return state.subjectFilter === 'all' || q.subjectName === state.subjectFilter;
+        });
+        if (!pool.length) return null;
+
+        const now = Date.now();
+        const due = [];
+        const unseen = [];
+        const later = [];
+
+        for (const q of pool) {
+          const st = state.stats[q.id];
+          if (!st || !st.attempts) {
+            unseen.push(q);
+          } else if (st.nextDue && st.nextDue <= now) {
+            due.push(q);
+          } else {
+            later.push(q);
+          }
+        }
+
+        let group;
+        if (state.mode === 'cram') {
+          group = pool;
+        } else {
+          group = due.length ? due : (unseen.length ? unseen : later);
+        }
+        if (!group.length) group = pool;
+
+        // soft interleaving: prefer domain different from last, if possible
+        if (state.lastSubject && group.length > 1) {
+          const alt = group.filter(q => q.subjectName !== state.lastSubject);
+          if (alt.length) group = alt;
+        }
+
+        const chosen = group[Math.floor(Math.random() * group.length)];
+        state.lastSubject = chosen.subjectName;
+        return chosen;
+      }
+
+      function renderQuestion(question) {
+        state.currentQuestion = question;
+        state.currentWasGraded = false;
+        state.currentConfidence = 2;
+        clearFeedback();
+
+        if (!question) {
+          metaQuestionCounter.textContent = 'No questions available';
+          choicesContainer.innerHTML = '';
+          predictionInput.value = '';
+          metaSubject.textContent = 'Domain: –';
+          metaQuestionType.textContent = '';
+          return;
+        }
+
+        // Basic meta
+        const statsValues = Object.values(state.stats);
+        const seenCount = statsValues.filter(st => st.attempts && st.attempts > 0).length;
+        const total = state.allQuestions.length;
+
+        metaQuestionCounter.textContent = `Q ${state.session.answered + 1}`;
+        metaSeenCounter.textContent = `Seen: ${seenCount} / ${total}`;
+        metaSubject.textContent = 'Domain: ' + question.subjectName;
+        // Default: exam-like, don’t reveal multi vs single
+        metaQuestionType.textContent = '';
+            
+        if (question.isMulti) {
+          // Show Hint button only when this bank actually has multi-correct
+          multiHintBtn.classList.remove('hidden');
+          multiHintBtn.disabled = false;
+          multiHintBtn.dataset.hint = 'Hint: This question may have more than one correct answer.';
+        } else {
+          multiHintBtn.classList.add('hidden');
+          multiHintBtn.disabled = true;
+          multiHintBtn.dataset.hint = '';
+        }
+        
+
+        metaSpacedTag.textContent =
+          state.mode === 'learn'
+            ? 'Spacing: smart review + new items'
+            : 'Spacing: disabled (cram mode)';
+
+        // Prompt
+        // We'll render prompt HTML inside a container
+        // Include light formatting without extra prose
+        const promptWrapper = document.createElement('div');
+        promptWrapper.className = 'space-y-1 text-sm leading-relaxed';
+        promptWrapper.innerHTML = question.promptHtml || '(No prompt text)';
+        // Inject into a dedicated container above choices
+        // We simply replace the previous promptWrapper inside a temporary holder.
+        // To avoid extra markup, reuse explanationEl sibling pattern:
+        // We'll attach it immediately before the predictionInput's parent.
+        const predictionBlock = predictionInput.parentElement;
+        const oldPrompt = predictionBlock.previousSibling;
+        if (oldPrompt && oldPrompt.dataset && oldPrompt.dataset.role === 'prompt') {
+          oldPrompt.remove();
+        }
+        const promptContainer = document.createElement('div');
+        promptContainer.dataset.role = 'prompt';
+        promptContainer.className = 'border border-slate-800 rounded-xl bg-slate-950/60 px-3 py-2.5';
+        promptContainer.appendChild(promptWrapper);
+        predictionBlock.parentElement.insertBefore(promptContainer, predictionBlock);
+
+        // Reset user input
+        predictionInput.value = '';
+
+        // Confidence default (medium)
+        confidenceButtons.forEach(btn => {
+          const lvl = Number(btn.dataset.confidence || '0');
+          btn.classList.remove('bg-slate-800', 'text-sky-300', 'font-medium');
+          if (lvl === 2) {
+            btn.classList.add('bg-slate-800', 'text-sky-300', 'font-medium');
+          }
+        });
+
+        // Choices
+        choicesContainer.innerHTML = '';
+        const inputType = question.isMulti ? 'checkbox' : 'radio';
+
+        question.choices.forEach((choice, idx) => {
+          const id = `choice_${question.id}_${idx}`;
+          const label = document.createElement('label');
+          label.className =
+            'flex items-start gap-2 px-3 py-2 rounded-xl border border-slate-800 bg-slate-950/70 hover:bg-slate-800/70 cursor-pointer transition';
+          label.dataset.index = String(idx);
+
+          const input = document.createElement('input');
+          input.type = inputType;
+          input.name = 'choice';
+          input.value = String(idx);
+          input.id = id;
+          input.className = 'mt-1 h-4 w-4 text-sky-400 border-slate-600 bg-slate-900/80 rounded-sm';
+
+          const content = document.createElement('div');
+          content.className = 'flex-1 text-sm text-slate-100';
+          const letter = String.fromCharCode(65 + idx);
+          content.innerHTML =
+            `<div class="font-medium text-[11px] text-slate-400 mb-0.5">Option ${letter}</div>` +
+            `<div class="text-sm leading-relaxed">${choice.textHtml || `Option ${letter}`}</div>`;
+
+          label.appendChild(input);
+          label.appendChild(content);
+          choicesContainer.appendChild(label);
+        });
+
+        // update stats panels (since "seen" numbers may have changed)
+        renderStatsPanels();
+        renderDomainList();
+      }
+
+      function pickAndRenderNextQuestion() {
+        const q = selectNextQuestion();
+        renderQuestion(q);
+      }
+
+      // ---------------- CONFIDENCE HANDLING ----------------
+      confidenceButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const level = Number(btn.dataset.confidence || '2') || 2;
+          state.currentConfidence = level;
+          confidenceButtons.forEach(b => {
+            b.classList.remove('bg-slate-800', 'text-sky-300', 'font-medium');
+          });
+          btn.classList.add('bg-slate-800', 'text-sky-300', 'font-medium');
+        });
+      });
+
+      // ---------------- GRADING ----------------
+      function getSelectedIndices() {
+        const inputs = choicesContainer.querySelectorAll('input[name="choice"]');
+        const selected = [];
+        inputs.forEach((input, idx) => {
+          if (input.checked) selected.push(idx);
+        });
+        return selected;
+      }
+
+      function updateQuestionStats(question, isCorrect, confidence, gaveUp) {
+        if (!question) return;
+        const id = question.id;
+        const now = Date.now();
+        const st = state.stats[id] || {
+          attempts: 0,
+          correct: 0,
+          wrong: 0,
+          level: 1,
+          nextDue: now,
+          lastSeen: null,
+          totalConf: 0,
+          confSamples: 0,
+          subjectName: question.subjectName
+        };
+
+        st.attempts += 1;
+        st.lastSeen = now;
+        st.subjectName = question.subjectName;
+
+        if (confidence && Number.isFinite(confidence)) {
+          st.totalConf += confidence;
+          st.confSamples += 1;
+        }
+
+        if (isCorrect) {
+          st.correct += 1;
+          // Confidence-aware leveling
+          if ((st.level || 1) < 5 && confidence >= 2) {
+            st.level += 1;
+          }
+        } else {
+          st.wrong += 1;
+          // Reset level after a miss or a give-up
+          st.level = 1;
+        }
+
+        const level = Math.min(Math.max(st.level || 1, 1), 5);
+        const interval = BOX_INTERVALS[level] || BOX_INTERVALS[1];
+        st.nextDue = now + interval;
+
+        state.stats[id] = st;
+        saveStats();
+      }
+
+      function updateSession(isCorrect) {
+        state.session.answered += 1;
+        if (isCorrect) {
+          state.session.correct += 1;
+          state.session.streak += 1;
+        } else {
+          state.session.streak = 0;
+        }
+      }
+
+      function gradeCurrentQuestion() {
+        const question = state.currentQuestion;
+        if (!question) return;
+
+        const already = state.currentWasGraded;
+        const selected = getSelectedIndices();
+
+        if (!selected.length) {
+          feedbackEl.textContent = 'Pick at least one option before checking.';
+          feedbackEl.className =
+            'text-sm font-medium text-amber-300 min-h-[1.5rem]';
+          return;
+        }
+
+        const correctIndices = question.choices
+          .map((c, idx) => (c.isCorrect ? idx : -1))
+          .filter(idx => idx !== -1);
+
+        let isCorrect;
+        if (question.isMulti) {
+          if (selected.length !== correctIndices.length) {
+            isCorrect = false;
+          } else {
+            isCorrect = correctIndices.every(idx => selected.includes(idx));
+          }
+        } else {
+          isCorrect =
+            selected.length === 1 &&
+            question.choices[selected[0]] &&
+            question.choices[selected[0]].isCorrect;
+        }
+
+        // Colour choices
+        const labels = choicesContainer.querySelectorAll('label');
+        labels.forEach((label, idx) => {
+          label.classList.remove('border-emerald-500/80', 'bg-emerald-900/40',
+            'border-rose-500/80', 'bg-rose-900/40');
+          const isSel = selected.includes(idx);
+          const isGood = correctIndices.includes(idx);
+
+          if (isGood) {
+            label.classList.add('border-emerald-500/80', 'bg-emerald-900/40');
+          }
+          if (isSel && !isGood) {
+            label.classList.add('border-rose-500/80', 'bg-rose-900/40');
+          }
+        });
+
+        // Feedback text
+        if (isCorrect) {
+          feedbackEl.textContent = '✅ Nice – solid retrieval.';
+          feedbackEl.className = 'text-sm font-semibold text-emerald-300 min-h-[1.5rem]';
+        } else {
+          feedbackEl.textContent = question.isMulti
+            ? '❌ Close – multiple answers need to be exactly right.'
+            : '❌ Not quite. This one stays in the rotation.';
+          feedbackEl.className = 'text-sm font-semibold text-rose-300 min-h-[1.5rem]';
+        }
+
+        // Confidence reflection
+        const conf = state.currentConfidence || 2;
+        if (!already) {
+          let hint = '';
+          if (isCorrect && conf === 1) {
+            hint = 'You were right but under-confident. Marking this to come back a bit later so you lock it in.';
+          } else if (!isCorrect && conf === 3) {
+            hint = 'High confidence but incorrect → classic desirable difficulty. We will resurface this sooner.';
+          } else if (isCorrect && conf === 3) {
+            hint = 'High confidence and correct – great. This will be spaced out more.';
+          } else {
+            hint = 'We use both correctness and confidence to tune when this returns.';
+          }
+          metaConfidenceHint.textContent = hint;
+        }
+
+        // Explanation
+        explanationEl.innerHTML = question.explanationHtml || '<p>No explanation provided.</p>';
+        explanationEl.classList.remove('hidden');
+
+        if (!already) {
+          updateQuestionStats(question, isCorrect, state.currentConfidence, false);
+          updateSession(isCorrect);
+          renderStatsPanels();
+          renderDomainList();
+        }
+
+        state.currentWasGraded = true;
+      }
+
+      function showAnswerGiveUp() {
+        const question = state.currentQuestion;
+        if (!question) return;
+
+        const correctIndices = question.choices
+          .map((c, idx) => (c.isCorrect ? idx : -1))
+          .filter(idx => idx !== -1);
+
+        const labels = choicesContainer.querySelectorAll('label');
+        const inputs = choicesContainer.querySelectorAll('input[name="choice"]');
+
+        labels.forEach((label, idx) => {
+          label.classList.remove('border-emerald-500/80', 'bg-emerald-900/40',
+            'border-rose-500/80', 'bg-rose-900/40');
+          if (correctIndices.includes(idx)) {
+            label.classList.add('border-emerald-500/80', 'bg-emerald-900/40');
+            if (inputs[idx]) inputs[idx].checked = true;
+          }
+        });
+
+        feedbackEl.textContent = '📖 Revealed. We\'ll treat this as “needs work” and bring it back soon.';
+        feedbackEl.className = 'text-sm font-medium text-amber-200 min-h-[1.5rem]';
+
+        explanationEl.innerHTML = question.explanationHtml || '<p>No explanation provided.</p>';
+        explanationEl.classList.remove('hidden');
+
+        if (!state.currentWasGraded) {
+          // Give-up counts as incorrect with low confidence
+          updateQuestionStats(question, false, 1, true);
+          updateSession(false);
+          metaConfidenceHint.textContent =
+            'Giving up is fine in learning mode – the key is that it will come back when your brain is fresher.';
+          renderStatsPanels();
+          renderDomainList();
+          state.currentWasGraded = true;
+        }
+      }
+
+      // ---------------- NOTES / QUICK SHEET ----------------
+      function addNoteForCurrent() {
+        const q = state.currentQuestion;
+        if (!q) return;
+        const plainPrompt = (q.promptHtml || '').replace(/<[^>]+>/g, '').trim();
+        const plainExpl = (q.explanationHtml || '').replace(/<[^>]+>/g, '').trim();
+
+        const snippet = {
+          id: q.id,
+          prompt: plainPrompt.slice(0, 260),
+          keyPoint: plainExpl.slice(0, 260)
+        };
+
+        const exists = state.notes.some(n => n.id === q.id);
+        if (!exists) {
+          state.notes.unshift(snippet);
+          saveStats();
+          renderNotes();
+        }
+      }
+
+      function renderNotes() {
+        notesListEl.innerHTML = '';
+        if (!state.notes.length) {
+          const p = document.createElement('p');
+          p.className = 'text-[11px] text-slate-500';
+          p.textContent = 'No quick sheet items yet. After grading, you can add tough questions here.';
+          notesListEl.appendChild(p);
+          return;
+        }
+
+        state.notes.slice(0, 40).forEach(note => {
+          const div = document.createElement('div');
+          div.className =
+            'border border-slate-800 rounded-xl bg-slate-950/70 px-2.5 py-1.5 space-y-0.5';
+          const title = document.createElement('div');
+          title.className = 'text-[11px] font-semibold text-slate-100 line-clamp-2';
+          title.textContent = note.prompt || 'Untitled question';
+          const kp = document.createElement('div');
+          kp.className = 'text-[10px] text-slate-400 line-clamp-3';
+          kp.textContent = note.keyPoint || '';
+          div.appendChild(title);
+          div.appendChild(kp);
+          notesListEl.appendChild(div);
+        });
+      }
+
+      exportNotesBtn.addEventListener('click', () => {
+        if (!state.notes.length) return;
+        const lines = state.notes.map(n => {
+          return 'Q: ' + (n.prompt || '') + '\nA / key point: ' + (n.keyPoint || '') + '\n';
+        });
+        const blob = new Blob([lines.join('\n---------------------------\n')], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = (state.sourceId || 'notes') + '_quick_sheet.txt';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      });
+
+      // ---------------- BANK LOADING ----------------
+      async function loadBank(sourceId) {
+        const src = QUIZ_SOURCES.find(s => s.id === sourceId);
+        if (!src) return;
+        state.sourceId = src.id;
+        state.sourceLabel = src.label;
+        metaBankLabel.textContent = src.label;
+
+        // UI: temporary loading state
+        loadBankBtn.disabled = true;
+        loadBankBtn.textContent = 'Loading…';
+
+        try {
+          const res = await fetch(src.path);
+          if (!res.ok) {
+            throw new Error('HTTP ' + res.status);
+          }
+          const json = await res.json();
+          const questions = parseRawQuestions(json, src.id);
+
+          if (!questions.length) {
+            alert('No questions found in ' + src.path);
+            return;
+          }
+
+          shuffleInPlace(questions);
+          state.allQuestions = questions;
+          loadStats();
+          resetSession();
+          state.subjectFilter = 'all';
+          state.lastSubject = null;
+
+          renderSubjectFilter();
+          renderDomainList();
+          renderNotes();
+          renderStatsPanels();
+          setMode(state.mode || 'learn');
+          pickAndRenderNextQuestion();
+        } catch (e) {
+          console.error(e);
+          alert('Could not load quiz from ' + src.path + '. Check the path & JSON shape.');
+        } finally {
+          loadBankBtn.disabled = false;
+          loadBankBtn.textContent = 'Load bank';
+        }
+      }
+
+      // ---------------- EVENT WIRING ----------------
+      // Populate bank select
+      QUIZ_SOURCES.forEach(src => {
+        const opt = document.createElement('option');
+        opt.value = src.id;
+        opt.textContent = src.label;
+        bankSelect.appendChild(opt);
+      });
+      if (QUIZ_SOURCES[0]) {
+        bankSelect.value = QUIZ_SOURCES[0].id;
+      }
+
+      loadBankBtn.addEventListener('click', () => {
+        const id = bankSelect.value;
+        if (id) loadBank(id);
+      });
+
+      subjectFilterEl.addEventListener('change', () => {
+        state.subjectFilter = subjectFilterEl.value || 'all';
+        renderDomainList();
+        pickAndRenderNextQuestion();
+      });
+
+      modeLearnBtn.addEventListener('click', () => {
+        setMode('learn');
+        pickAndRenderNextQuestion();
+      });
+      modeCramBtn.addEventListener('click', () => {
+        setMode('cram');
+        pickAndRenderNextQuestion();
+      });
+
+      multiHintBtn.addEventListener('click', () => {
+        const hint = multiHintBtn.dataset.hint || '';
+        if (!hint) return;
+        metaQuestionType.textContent = hint;
+      });
+      
+
+      checkBtn.addEventListener('click', () => {
+        gradeCurrentQuestion();
+      });
+      showBtn.addEventListener('click', () => {
+        showAnswerGiveUp();
+      });
+      nextBtn.addEventListener('click', () => {
+        pickAndRenderNextQuestion();
+      });
+
+      // Keyboard shortcuts: Enter = check, Right = next
+      document.addEventListener('keydown', (e) => {
+        if (!state.currentQuestion) return;
+        if (e.key === 'Enter' && !e.shiftKey) {
+          const tag = (e.target && e.target.tagName) || '';
+          if (tag !== 'TEXTAREA' && tag !== 'INPUT') {
+            e.preventDefault();
+            gradeCurrentQuestion();
+          }
+        } else if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          pickAndRenderNextQuestion();
+        }
+      });
+
+      // Allow adding current question to quick sheet by double-clicking feedback
+      feedbackEl.addEventListener('dblclick', () => {
+        addNoteForCurrent();
+      });
+
+      // Initial mode
+      setMode('learn');
+      renderStatsPanels();
+      renderDomainList();
+      renderNotes();
+    });
+  </script>
+</body>
+</html>

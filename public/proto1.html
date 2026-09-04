@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>The Droste Brush</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #1a1a1a; color: #fff; font-family: monospace; }
+        canvas { display: block; cursor: crosshair; }
+        h1 { margin: 0 0 5px 0; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 2px; }
+        p { margin: 0; font-size: 0.9rem; color: #ccc; }
+    </style>
+</head>
+<body>
+
+    <canvas id="fractalCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('fractalCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // 1. Setup Canvas to fill screen
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            resetCanvas();
+        }
+        
+        // 2. Seed the canvas so the recursion has something to "eat"
+        function resetCanvas() {
+            // Fill with dark gray
+            ctx.fillStyle = "#1a1a1a";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw a single initial "seed" shape in the center
+            // Without this, you'd be drawing empty pixels onto empty pixels
+            ctx.font = "bold 100px monospace";
+            ctx.fillStyle = "#333";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("Hi", canvas.width/2, canvas.height/2);
+            
+            // Add some random colored noise for texture
+            for(let i=0; i<50; i++) {
+                ctx.fillStyle = `hsl(${Math.random() * 360}, 100%, 50%)`;
+                ctx.beginPath();
+                ctx.arc(Math.random()*canvas.width, Math.random()*canvas.height, Math.random()*20, 0, Math.PI*2);
+                ctx.fill();
+            }
+        }
+
+        let isDrawing = false;
+
+        // 3. The Recursive Magic
+        function draw(e) {
+            if (!isDrawing) return;
+
+            // CONFIGURATION: Play with these to change the chaos
+            const scale = 0.15; // The brush is 15% the size of the screen
+            const rotation = 0.1; // Slight rotation adds a "swirl" to the recursion
+            
+            const w = canvas.width * scale;
+            const h = canvas.height * scale;
+            const x = e.clientX;
+            const y = e.clientY;
+
+            ctx.save();
+            
+            // Move context to mouse position
+            ctx.translate(x, y);
+            // Rotate the "brush" (optional, but makes it trippy)
+            ctx.rotate(rotation);
+            // Center the draw
+            ctx.translate(-w/2, -h/2);
+
+            // THE KEY LINE: Draw the canvas... onto the canvas.
+            // We use the canvas element itself as the image source.
+            ctx.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, w, h);
+            
+            // Add a border to the brush so you can see the recursion edges
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
+            ctx.lineWidth = 1;
+            ctx.strokeRect(0, 0, w, h);
+
+            ctx.restore();
+        }
+
+        // Event Listeners
+        window.addEventListener('resize', resize);
+        canvas.addEventListener('mousedown', () => isDrawing = true);
+        canvas.addEventListener('mouseup', () => isDrawing = false);
+        canvas.addEventListener('mousemove', draw);
+
+        // Initialize
+        resize();
+
+    </script>
+</body>
+</html>

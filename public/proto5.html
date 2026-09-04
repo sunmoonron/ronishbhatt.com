@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Zeno's Agreement</title>
+<style>
+  body { font-family: 'Courier New', monospace; background: #f0f0f0; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+  #contract-modal {
+    width: 400px; height: 500px; background: white; border: 2px solid #000; display: flex; flex-direction: column; box-shadow: 10px 10px 0px #333;
+  }
+  h1 { margin: 0; padding: 20px; border-bottom: 2px solid #000; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 1px; }
+  #legalese-container {
+    flex-grow: 1; overflow-y: scroll; padding: 20px; font-size: 0.8rem; line-height: 1.4; color: #444; scroll-behavior: smooth;
+  }
+  #sentinel { height: 1px; width: 100%; }
+  #accept-btn {
+    padding: 20px; background: #ccc; border: none; border-top: 2px solid #000; cursor: not-allowed; font-weight: bold;
+  }
+  /* The button only activates if you reach the bottom... which is impossible */
+  #accept-btn.active { background: #0f0; cursor: pointer; color: black; }
+</style>
+</head>
+<body>
+
+<div id="contract-modal">
+  <h1>Terms of Eternal Service</h1>
+  <div id="legalese-container">
+    <p><strong>Clause 1.0:</strong> By acknowledging the existence of this viewport, the User agrees to traverse the subsequent clauses.</p>
+    <div id="content-stream"></div>
+    <div id="sentinel"></div> </div>
+  <button id="accept-btn" disabled>SCROLL TO END TO ACCEPT</button>
+</div>
+
+<script>
+  const stream = document.getElementById('content-stream');
+  const sentinel = document.getElementById('sentinel');
+  let clauseIndex = 1;
+  let subClauseDepth = 0;
+
+  // The Recursive Generator
+  // It uses the logic of the previous clause to justify the existence of the next.
+  function generateLegalese(index, depth) {
+    const jargon = [
+      "binding arbitration", "meta-physical liability", "cognitive surrender", 
+      "recursive indemnification", "temporal forfeiture", "infinite scroll acknowledgment"
+    ];
+    
+    let text = "";
+    // We generate 3 paragraphs for every 1 trigger to ensure the scrollbar shrinks
+    for (let i = 0; i < 3; i++) {
+        const term = jargon[Math.floor(Math.random() * jargon.length)];
+        text += `<p><strong>Clause ${index}.${depth}.${i+1}:</strong> Pursuant to the limitations set forth in Clause ${index}.${depth}, the User hereby waives rights to ${term}, extending into perpetuity as defined by the scroll height of element #legalese-container.</p>`;
+    }
+    return text;
+  }
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        // The trap triggers.
+        // We do not just add text; we expand the definition of the contract.
+        subClauseDepth++;
+        const newClauses = document.createElement('div');
+        newClauses.innerHTML = generateLegalese(clauseIndex, subClauseDepth);
+        stream.appendChild(newClauses);
+        
+        // Move the sentinel to the new bottom, ensuring the chase continues.
+        stream.appendChild(sentinel);
+        
+        // Optional: Cruel joke.
+        // console.log(`You are now ${subClauseDepth} layers deep in the agreement.`);
+      }
+    });
+  }, { root: document.getElementById('legalese-container'), threshold: 1.0 });
+
+  observer.observe(sentinel);
+</script>
+
+</body>
+</html>

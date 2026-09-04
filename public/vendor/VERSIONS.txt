@@ -1,0 +1,5 @@
+Self-hosted, pinned, unmodified upstream builds (fetched from the npm registry 2026-09-04).
+nostr-tools 2.25.2  lib/nostr.bundle.js          (IIFE, window.NostrTools)   MIT
+htm 3.1.1 + preact 10.29.8  htm/preact/standalone.mjs (ESM: html, render, hooks)  Apache-2.0 / MIT
+marked 18.0.11      lib/marked.esm.js            (ESM)                       MIT
+DOMPurify 3.4.14    dist/purify.min.js           (UMD, window.DOMPurify)     Apache-2.0 / MPL-2.0

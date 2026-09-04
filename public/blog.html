@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Private Blog</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root{color-scheme:dark;--a:#22c55e;--bg:#0a0a0a;--c:#111;--b:#222;--t:#e5e7eb;--m:#9ca3af}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--t);padding:1rem;max-width:800px;margin:0 auto}
+h1{color:var(--a);margin-bottom:1rem}
+input,textarea,button{background:var(--c);border:1px solid var(--b);color:var(--t);padding:.5rem;border-radius:4px;font:inherit}
+button{background:var(--a);color:#000;cursor:pointer;border:none}
+button:hover{opacity:.9}
+.bar{display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap}
+.bar input{flex:1;min-width:200px}
+#st{font-size:.75rem;color:var(--a);margin-bottom:.5rem}
+.p{background:var(--c);border:1px solid var(--b);border-radius:8px;padding:1rem;margin-bottom:1rem}
+.p h2{color:var(--a);font-size:1.1rem;margin-bottom:.5rem}
+.p .meta{font-size:.7rem;color:var(--m);margin-bottom:.5rem}
+.p .body{white-space:pre-wrap;word-break:break-word}
+.p .acts{display:flex;gap:.5rem;margin-top:.5rem;font-size:.75rem}
+.p .acts button{padding:.25rem .5rem;font-size:.75rem}
+#ed{display:none;margin-bottom:1rem}
+#ed textarea{width:100%;min-height:150px;margin-bottom:.5rem}
+#ed input{width:100%;margin-bottom:.5rem}
+.tags{display:flex;gap:.25rem;flex-wrap:wrap}
+.tag{background:var(--b);padding:.2rem .4rem;border-radius:4px;font-size:.7rem}
+#flt{margin-bottom:1rem}
+#flt input{width:100%}
+.empty{color:var(--m);text-align:center;padding:2rem}
+details{margin-top:1rem}
+summary{cursor:pointer;color:var(--m)}
+.key-acts{display:flex;gap:.5rem;margin-top:.5rem;flex-wrap:wrap}
+.key-acts button{font-size:.75rem;padding:.4rem .6rem}
+.pub{color:#f59e0b}.priv{color:var(--a)}
+.lnk{font-size:.7rem;color:var(--m);text-decoration:none;margin-left:.5rem}
+.lnk:hover{color:var(--a)}
+.tabs{display:flex;gap:.5rem;margin-bottom:.5rem}
+.tabs button{background:var(--b);color:var(--t);font-size:.75rem;padding:.3rem .6rem}
+.tabs button.act{background:var(--a);color:#000}
+label{font-size:.8rem;color:var(--m);display:flex;align-items:center;gap:.3rem;margin-bottom:.5rem}
+#pub{width:auto}
+</style>
+</head>
+<body>
+<h1>🔒 Private Blog</h1>
+<div id="st">Connecting...</div>
+
+<div class="bar">
+<input type="password" id="nsec" placeholder="nsec1... (your key)">
+<button id="login">Login</button>
+<button id="gen">Generate New Key</button>
+</div>
+
+<div id="ed">
+<input type="text" id="title" placeholder="Title">
+<textarea id="content" placeholder="Write your post..."></textarea>
+<input type="text" id="tags" placeholder="Tags (comma separated)">
+<label><input type="checkbox" id="pub"> Publish publicly (unencrypted, visible to everyone)</label>
+<div class="bar">
+<button id="save">Save Post</button>
+<button id="cancel" style="background:var(--b);color:var(--t)">Cancel</button>
+</div>
+</div>
+
+<div id="acts" style="display:none">
+<div class="bar">
+<button id="newp">+ New Post</button>
+<button id="expAll" style="background:var(--b);color:var(--t)">Export All</button>
+<button id="expJson" style="background:var(--b);color:var(--t)">Export JSON</button>
+</div>
+<div class="tabs">
+<button class="act" data-f="all">All</button>
+<button data-f="priv">🔒 Private</button>
+<button data-f="pub">🌐 Public</button>
+</div>
+<input type="text" id="flt" placeholder="🔍 Filter by title, content, or tags..." style="width:100%;margin-bottom:1rem">
+</div>
+
+<div id="posts"></div>
+
+<details>
+<summary>🔑 Key Management</summary>
+<div class="key-acts">
+<button id="exp">Export Key</button>
+<button id="clr" style="background:#ef4444">Forget Key</button>
+</div>
+<p style="font-size:.75rem;color:var(--m);margin-top:.5rem">Your key is stored locally. Export to backup.</p>
+</details>
+
+<script src="/projects/js/nostr.bundle.js"></script>
+<script>
+(()=>{
+'use strict';
+const RELAYS=["wss://relay.damus.io","wss://nos.lol","wss://relay.nostr.band"];
+const KIND=30023; // NIP-23 long-form
+const N=window.NostrTools,n44=N.nip44;
+
+// DOM shortcuts
+const $=id=>document.getElementById(id),
+  st=$('st'),nsecIn=$('nsec'),postsEl=$('posts'),
+  edEl=$('ed'),titleIn=$('title'),contentIn=$('content'),tagsIn=$('tags'),
+  actsEl=$('acts'),fltIn=$('flt'),pubChk=$('pub');
+
+// State - O(1) lookups via Map
+let sk=null,pk=null,ws={},posts=new Map(),editId=null,tabF='all';
+
+// Utils
+const now=()=>Math.floor(Date.now()/1000);
+const esc=s=>{const d=document.createElement('div');d.textContent=s;return d.innerHTML};
+const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,50);
+
+// NIP-44 helpers (reused from index.html pattern)
+const ck=(priv,pub)=>n44.v2.utils.getConversationKey(priv,pub);
+const enc=(priv,pub,txt)=>n44.v2.encrypt(txt,ck(priv,pub));
+const dec=(priv,pub,ct)=>n44.v2.decrypt(ct,ck(priv,pub));
+
+// Self-encryption (encrypt to self for private storage)
+const encSelf=(txt)=>enc(sk,pk,txt);
+const decSelf=(ct)=>dec(sk,pk,ct);
+
+// Status
+const setSt=t=>{st.textContent=t};
+
+// Post CRUD operations - all O(1) via Map
+const P={
+  add(ev){
+    if(posts.has(ev.id))return;
+    const d=ev.tags.find(t=>t[0]==='d')?.[1]||'';
+    const title=ev.tags.find(t=>t[0]==='title')?.[1]||'';
+    const tags=(ev.tags.filter(t=>t[0]==='t')||[]).map(t=>t[1]);
+    const isEnc=ev.tags.some(t=>t[0]==='encrypted');
+    let body='';
+    if(isEnc){try{body=decSelf(ev.content)}catch{return}}else{body=ev.content}
+    posts.set(ev.id,{id:ev.id,d,title,body,tags,ts:ev.created_at,pub:!isEnc,raw:ev});
+  },
+  del(id){posts.delete(id)},
+  get(id){return posts.get(id)},
+  all(){return[...posts.values()].sort((a,b)=>b.ts-a.ts)},
+  byTab(t){const a=P.all();if(t==='pub')return a.filter(p=>p.pub);if(t==='priv')return a.filter(p=>!p.pub);return a},
+  filter(q,t){
+    let list=P.byTab(t);
+    if(!q)return list;
+    q=q.toLowerCase();
+    return list.filter(p=>
+      p.title.toLowerCase().includes(q)||
+      p.body.toLowerCase().includes(q)||
+      p.tags.some(tg=>tg.toLowerCase().includes(q))
+    );
+  }
+};
+
+// Note link helper
+const noteLink=id=>`https://nostr.band/note1${N.nip19.noteEncode(id).slice(5)}`;
+const naddr=(d)=>`https://nostr.band/${N.nip19.naddrEncode({identifier:d,pubkey:pk,kind:KIND})}`;
+
+// Render posts
+function render(){
+  const q=fltIn?.value||'';
+  const list=P.filter(q,tabF);
+  if(!list.length){
+    postsEl.innerHTML='<div class="empty">No posts yet. Create one!</div>';
+    return;
+  }
+  postsEl.innerHTML=list.map(p=>`
+    <div class="p" data-id="${p.id}">
+      <h2>${esc(p.title||'Untitled')} <span class="${p.pub?'pub':'priv'}">${p.pub?'🌐':'🔒'}</span>
+        ${p.pub?`<a class="lnk" href="${naddr(p.d)}" target="_blank">↗ view</a>`:''}</h2>
+      <div class="meta">${new Date(p.ts*1000).toLocaleString()} · <a class="lnk" href="#" onclick="B.cpLink('${p.id}');return false">copy link</a></div>
+      <div class="body">${esc(p.body)}</div>
+      ${p.tags.length?`<div class="tags">${p.tags.map(t=>`<span class="tag">#${esc(t)}</span>`).join('')}</div>`:''}
+      <div class="acts">
+        <button onclick="B.edit('${p.id}')">Edit</button>
+        <button onclick="B.expOne('${p.id}')">Export</button>
+        <button onclick="B.rm('${p.id}')" style="background:#ef4444">Delete</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// Create/Update post event
+async function mkPost(title,body,tags,dTag,isPub){
+  const content=isPub?body:encSelf(body);
+  const baseTags=[
+    ['d',dTag||slug(title)+'-'+now()],
+    ['title',title],
+    ...tags.map(t=>['t',t.trim()]).filter(t=>t[1])
+  ];
+  if(!isPub)baseTags.push(['encrypted','nip44-self']);
+  const ev={kind:KIND,created_at:now(),tags:baseTags,content,pubkey:pk};
+  return await N.finalizeEvent(ev,sk);
+}
+
+// Delete event (NIP-09)
+async function mkDel(id,dTag){
+  const ev={
+    kind:5,
+    created_at:now(),
+    tags:[['e',id],['a',`${KIND}:${pk}:${dTag}`]],
+    content:'deleted',
+    pubkey:pk
+  };
+  return await N.finalizeEvent(ev,sk);
+}
+
+// Broadcast
+function bc(ev){
+  const msg=JSON.stringify(['EVENT',ev]);
+  Object.values(ws).forEach(s=>{
+    if(s.readyState===1)s.send(msg);
+  });
+}
+
+// Relay connection
+function connect(){
+  RELAYS.forEach(url=>{
+    try{
+      const s=new WebSocket(url);
+      ws[url]=s;
+      s.onopen=()=>{
+        setSt('Connected: '+url.replace('wss://',''));
+        sub(s);
+      };
+      s.onmessage=e=>{
+        try{
+          const m=JSON.parse(e.data);
+          if(m[0]==='EVENT'&&m[2]){
+            const ev=m[2];
+            if(ev.kind===KIND&&ev.pubkey===pk){
+              P.add(ev);
+              render();
+            }else if(ev.kind===5&&ev.pubkey===pk){
+              // deletion
+              (ev.tags||[]).forEach(t=>{
+                if(t[0]==='e')P.del(t[1]);
+              });
+              render();
+            }
+          }
+        }catch{}
+      };
+      s.onclose=()=>setTimeout(()=>recon(url),5000);
+    }catch{}
+  });
+}
+
+function recon(url){
+  try{
+    const s=new WebSocket(url);
+    ws[url]=s;
+    s.onopen=()=>sub(s);
+    s.onmessage=e=>{
+      try{
+        const m=JSON.parse(e.data);
+        if(m[0]==='EVENT'&&m[2]){
+          const ev=m[2];
+          if(ev.kind===KIND&&ev.pubkey===pk)P.add(ev);
+          else if(ev.kind===5&&ev.pubkey===pk){
+            (ev.tags||[]).forEach(t=>{if(t[0]==='e')P.del(t[1])});
+          }
+          render();
+        }
+      }catch{}
+    };
+    s.onclose=()=>setTimeout(()=>recon(url),5000);
+  }catch{}
+}
+
+function sub(s){
+  if(!pk)return;
+  s.send(JSON.stringify(['REQ','blog-'+Math.random().toString(36).slice(2),
+    {kinds:[KIND,5],authors:[pk],limit:500}
+  ]));
+}
+
+// UI handlers exposed globally for onclick
+window.B={
+  edit(id){
+    const p=P.get(id);
+    if(!p)return;
+    editId=id;
+    titleIn.value=p.title;
+    contentIn.value=p.body;
+    tagsIn.value=p.tags.join(', ');
+    pubChk.checked=p.pub;
+    edEl.style.display='block';
+    titleIn.focus();
+  },
+  async rm(id){
+    if(!confirm('Delete this post?'))return;
+    const p=P.get(id);
+    if(!p)return;
+    const ev=await mkDel(id,p.d);
+    bc(ev);
+    P.del(id);
+    render();
+  },
+  cpLink(id){
+    const p=P.get(id);
+    if(!p)return;
+    const url=naddr(p.d);
+    navigator.clipboard.writeText(url).then(()=>setSt('Link copied!'));
+  },
+  expOne(id){
+    const p=P.get(id);
+    if(!p)return;
+    const md=`# ${p.title}\n\nTags: ${p.tags.map(t=>'#'+t).join(' ')}\nDate: ${new Date(p.ts*1000).toISOString()}\nPublic: ${p.pub}\n\n---\n\n${p.body}`;
+    dl('post-'+p.d+'.md',md);
+  }
+};
+
+// Download helper
+function dl(name,content,type='text/plain'){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([content],{type}));
+  a.download=name;
+  a.click();
+}
+
+// Event listeners
+$('login').onclick=async()=>{
+  const v=nsecIn.value.trim();
+  if(!v){alert('Enter nsec');return}
+  try{
+    const dec=N.nip19.decode(v);
+    sk=dec.data;
+    pk=N.getPublicKey(sk);
+    localStorage.setItem('blog_nsec',v);
+    initUI();
+  }catch(e){alert('Invalid nsec: '+e.message)}
+};
+
+$('gen').onclick=()=>{
+  sk=N.generateSecretKey();
+  pk=N.getPublicKey(sk);
+  const nsec=N.nip19.nsecEncode(sk);
+  localStorage.setItem('blog_nsec',nsec);
+  alert('New key generated!\n\nNSEC (SAVE THIS):\n'+nsec+'\n\nNPUB:\n'+N.nip19.npubEncode(pk));
+  initUI();
+};
+
+$('newp').onclick=()=>{
+  editId=null;
+  titleIn.value='';
+  contentIn.value='';
+  tagsIn.value='';
+  pubChk.checked=false;
+  edEl.style.display='block';
+  titleIn.focus();
+};
+
+$('cancel').onclick=()=>{
+  edEl.style.display='none';
+  editId=null;
+};
+
+$('save').onclick=async()=>{
+  const title=titleIn.value.trim();
+  const body=contentIn.value.trim();
+  const tags=tagsIn.value.split(',').map(t=>t.trim()).filter(Boolean);
+  const isPub=pubChk.checked;
+  if(!body){alert('Content required');return}
+  if(isPub&&!confirm('This will be PUBLIC and visible to everyone. Continue?'))return;
+  
+  let dTag;
+  if(editId){
+    const old=P.get(editId);
+    dTag=old?.d;
+    if(old){
+      const delEv=await mkDel(editId,dTag);
+      bc(delEv);
+      P.del(editId);
+    }
+  }
+  
+  const ev=await mkPost(title||'Untitled',body,tags,dTag,isPub);
+  bc(ev);
+  P.add(ev);
+  render();
+  edEl.style.display='none';
+  editId=null;
+  setSt('Post saved!'+(isPub?' (Public)':' (Private)'));
+};
+
+// Tab filtering
+document.querySelectorAll('.tabs button').forEach(btn=>{
+  btn.onclick=()=>{
+    document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('act'));
+    btn.classList.add('act');
+    tabF=btn.dataset.f;
+    render();
+  };
+});
+
+// Export all
+$('expAll').onclick=()=>{
+  const all=P.all().map(p=>`# ${p.title}\n\nTags: ${p.tags.map(t=>'#'+t).join(' ')}\nDate: ${new Date(p.ts*1000).toISOString()}\nPublic: ${p.pub}\n\n---\n\n${p.body}\n\n========================================\n`).join('\n');
+  dl('all-posts.md',all);
+};
+
+$('expJson').onclick=()=>{
+  const data=P.all().map(p=>({title:p.title,body:p.body,tags:p.tags,ts:p.ts,pub:p.pub,d:p.d}));
+  dl('posts.json',JSON.stringify(data,null,2),'application/json');
+};
+
+fltIn?.addEventListener('input',render);
+
+$('exp').onclick=()=>{
+  const nsec=localStorage.getItem('blog_nsec');
+  if(nsec){
+    navigator.clipboard.writeText(nsec).then(()=>alert('Key copied to clipboard!'));
+  }else{alert('No key found')}
+};
+
+$('clr').onclick=()=>{
+  if(!confirm('This will delete your key. Make sure you exported it!'))return;
+  localStorage.removeItem('blog_nsec');
+  location.reload();
+};
+
+// Init
+function initUI(){
+  nsecIn.style.display='none';
+  $('login').style.display='none';
+  $('gen').style.display='none';
+  actsEl.style.display='flex';
+  setSt('Logged in as '+N.nip19.npubEncode(pk).slice(0,20)+'...');
+  connect();
+}
+
+// Auto-login if key saved
+const saved=localStorage.getItem('blog_nsec');
+if(saved){
+  try{
+    const dec=N.nip19.decode(saved);
+    sk=dec.data;
+    pk=N.getPublicKey(sk);
+    initUI();
+  }catch{
+    setSt('Saved key invalid');
+  }
+}else{
+  setSt('Enter key or generate new one');
+}
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>NOSTR ORBIT — Timechain Analytics</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root {
+      --bg:     #0a0a0a;
+      --card:   #111118;
+      --border: #1c1c2e;
+      --accent: #f7931a;
+      --green:  #22c55e;
+      --blue:   #38bdf8;
+      --purple: #a78bfa;
+      --text:   #e5e7eb;
+      --muted:  #6b7280;
+      --mono:   'SF Mono', Monaco, 'Fira Code', monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ─────────────────────────────────────────────────── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.25rem 2rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .logo { display: flex; align-items: center; gap: 0.75rem; }
+    .logo-icon {
+      width: 34px; height: 34px;
+      background: var(--accent);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 0.95rem; color: #000;
+      flex-shrink: 0;
+    }
+    .logo h1 {
+      font-size: 1.1rem; font-weight: 800; letter-spacing: 0.14em;
+      background: linear-gradient(90deg, var(--accent), var(--blue));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .logo p { font-size: 0.65rem; color: var(--muted); font-family: var(--mono); letter-spacing: 0.07em; }
+    .header-right { font-family: var(--mono); font-size: 0.7rem; color: var(--muted); text-align: right; line-height: 1.6; }
+    .header-right a { color: var(--accent); text-decoration: none; }
+
+    /* ── HERO ───────────────────────────────────────────────────── */
+    .hero {
+      max-width: 660px; margin: 0 auto;
+      padding: 3.5rem 2rem 2rem; text-align: center;
+    }
+    .hero h2 { font-size: 2.1rem; font-weight: 800; line-height: 1.2; margin-bottom: 0.75rem; }
+    .hero h2 em { font-style: normal; color: var(--accent); }
+    .hero p { color: var(--muted); font-size: 0.9rem; line-height: 1.7; margin-bottom: 2rem; }
+    .input-row { display: flex; gap: 0.5rem; }
+    .input-row input {
+      flex: 1; background: var(--card); border: 1px solid var(--border);
+      border-radius: 0.5rem; padding: 0.75rem 1rem;
+      color: var(--text); font-size: 0.85rem; font-family: var(--mono);
+      transition: border-color 0.15s;
+    }
+    .input-row input:focus { outline: none; border-color: var(--accent); }
+    .input-row input::placeholder { color: var(--muted); }
+    .btn {
+      background: var(--accent); border: none; border-radius: 0.5rem;
+      padding: 0.75rem 1.4rem; font-weight: 700; font-size: 0.85rem;
+      color: #000; cursor: pointer; letter-spacing: 0.06em;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .btn:hover { opacity: 0.88; }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+    .hint { margin-top: 0.75rem; font-size: 0.7rem; color: var(--muted); font-family: var(--mono); }
+    .hint a { color: var(--accent); cursor: pointer; text-decoration: underline; }
+
+    /* ── STATUS / LOADING ───────────────────────────────────────── */
+    #status {
+      text-align: center; padding: 0.5rem; min-height: 2rem;
+      font-family: var(--mono); font-size: 0.78rem; color: var(--accent);
+    }
+    .loader { display: none; justify-content: center; padding: 2.5rem; }
+    .loader.on { display: flex; }
+    .rings {
+      position: relative; width: 72px; height: 72px;
+    }
+    .rings span {
+      position: absolute; inset: 0; border: 2px solid transparent; border-radius: 50%;
+      border-top-color: var(--accent);
+      animation: spin 1.4s linear infinite;
+    }
+    .rings span:nth-child(2) { inset: 12px; border-top-color: var(--blue); animation-duration: 1s; animation-direction: reverse; }
+    .rings span:nth-child(3) { inset: 24px; border-top-color: var(--purple); animation-duration: 0.7s; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── DASHBOARD ──────────────────────────────────────────────── */
+    #dashboard { display: none; padding: 0 2rem 4rem; max-width: 1200px; margin: 0 auto; }
+    #dashboard.on { display: block; }
+
+    .profile-bar {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 0.75rem; padding: 1rem 1.5rem;
+      display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+      margin-bottom: 1.25rem;
+    }
+    .profile-bar .npub-info { flex: 1; }
+    .profile-bar .npub-info strong { display: block; font-size: 0.875rem; margin-bottom: 0.15rem; }
+    .profile-bar .npub-info span { font-family: var(--mono); font-size: 0.7rem; color: var(--muted); }
+    .og-badge {
+      padding: 0.3rem 0.8rem; border-radius: 2rem;
+      font-size: 0.75rem; font-weight: 600; border: 1px solid; white-space: nowrap;
+    }
+    .est-note { font-family: var(--mono); font-size: 0.65rem; color: var(--muted); }
+
+    /* stat cards */
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap: 1rem; margin-bottom: 1.25rem; }
+    .sc {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 0.75rem; padding: 1.2rem;
+    }
+    .sc .lbl { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; font-family: var(--mono); margin-bottom: 0.4rem; }
+    .sc .val { font-size: 1.7rem; font-weight: 800; font-family: var(--mono); line-height: 1; }
+    .sc .sub { font-size: 0.67rem; color: var(--muted); margin-top: 0.3rem; }
+
+    /* main grid */
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 1.25rem; }
+    @media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } }
+
+    .panel { background: var(--card); border: 1px solid var(--border); border-radius: 0.75rem; overflow: hidden; }
+    .ph {
+      padding: 0.9rem 1.2rem; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .ph h3 { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); font-family: var(--mono); }
+    .ph span { font-size: 0.65rem; color: var(--muted); font-family: var(--mono); }
+    .pb { padding: 1.2rem; }
+
+    canvas#orbitCanvas { width: 100%; aspect-ratio: 1; display: block; cursor: crosshair; }
+    canvas#tlCanvas    { width: 100%; height: 130px; display: block; }
+
+    /* era bars */
+    .era-list { display: flex; flex-direction: column; gap: 0.55rem; }
+    .era-row  { display: flex; align-items: center; gap: 0.65rem; font-size: 0.78rem; }
+    .era-dot  { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+    .era-name { min-width: 88px; font-family: var(--mono); font-size: 0.72rem; }
+    .era-track { flex: 1; height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+    .era-fill  { height: 100%; border-radius: 3px; transition: width 0.9s cubic-bezier(.4,0,.2,1); }
+    .era-ct    { font-family: var(--mono); font-size: 0.68rem; color: var(--muted); min-width: 2.8rem; text-align: right; }
+
+    /* kind grid */
+    .kind-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; margin-top: 0.2rem; }
+    .ki { text-align: center; padding: 0.65rem; background: var(--bg); border-radius: 0.5rem; }
+    .ki .kv { font-size: 1.15rem; font-weight: 700; font-family: var(--mono); }
+    .ki .kl { font-size: 0.62rem; color: var(--muted); margin-top: 0.15rem; }
+
+    /* tooltip */
+    #tip {
+      position: fixed; pointer-events: none; z-index: 999;
+      background: #1a1a2e; border: 1px solid var(--border); border-radius: 0.5rem;
+      padding: 0.55rem 0.75rem; font-size: 0.7rem; font-family: var(--mono);
+      color: var(--text); max-width: 230px;
+      opacity: 0; transition: opacity 0.12s;
+    }
+    #tip.on { opacity: 1; }
+    #tip .tip-block { color: var(--accent); margin-bottom: 3px; }
+    #tip .tip-date  { color: var(--muted); margin-bottom: 5px; font-size: 0.65rem; }
+    #tip .tip-text  { color: var(--text); word-break: break-word; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">₿</div>
+    <div>
+      <h1>NOSTR ORBIT</h1>
+      <p>TIMECHAIN-ANCHORED SOCIAL ANALYTICS</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <a href="/">← back to site</a><br>
+    tip: <span id="tipH">—</span>
+  </div>
+</header>
+
+<section class="hero">
+  <h2>Your social footprint<br>on the <em>timechain</em>.</h2>
+  <p>Anchor your Nostr activity to Bitcoin block heights. See which halving era you joined in. Track your orbit across epochs. Prove your presence.</p>
+  <div class="input-row">
+    <input id="npubIn" type="text" placeholder="npub1..." autocomplete="off" spellcheck="false">
+    <button class="btn" id="analyzeBtn">ANALYZE</button>
+  </div>
+  <p class="hint">try: <a id="demoA">jack (npub1sg6plz...)</a> · or paste any npub</p>
+</section>
+
+<div id="status"></div>
+
+<div class="loader" id="loader">
+  <div class="rings"><span></span><span></span><span></span></div>
+</div>
+
+<div id="dashboard">
+  <div class="profile-bar">
+    <div class="npub-info">
+      <strong id="pName">—</strong>
+      <span id="pNpub">—</span>
+    </div>
+    <span class="og-badge" id="ogBadge">—</span>
+    <span class="est-note">⚡ block heights estimated from avg 10-min block time</span>
+  </div>
+
+  <div class="stats">
+    <div class="sc"><div class="lbl">Total Events</div><div class="val" id="sTotal" style="color:var(--accent)">—</div><div class="sub" id="sSub">—</div></div>
+    <div class="sc"><div class="lbl">Blocks Active</div><div class="val" id="sBlocks" style="color:var(--blue)">—</div><div class="sub">unique blocks</div></div>
+    <div class="sc"><div class="lbl">Block Streak</div><div class="val" id="sStreak" style="color:var(--green)">—</div><div class="sub">consecutive active</div></div>
+    <div class="sc"><div class="lbl">Block Range</div><div class="val" id="sRange" style="color:var(--purple);font-size:1rem;padding-top:4px">—</div><div class="sub" id="sRangeSub">first → last</div></div>
+  </div>
+
+  <div class="grid2">
+    <!-- Orbit canvas -->
+    <div class="panel">
+      <div class="ph"><h3>Orbital View</h3><span>hover for event preview</span></div>
+      <div style="padding:0.75rem"><canvas id="orbitCanvas"></canvas></div>
+    </div>
+
+    <!-- Right panel -->
+    <div class="panel" style="display:flex;flex-direction:column">
+      <div class="ph"><h3>Halving Era Activity</h3></div>
+      <div class="pb"><div class="era-list" id="eraList"></div></div>
+
+      <div class="ph" style="margin-top:auto"><h3>Event Breakdown</h3></div>
+      <div class="pb">
+        <div class="kind-grid">
+          <div class="ki"><div class="kv" id="kNotes"    style="color:var(--accent)">—</div><div class="kl">Notes</div></div>
+          <div class="ki"><div class="kv" id="kReact"    style="color:var(--green)">—</div><div class="kl">Reactions</div></div>
+          <div class="ki"><div class="kv" id="kRepost"   style="color:var(--blue)">—</div><div class="kl">Reposts</div></div>
+        </div>
+      </div>
+
+      <div class="ph"><h3>Epoch Timeline</h3><span>per 2016 blocks (~2 weeks)</span></div>
+      <div style="padding:0.5rem 0.75rem 0.75rem"><canvas id="tlCanvas"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<div id="tip">
+  <div class="tip-block" id="tipBlock"></div>
+  <div class="tip-date" id="tipDate"></div>
+  <div class="tip-text" id="tipText"></div>
+</div>
+
+<script src="/projects/js/nostr.bundle.js"></script>
+<script type="module">
+import { anchorEventsFast, blockToDate, blockLabel } from '/projects/js/modules/anchor.js';
+import { computeMetrics, ERA_META }                  from '/projects/js/modules/analytics.js';
+import { drawOrbit, hitTest, drawTimeline }           from '/projects/js/modules/orbit.js';
+import { getTipHeight }                               from '/projects/js/modules/mempool.js';
+
+// ── State ──────────────────────────────────────────────────────────────
+let dots = [], anchored = [];
+
+// ── DOM ────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const npubIn   = $('npubIn'),   analyzeBtn = $('analyzeBtn');
+const loader   = $('loader'),   dashboard  = $('dashboard');
+const orbitC   = $('orbitCanvas'), tlC    = $('tlCanvas');
+const tip      = $('tip');
+
+// ── Live block tip ─────────────────────────────────────────────────────
+getTipHeight().then(h => { $('tipH').textContent = Number(h).toLocaleString(); }).catch(() => {});
+
+// ── Demo ───────────────────────────────────────────────────────────────
+$('demoA').addEventListener('click', () => {
+  npubIn.value = 'npub1sg6plzptd64u62a878hep2kev88swjh3tw00gjsfl8f237lmu63q0yrx2f';
+  run();
+});
+
+// ── Entry points ───────────────────────────────────────────────────────
+analyzeBtn.addEventListener('click', run);
+npubIn.addEventListener('keydown', e => e.key === 'Enter' && run());
+
+function setStatus(msg) { $('status').textContent = msg; }
+
+// ── Relay fetch ────────────────────────────────────────────────────────
+function fetchRelay(url, filters, timeoutMs = 9000) {
+  return new Promise(resolve => {
+    const events = [], sub = 'orb_' + Math.random().toString(36).slice(2);
+    let ws, timer;
+
+    const done = () => { clearTimeout(timer); try { ws.close(); } catch {} resolve(events); };
+    timer = setTimeout(done, timeoutMs);
+
+    try { ws = new WebSocket(url); } catch { return resolve(events); }
+
+    ws.onopen = () => ws.send(JSON.stringify(['REQ', sub, ...filters]));
+    ws.onmessage = ({ data }) => {
+      try {
+        const msg = JSON.parse(data);
+        if (msg[0] === 'EVENT' && msg[1] === sub) events.push(msg[2]);
+        if (msg[0] === 'EOSE') done();
+      } catch {}
+    };
+    ws.onerror = () => done();
+  });
+}
+
+// ── Main analysis ──────────────────────────────────────────────────────
+async function run() {
+  const raw = npubIn.value.trim();
+  if (!raw) return;
+
+  let hex;
+  try {
+    const d = window.NostrTools.nip19.decode(raw);
+    if (d.type !== 'npub') throw 0;
+    hex = d.data;
+  } catch {
+    setStatus('⚠ invalid npub — paste a valid npub1… string'); return;
+  }
+
+  analyzeBtn.disabled = true;
+  dashboard.classList.remove('on');
+  loader.classList.add('on');
+  setStatus('connecting to 3 relays simultaneously…');
+
+  const RELAYS  = ['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.nostr.band'];
+  const FILTERS = [{ authors: [hex], kinds: [1, 6, 7], limit: 500 }];
+
+  const batches = await Promise.all(RELAYS.map(r => fetchRelay(r, FILTERS)));
+
+  // Deduplicate across relays
+  const seen = new Set();
+  const events = batches.flat().filter(e => !seen.has(e.id) && seen.add(e.id));
+
+  if (!events.length) {
+    setStatus('no events found — try a different npub or check relay connectivity');
+    loader.classList.remove('on');
+    analyzeBtn.disabled = false;
+    return;
+  }
+
+  setStatus(`${events.length} events from ${batches.filter(b => b.length).length} relays — anchoring to blocks…`);
+
+  anchored = anchorEventsFast(events);
+  const m  = computeMetrics(anchored);
+
+  loader.classList.remove('on');
+  setStatus('');
+  render(m, raw, hex);
+  analyzeBtn.disabled = false;
+}
+
+// ── Render ─────────────────────────────────────────────────────────────
+function fmt(n) { return n?.toLocaleString() ?? '—'; }
+
+function render(m, npub, hex) {
+  // Profile bar
+  $('pName').textContent = `₿ ${hex.slice(0,12)}…`;
+  $('pNpub').textContent = npub.length > 32 ? npub.slice(0,20) + '…' + npub.slice(-8) : npub;
+  const og = m.og;
+  const badge = $('ogBadge');
+  badge.textContent = og.label;
+  badge.style.color = badge.style.borderColor = og.color;
+
+  // Stat cards
+  $('sTotal').textContent   = fmt(m.total);
+  $('sSub').textContent     = `${fmt(m.notes)} notes · ${fmt(m.reactions)} reactions`;
+  $('sBlocks').textContent  = fmt(m.blocksActive);
+  $('sStreak').textContent  = fmt(m.maxStreak);
+  $('sRange').textContent   = `${fmt(m.firstBlock)} → ${fmt(m.lastBlock)}`;
+  $('sRangeSub').textContent = `${blockToDate(m.firstBlock).getFullYear()} → ${blockToDate(m.lastBlock).getFullYear()}`;
+
+  // Kind breakdown
+  $('kNotes').textContent  = fmt(m.notes);
+  $('kReact').textContent  = fmt(m.reactions);
+  $('kRepost').textContent = fmt(m.reposts);
+
+  // Era bars
+  const eraList = $('eraList');
+  eraList.innerHTML = '';
+  const maxEra = Math.max(...m.eraMap.values());
+  for (const [era, ct] of [...m.eraMap.entries()].sort((a, b) => a[0] - b[0])) {
+    const meta  = ERA_META[era] ?? { name: `Era ${era}`, color: '#9ca3af' };
+    const pct   = (ct / maxEra) * 100;
+    eraList.innerHTML += `
+      <div class="era-row">
+        <div class="era-dot" style="background:${meta.color}"></div>
+        <span class="era-name">${meta.name}</span>
+        <div class="era-track"><div class="era-fill" style="width:${pct}%;background:${meta.color}"></div></div>
+        <span class="era-ct">${fmt(ct)}</span>
+      </div>`;
+  }
+
+  dashboard.classList.add('on');
+
+  requestAnimationFrame(() => {
+    dots = drawOrbit(orbitC, anchored, m);
+    drawTimeline(tlC, m);
+  });
+}
+
+// ── Orbit hover ────────────────────────────────────────────────────────
+orbitC.addEventListener('mousemove', e => {
+  const rect = orbitC.getBoundingClientRect();
+  const sx   = orbitC.clientWidth / orbitC.clientWidth; // always 1, kept for clarity
+  const mx   = (e.clientX - rect.left) * sx;
+  const my   = (e.clientY - rect.top)  * sx;
+  const hit  = hitTest(dots, mx, my);
+
+  if (hit) {
+    $('tipBlock').textContent = `~block ${hit.anchor.height.toLocaleString()}`;
+    $('tipDate').textContent  = new Date(hit.created_at * 1000).toLocaleString();
+    $('tipText').textContent  = (hit.content || '[no text]').slice(0, 140) + (hit.content?.length > 140 ? '…' : '');
+    tip.style.left = (e.clientX + 14) + 'px';
+    tip.style.top  = (e.clientY - 12) + 'px';
+    tip.classList.add('on');
+  } else {
+    tip.classList.remove('on');
+  }
+});
+orbitC.addEventListener('mouseleave', () => tip.classList.remove('on'));
+
+// Redraw canvases on window resize
+let rTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(rTimer);
+  rTimer = setTimeout(() => {
+    if (!anchored.length) return;
+    const m = computeMetrics(anchored);
+    dots = drawOrbit(orbitC, anchored, m);
+    drawTimeline(tlC, m);
+  }, 250);
+});
+</script>
+</body>
+</html>

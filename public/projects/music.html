@@ -1,0 +1,1950 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>InfiniMedia - Endless Music, Video, Art, and Books</title>
+  <meta name="description" content="Infinite media discovery powered by free public APIs for music, video, art, and books.">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      color-scheme: dark;
+      --bg: #09070f;
+      --bg-soft: #151124;
+      --panel: rgba(18, 14, 32, 0.86);
+      --panel-strong: rgba(12, 10, 24, 0.94);
+      --card: rgba(22, 18, 38, 0.92);
+      --card-hover: rgba(29, 23, 50, 0.96);
+      --border: rgba(255, 255, 255, 0.12);
+      --text: #f4ecff;
+      --muted: #c1b5d8;
+      --subtle: #8d82a6;
+      --shadow: 0 26px 80px rgba(0, 0, 0, 0.38);
+      --music: #ff7f51;
+      --video: #5eead4;
+      --art: #ffd166;
+      --books: #9b8cff;
+      --saved: #f97316;
+      --hero: linear-gradient(135deg, rgba(255, 127, 81, 0.22), rgba(94, 234, 212, 0.15) 42%, rgba(155, 140, 255, 0.2));
+    }
+
+    body {
+      font-family: "Avenir Next", "Segoe UI", "Trebuchet MS", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(255, 127, 81, 0.16), transparent 30%),
+        radial-gradient(circle at top right, rgba(94, 234, 212, 0.14), transparent 32%),
+        radial-gradient(circle at 50% 120%, rgba(155, 140, 255, 0.18), transparent 36%),
+        linear-gradient(180deg, #08060d 0%, #0d0a17 46%, #0a0811 100%);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    body.modal-open { overflow: hidden; }
+
+    a { color: inherit; }
+
+    .page-shell {
+      width: min(1120px, calc(100vw - 28px));
+      margin: 0 auto;
+      padding: 28px 0 96px;
+    }
+
+    .hero {
+      position: sticky;
+      top: 0;
+      z-index: 90;
+      margin-bottom: 18px;
+      padding: 18px;
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      background:
+        linear-gradient(180deg, rgba(12, 10, 24, 0.95), rgba(12, 10, 24, 0.8)),
+        var(--hero);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      overflow: hidden;
+    }
+
+    .hero::before,
+    .hero::after {
+      content: "";
+      position: absolute;
+      border-radius: 999px;
+      filter: blur(22px);
+      opacity: 0.5;
+      pointer-events: none;
+    }
+
+    .hero::before {
+      width: 220px;
+      height: 220px;
+      right: -50px;
+      top: -100px;
+      background: rgba(255, 127, 81, 0.18);
+    }
+
+    .hero::after {
+      width: 180px;
+      height: 180px;
+      left: -40px;
+      bottom: -90px;
+      background: rgba(94, 234, 212, 0.16);
+    }
+
+    .hero-grid {
+      position: relative;
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      font-size: 0.74rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: #fff3ea;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      margin-bottom: 14px;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--music), var(--video));
+      box-shadow: 0 0 16px rgba(255, 127, 81, 0.8);
+    }
+
+    h1 {
+      font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+      font-size: clamp(2.5rem, 5vw, 4.6rem);
+      line-height: 0.95;
+      letter-spacing: -0.06em;
+      margin-bottom: 12px;
+      max-width: 9ch;
+    }
+
+    .hero-copy p {
+      max-width: 42rem;
+      color: var(--muted);
+      font-size: 1rem;
+    }
+
+    #stats-line {
+      margin-top: 12px;
+      color: #fff3ea;
+      font-size: 0.86rem;
+      opacity: 0.84;
+    }
+
+    .control-panel {
+      padding: 18px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 22px;
+    }
+
+    .search-form {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .search-form input {
+      width: 100%;
+      padding: 14px 16px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      font: inherit;
+    }
+
+    .search-form input:focus {
+      outline: none;
+      border-color: rgba(255, 255, 255, 0.26);
+      box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.06);
+    }
+
+    .search-form button,
+    .resume-actions button,
+    .modal-close,
+    #scroll-top {
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .action-btn {
+      border: none;
+      padding: 0 16px;
+      min-height: 48px;
+      border-radius: 16px;
+      color: #120d1d;
+      background: linear-gradient(135deg, #fff0dd, #ffd166);
+      font-weight: 700;
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+      box-shadow: 0 14px 26px rgba(255, 209, 102, 0.18);
+    }
+
+    .action-btn.secondary {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: none;
+    }
+
+    .action-btn:hover,
+    .media-action:hover,
+    .filter-btn:hover,
+    .seed-btn:hover,
+    .bookmark-btn:hover,
+    .drawer-remove:hover,
+    .modal-close:hover,
+    #scroll-top:hover {
+      transform: translateY(-1px);
+    }
+
+    .seed-row,
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .seed-row {
+      margin-bottom: 14px;
+    }
+
+    .seed-btn,
+    .filter-btn {
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text);
+      padding: 8px 14px;
+      border-radius: 999px;
+      font: inherit;
+      font-size: 0.82rem;
+      transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.18s ease;
+      cursor: pointer;
+    }
+
+    .seed-btn.active {
+      background: rgba(255, 255, 255, 0.14);
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    .filter-btn.active {
+      border-color: transparent;
+      color: #120d1d;
+      font-weight: 700;
+    }
+
+    .filter-btn[data-filter="music"].active { background: var(--music); }
+    .filter-btn[data-filter="video"].active { background: var(--video); }
+    .filter-btn[data-filter="art"].active { background: var(--art); }
+    .filter-btn[data-filter="books"].active { background: var(--books); color: #fff; }
+
+    #bookmarks-btn {
+      margin-left: auto;
+      color: var(--saved);
+      border-color: rgba(249, 115, 22, 0.38);
+    }
+
+    #query-line {
+      margin-top: 10px;
+      font-size: 0.84rem;
+      color: var(--muted);
+      min-height: 1.2em;
+    }
+
+    .resume-banner {
+      margin: 0 auto 18px;
+      padding: 16px 18px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.05);
+      box-shadow: var(--shadow);
+    }
+
+    .resume-banner.hidden { display: none; }
+
+    .resume-banner p { color: var(--muted); }
+
+    .resume-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+
+    #feed {
+      display: grid;
+      gap: 18px;
+    }
+
+    .empty-state {
+      padding: 56px 20px;
+      text-align: center;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px dashed rgba(255, 255, 255, 0.14);
+      border-radius: 22px;
+    }
+
+    .session-divider {
+      position: relative;
+      text-align: center;
+      color: var(--subtle);
+      font-size: 0.76rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 8px 0 2px;
+    }
+
+    .session-divider::before,
+    .session-divider::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      width: 34%;
+      height: 1px;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .session-divider::before { left: 0; }
+    .session-divider::after { right: 0; }
+
+    .card {
+      position: relative;
+      display: grid;
+      grid-template-columns: minmax(220px, 320px) minmax(0, 1fr);
+      gap: 0;
+      overflow: hidden;
+      border-radius: 24px;
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+      box-shadow: var(--shadow);
+      opacity: 0;
+      transform: translateY(22px);
+      animation: rise 0.42s ease forwards;
+    }
+
+    .card.restored {
+      opacity: 1;
+      transform: none;
+      animation: none;
+    }
+
+    .card:hover {
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.065), rgba(255, 255, 255, 0.03));
+    }
+
+    .card-visual {
+      position: relative;
+      min-height: 100%;
+      background: rgba(255, 255, 255, 0.06);
+      overflow: hidden;
+    }
+
+    .card-visual::after {
+      content: attr(data-fallback-label);
+      display: none;
+    }
+
+    .card-visual img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      min-height: 100%;
+      object-fit: cover;
+    }
+
+    .card-visual.fallback {
+      display: flex;
+      align-items: flex-end;
+      justify-content: flex-start;
+      padding: 18px;
+      font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+      font-size: 1.8rem;
+      letter-spacing: -0.04em;
+      color: rgba(255, 255, 255, 0.92);
+      background:
+        radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.2), transparent 20%),
+        linear-gradient(135deg, rgba(255, 127, 81, 0.92), rgba(155, 140, 255, 0.86));
+    }
+
+    .card-visual.fallback::after {
+      display: block;
+      font: inherit;
+      color: inherit;
+    }
+
+    .music-card .card-visual { background: linear-gradient(135deg, rgba(255, 127, 81, 0.82), rgba(255, 174, 114, 0.5)); }
+    .video-card .card-visual { background: linear-gradient(135deg, rgba(24, 42, 67, 0.92), rgba(94, 234, 212, 0.4)); }
+    .art-card .card-visual { background: linear-gradient(135deg, rgba(255, 209, 102, 0.86), rgba(255, 127, 81, 0.38)); }
+    .books-card .card-visual { background: linear-gradient(135deg, rgba(85, 70, 168, 0.92), rgba(155, 140, 255, 0.62)); }
+
+    .visual-badge {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      background: rgba(8, 6, 13, 0.62);
+      color: #fff;
+      backdrop-filter: blur(12px);
+    }
+
+    .card-body {
+      position: relative;
+      padding: 20px 22px 20px;
+    }
+
+    .bookmark-btn {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      z-index: 4;
+      width: 40px;
+      height: 40px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 50%;
+      background: rgba(8, 6, 13, 0.7);
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.18s ease, color 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+      cursor: pointer;
+    }
+
+    .bookmark-btn.saved {
+      color: var(--saved);
+      border-color: rgba(249, 115, 22, 0.38);
+    }
+
+    .bookmark-btn svg { width: 17px; height: 17px; }
+
+    .meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 10px;
+      margin-bottom: 10px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .type-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 0.72rem;
+      letter-spacing: 0.09em;
+    }
+
+    .music-card .type-pill { background: rgba(255, 127, 81, 0.14); color: var(--music); }
+    .video-card .type-pill { background: rgba(94, 234, 212, 0.14); color: var(--video); }
+    .art-card .type-pill { background: rgba(255, 209, 102, 0.14); color: var(--art); }
+    .books-card .type-pill { background: rgba(155, 140, 255, 0.16); color: #cfc5ff; }
+
+    h2 {
+      font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+      font-size: clamp(1.4rem, 2.4vw, 2rem);
+      line-height: 1.08;
+      letter-spacing: -0.04em;
+      margin-bottom: 10px;
+      max-width: 18ch;
+    }
+
+    .description {
+      color: var(--muted);
+      font-size: 0.96rem;
+      line-height: 1.7;
+    }
+
+    .description.compact {
+      display: -webkit-box;
+      -webkit-line-clamp: 4;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .aux-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 16px;
+      margin-bottom: 16px;
+    }
+
+    .aux-item {
+      padding: 12px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .aux-item strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--subtle);
+    }
+
+    .aux-item span {
+      font-size: 0.88rem;
+      color: var(--text);
+    }
+
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .chip {
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--muted);
+      font-size: 0.76rem;
+    }
+
+    .media-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+      align-items: center;
+    }
+
+    .media-action {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 44px;
+      padding: 0 15px;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.06);
+      font: inherit;
+      text-decoration: none;
+      transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+      cursor: pointer;
+    }
+
+    .media-action.primary {
+      color: #120d1d;
+      border-color: transparent;
+      font-weight: 700;
+    }
+
+    .music-card .media-action.primary { background: var(--music); }
+    .video-card .media-action.primary { background: var(--video); }
+    .art-card .media-action.primary { background: var(--art); }
+    .books-card .media-action.primary { background: #cfc5ff; }
+
+    audio {
+      width: 100%;
+      margin-top: 18px;
+      border-radius: 14px;
+      accent-color: var(--music);
+    }
+
+    .credit-line {
+      margin-top: 14px;
+      font-size: 0.8rem;
+      color: var(--subtle);
+    }
+
+    #counter {
+      margin-top: 16px;
+      text-align: center;
+      color: var(--subtle);
+      font-size: 0.76rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    #loader {
+      margin: 28px auto 10px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    #loader.hidden { display: none; }
+
+    .spinner {
+      width: 28px;
+      height: 28px;
+      margin: 0 auto 10px;
+      border-radius: 50%;
+      border: 3px solid rgba(255, 255, 255, 0.14);
+      border-top-color: var(--video);
+      animation: spin 0.8s linear infinite;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      z-index: 230;
+      transform: translateX(-50%) translateY(80px);
+      padding: 12px 18px;
+      border-radius: 16px;
+      font-size: 0.86rem;
+      color: #120d1d;
+      background: #fff0dd;
+      box-shadow: 0 24px 40px rgba(0, 0, 0, 0.28);
+      transition: transform 0.25s ease;
+    }
+
+    .toast.visible { transform: translateX(-50%) translateY(0); }
+    .toast.success { background: #d7ffe8; }
+    .toast.info { background: #d9f7ff; }
+    .toast.error { background: #ffd8d6; }
+
+    #scroll-top {
+      position: fixed;
+      right: 22px;
+      bottom: 22px;
+      z-index: 140;
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: var(--text);
+      background: rgba(12, 10, 24, 0.92);
+      box-shadow: 0 18px 38px rgba(0, 0, 0, 0.32);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.18s ease;
+    }
+
+    #scroll-top.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .drawer-overlay,
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(4, 3, 9, 0.62);
+      z-index: 180;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+
+    .drawer-overlay.open,
+    .modal-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .bookmarks-drawer {
+      position: fixed;
+      top: 0;
+      right: 0;
+      z-index: 190;
+      width: min(420px, 92vw);
+      height: 100vh;
+      padding: 18px;
+      background: rgba(11, 9, 19, 0.98);
+      border-left: 1px solid rgba(255, 255, 255, 0.08);
+      transform: translateX(104%);
+      transition: transform 0.28s ease;
+      overflow-y: auto;
+      box-shadow: -24px 0 60px rgba(0, 0, 0, 0.4);
+    }
+
+    .bookmarks-drawer.open { transform: translateX(0); }
+
+    .drawer-head {
+      position: sticky;
+      top: 0;
+      z-index: 3;
+      margin: -18px -18px 16px;
+      padding: 18px;
+      background: rgba(11, 9, 19, 0.94);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .drawer-head h3 {
+      font-size: 1rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .drawer-close,
+    .modal-close {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      font-size: 1.25rem;
+      line-height: 1;
+    }
+
+    .drawer-empty {
+      text-align: center;
+      color: var(--muted);
+      padding: 40px 12px;
+    }
+
+    .drawer-item {
+      position: relative;
+      padding: 16px;
+      margin-bottom: 12px;
+      border-radius: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .drawer-item strong {
+      display: inline-block;
+      margin-bottom: 8px;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--subtle);
+    }
+
+    .drawer-item h4 {
+      font-size: 1rem;
+      margin-bottom: 6px;
+    }
+
+    .drawer-item p {
+      font-size: 0.86rem;
+      color: var(--muted);
+    }
+
+    .drawer-remove {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--muted);
+      font: inherit;
+      cursor: pointer;
+      transition: transform 0.18s ease, color 0.18s ease;
+    }
+
+    .drawer-remove:hover { color: #ffd8d6; }
+
+    .modal-shell {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.24s ease;
+    }
+
+    .modal-shell.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-card {
+      width: min(960px, calc(100vw - 20px));
+      max-height: calc(100vh - 40px);
+      overflow: auto;
+      border-radius: 26px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(11, 9, 19, 0.98);
+      box-shadow: 0 36px 90px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      gap: 16px;
+      padding: 18px 18px 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .modal-head h3 {
+      font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+      font-size: 1.5rem;
+      line-height: 1.1;
+      letter-spacing: -0.04em;
+      margin-bottom: 6px;
+    }
+
+    .modal-head p {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .modal-body {
+      padding: 18px;
+    }
+
+    .video-frame {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      border-radius: 20px;
+      overflow: hidden;
+      background: #000;
+    }
+
+    .video-frame iframe {
+      width: 100%;
+      height: 100%;
+      border: 0;
+    }
+
+    .footer-note {
+      margin-top: 20px;
+      text-align: center;
+      color: var(--subtle);
+      font-size: 0.8rem;
+    }
+
+    @keyframes rise {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 980px) {
+      .hero-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .page-shell {
+        width: min(960px, calc(100vw - 18px));
+      }
+    }
+
+    @media (max-width: 760px) {
+      .card {
+        grid-template-columns: 1fr;
+      }
+
+      .card-visual {
+        min-height: 220px;
+      }
+
+      .search-form {
+        grid-template-columns: 1fr;
+      }
+
+      .action-btn {
+        min-height: 44px;
+      }
+
+      #bookmarks-btn {
+        margin-left: 0;
+      }
+
+      .aux-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 540px) {
+      .hero {
+        padding: 15px;
+        border-radius: 22px;
+      }
+
+      h1 {
+        font-size: 2.4rem;
+      }
+
+      .control-panel,
+      .card-body {
+        padding: 16px;
+      }
+
+      .modal-head,
+      .modal-body,
+      .drawer-head {
+        padding-left: 14px;
+        padding-right: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-shell">
+    <header class="hero">
+      <div class="hero-grid">
+        <div class="hero-copy">
+          <div class="eyebrow">Free APIs only</div>
+          <h1>InfiniMedia</h1>
+          <p>Same infinite-scroll idea as <code>learn.html</code>, but pointed at media instead of facts: open music, public video, museum art, and books you can keep surfacing forever.</p>
+          <p id="stats-line">An endless feed of music, video, art, and books from public APIs.</p>
+        </div>
+
+        <section class="control-panel">
+          <form id="search-form" class="search-form" autocomplete="off">
+            <input id="search-input" type="text" placeholder="Set a discovery theme: ambient, futurism, skateboarding, mythology..." aria-label="Discovery theme">
+            <button type="submit" class="action-btn">Refocus feed</button>
+            <button type="button" class="action-btn secondary" id="clear-query">Discovery mode</button>
+          </form>
+
+          <div class="seed-row" id="seed-row">
+            <button type="button" class="seed-btn" data-term="ambient">ambient</button>
+            <button type="button" class="seed-btn" data-term="jazz">jazz</button>
+            <button type="button" class="seed-btn" data-term="cinema">cinema</button>
+            <button type="button" class="seed-btn" data-term="architecture">architecture</button>
+            <button type="button" class="seed-btn" data-term="space">space</button>
+            <button type="button" class="seed-btn" data-term="mythology">mythology</button>
+          </div>
+
+          <div class="filters">
+            <button type="button" class="filter-btn active" data-filter="music">Music</button>
+            <button type="button" class="filter-btn active" data-filter="video">Video</button>
+            <button type="button" class="filter-btn active" data-filter="art">Art</button>
+            <button type="button" class="filter-btn active" data-filter="books">Books</button>
+            <button type="button" class="filter-btn" id="bookmarks-btn">Saved (0)</button>
+          </div>
+
+          <div id="query-line"></div>
+        </section>
+      </div>
+    </header>
+
+    <div id="resume-banner" class="resume-banner hidden"></div>
+    <main id="feed"></main>
+    <div id="counter"></div>
+    <div id="loader"><div class="spinner"></div>Loading another batch...</div>
+    <div id="sentinel" style="height: 1px;"></div>
+    <div class="footer-note">Powered by Openverse audio, Dailymotion, The Met Collection API, and Open Library.</div>
+  </div>
+
+  <button id="scroll-top" title="Scroll to top">&uarr;</button>
+  <div id="toast" class="toast"></div>
+
+  <div id="drawer-overlay" class="drawer-overlay"></div>
+  <aside id="bookmarks-drawer" class="bookmarks-drawer">
+    <div class="drawer-head">
+      <h3>Saved Media</h3>
+      <button type="button" class="drawer-close" id="drawer-close" aria-label="Close saved drawer">&times;</button>
+    </div>
+    <div id="bookmarks-list"></div>
+  </aside>
+
+  <div id="modal-overlay" class="modal-overlay"></div>
+  <div id="modal-shell" class="modal-shell">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <h3 id="modal-title">Now playing</h3>
+          <p id="modal-subtitle"></p>
+        </div>
+        <button type="button" class="modal-close" id="modal-close" aria-label="Close player">&times;</button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+    </div>
+  </div>
+
+  <script>
+    const BATCH_SIZE = 6;
+    const REFILL_THRESHOLD = 8;
+    const SOURCE_COOLDOWN = 2600;
+    const ERROR_COOLDOWN = 30000;
+    const SEEN_MAX = 2400;
+    const SESSION_MAX_ITEMS = 36;
+    const SESSION_EXPIRE_MS = 7 * 24 * 3600 * 1000;
+
+    const SKEYS = {
+      SEEN: "im_seen",
+      FILTERS: "im_filters",
+      BOOKMARKS: "im_bookmarks",
+      STATS: "im_stats",
+      ENGAGEMENT: "im_engagement",
+      SESSION: "im_session",
+      QUERY: "im_query"
+    };
+
+    const DISCOVERY_SEEDS = {
+      music: ["jazz", "ambient", "lofi", "classical", "house", "cinematic", "funk", "guitar", "synthwave", "piano"],
+      video: ["travel", "surfing", "design", "cinema", "street food", "architecture", "space", "nature", "technology", "dance"],
+      art: ["sunflowers", "portrait", "ceramics", "mythology", "samurai", "fashion", "botanical", "ocean", "sculpture", "modernism"],
+      books: ["science fiction", "poetry", "architecture", "history", "mythology", "design", "music", "space", "travel writing", "philosophy"]
+    };
+
+    const TYPE_META = {
+      music: { label: "Music", source: "Openverse" },
+      video: { label: "Video", source: "Dailymotion" },
+      art: { label: "Art", source: "The Met" },
+      books: { label: "Books", source: "Open Library" }
+    };
+
+    const BOOKMARK_SVG_OUTLINE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>';
+    const BOOKMARK_SVG_FILLED = '<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>';
+
+    function safeGet(key, fallback) {
+      try {
+        const value = localStorage.getItem(key);
+        return value ? JSON.parse(value) : fallback;
+      } catch {
+        return fallback;
+      }
+    }
+
+    function safeSet(key, value) {
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+      } catch {}
+    }
+
+    function esc(value) {
+      if (value == null) return "";
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function stripHTML(value) {
+      if (!value) return "";
+      return String(value).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+    }
+
+    function clampText(value, max) {
+      if (!value) return "";
+      return value.length > max ? value.slice(0, max - 1).trimEnd() + "..." : value;
+    }
+
+    function shuffle(items) {
+      const arr = items.slice();
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    function pick(items) {
+      return items[Math.floor(Math.random() * items.length)];
+    }
+
+    function formatDuration(seconds) {
+      if (!seconds && seconds !== 0) return "Unknown";
+      const total = Math.round(seconds);
+      const mins = Math.floor(total / 60);
+      const secs = total % 60;
+      return mins + ":" + String(secs).padStart(2, "0");
+    }
+
+    function formatViews(n) {
+      if (!n && n !== 0) return "0";
+      if (n >= 1e9) return (n / 1e9).toFixed(1) + "B";
+      if (n >= 1e6) return (n / 1e6).toFixed(1) + "M";
+      if (n >= 1e3) return (n / 1e3).toFixed(1) + "K";
+      return String(n);
+    }
+
+    function timeAgo(ts) {
+      const delta = Date.now() - ts;
+      if (delta < 60000) return "just now";
+      if (delta < 3600000) return Math.floor(delta / 60000) + "m ago";
+      if (delta < 86400000) return Math.floor(delta / 3600000) + "h ago";
+      return Math.floor(delta / 86400000) + "d ago";
+    }
+
+    function fingerprint(item) {
+      if (item.type === "music") return "m:" + item.id;
+      if (item.type === "video") return "v:" + item.id;
+      if (item.type === "art") return "a:" + item.id;
+      if (item.type === "books") return "b:" + item.id;
+      return item.type + ":" + JSON.stringify(item).slice(0, 60);
+    }
+
+    function currentTheme() {
+      return (state.query || "").trim();
+    }
+
+    function sourceQuery(type) {
+      return currentTheme() || pick(DISCOVERY_SEEDS[type]);
+    }
+
+    function showToast(message, kind) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.className = "toast" + (kind ? " " + kind : "");
+      toast.classList.add("visible");
+      clearTimeout(showToast.timer);
+      showToast.timer = setTimeout(() => toast.classList.remove("visible"), 2500);
+    }
+
+    const state = {
+      query: safeGet(SKEYS.QUERY, "")
+    };
+
+    const seen = {
+      _set: new Set(),
+      load() {
+        this._set = new Set(safeGet(SKEYS.SEEN, []));
+      },
+      has(fp) {
+        return this._set.has(fp);
+      },
+      add(fp) {
+        this._set.add(fp);
+        if (this._set.size > SEEN_MAX) {
+          const iter = this._set.values();
+          for (let i = 0; i < 200; i++) this._set.delete(iter.next().value);
+        }
+      },
+      save() {
+        safeSet(SKEYS.SEEN, [...this._set]);
+      }
+    };
+
+    const stats = {
+      totalSeen: 0,
+      opened: 0,
+      played: 0,
+      sessionsCount: 0,
+      lastVisitDate: null,
+      streak: 0,
+      load() {
+        const saved = safeGet(SKEYS.STATS, null);
+        if (saved) Object.assign(this, saved);
+        this.updateStreak();
+        this.sessionsCount += 1;
+        this.save();
+      },
+      updateStreak() {
+        const today = new Date().toISOString().slice(0, 10);
+        if (!this.lastVisitDate) {
+          this.lastVisitDate = today;
+          this.streak = 1;
+          return;
+        }
+        if (this.lastVisitDate === today) return;
+        const prev = new Date(this.lastVisitDate + "T00:00:00");
+        const now = new Date(today + "T00:00:00");
+        const diffDays = Math.round((now - prev) / 86400000);
+        this.streak = diffDays === 1 ? this.streak + 1 : 1;
+        this.lastVisitDate = today;
+      },
+      recordView() {
+        this.totalSeen += 1;
+      },
+      recordOpen() {
+        this.opened += 1;
+      },
+      recordPlay() {
+        this.played += 1;
+      },
+      save() {
+        safeSet(SKEYS.STATS, {
+          totalSeen: this.totalSeen,
+          opened: this.opened,
+          played: this.played,
+          sessionsCount: this.sessionsCount,
+          lastVisitDate: this.lastVisitDate,
+          streak: this.streak
+        });
+      },
+      render() {
+        const parts = [];
+        if (this.totalSeen > 0) parts.push(this.totalSeen + " discovered");
+        if (this.played > 0) parts.push(this.played + " played");
+        if (this.opened > 0) parts.push(this.opened + " opened");
+        if (bookmarks.count() > 0) parts.push(bookmarks.count() + " saved");
+        if (this.streak > 1) parts.push(this.streak + "-day streak");
+        document.getElementById("stats-line").textContent = parts.length
+          ? parts.join(" · ")
+          : "An endless feed of music, video, art, and books from public APIs.";
+      }
+    };
+
+    const engagement = {
+      weights: { music: 1, video: 1, art: 1, books: 1 },
+      load() {
+        const saved = safeGet(SKEYS.ENGAGEMENT, null);
+        if (saved) this.weights = saved;
+      },
+      track(type, action) {
+        const boost = action === "bookmark" ? 0.34
+          : action === "play" ? 0.22
+          : action === "open" ? 0.18
+          : 0.04;
+        this.weights[type] = Math.min(3.4, (this.weights[type] || 1) + boost);
+        for (const key of Object.keys(this.weights)) {
+          if (key !== type) this.weights[key] = Math.max(0.35, this.weights[key] - 0.01);
+        }
+        this.save();
+      },
+      biasSort(items) {
+        return items.sort((a, b) => {
+          const aw = (this.weights[a.type] || 1) + Math.random() * 0.6;
+          const bw = (this.weights[b.type] || 1) + Math.random() * 0.6;
+          return bw - aw;
+        });
+      },
+      save() {
+        safeSet(SKEYS.ENGAGEMENT, this.weights);
+      }
+    };
+
+    const bookmarks = {
+      _items: {},
+      load() {
+        this._items = safeGet(SKEYS.BOOKMARKS, {});
+      },
+      has(fp) {
+        return fp in this._items;
+      },
+      toggle(fp, item) {
+        if (this.has(fp)) {
+          delete this._items[fp];
+          showToast("Removed from saved", "info");
+        } else if (item) {
+          this._items[fp] = item;
+          engagement.track(item.type, "bookmark");
+          showToast("Saved for later", "success");
+        }
+        this.save();
+        this.updateCount();
+        this.updateButtons(fp);
+      },
+      count() {
+        return Object.keys(this._items).length;
+      },
+      all() {
+        return Object.entries(this._items);
+      },
+      save() {
+        safeSet(SKEYS.BOOKMARKS, this._items);
+      },
+      updateCount() {
+        document.getElementById("bookmarks-btn").textContent = "Saved (" + this.count() + ")";
+        stats.render();
+      },
+      updateButtons(fp) {
+        document.querySelectorAll('.bookmark-btn[data-fp="' + CSS.escape(fp) + '"]').forEach(btn => {
+          btn.classList.toggle("saved", this.has(fp));
+          btn.innerHTML = this.has(fp) ? BOOKMARK_SVG_FILLED : BOOKMARK_SVG_OUTLINE;
+        });
+      },
+      renderDrawer() {
+        const container = document.getElementById("bookmarks-list");
+        const entries = this.all();
+        if (!entries.length) {
+          container.innerHTML = '<div class="drawer-empty">Nothing saved yet. Bookmark anything in the feed to keep a stack here.</div>';
+          return;
+        }
+
+        container.innerHTML = entries.map(([fp, item]) => {
+          const title = esc(item.title || item.name || "Untitled");
+          const excerpt = esc(clampText(item.description || item.creator || item.medium || item.subjectsText || "", 130));
+          return '<article class="drawer-item" data-fp="' + esc(fp) + '">' +
+            '<button class="drawer-remove" data-fp="' + esc(fp) + '" aria-label="Remove saved item">&times;</button>' +
+            '<strong>' + esc(TYPE_META[item.type]?.label || item.type) + "</strong>" +
+            "<h4>" + title + "</h4>" +
+            "<p>" + excerpt + "</p>" +
+          "</article>";
+        }).join("");
+      }
+    };
+
+    const sessionMgr = {
+      save() {
+        const items = [...cardDataMap.entries()].slice(-SESSION_MAX_ITEMS).map(([, value]) => value);
+        safeSet(SKEYS.SESSION, {
+          feedItems: items,
+          totalItems,
+          scrollY: window.scrollY,
+          filters: [...pool.activeKeys],
+          query: state.query,
+          timestamp: Date.now()
+        });
+      },
+      load() {
+        const saved = safeGet(SKEYS.SESSION, null);
+        if (!saved || !saved.feedItems || !saved.feedItems.length) return null;
+        if (Date.now() - saved.timestamp > SESSION_EXPIRE_MS) {
+          this.clear();
+          return null;
+        }
+        return saved;
+      },
+      clear() {
+        try {
+          localStorage.removeItem(SKEYS.SESSION);
+        } catch {}
+      }
+    };
+
+    const sources = {
+      music: {
+        buffer: [],
+        lastFetch: 0,
+        errorUntil: 0,
+        async fetch() {
+          const query = sourceQuery("music");
+          const page = 1 + Math.floor(Math.random() * 18);
+          const response = await fetch("https://api.openverse.org/v1/audio/?q=" + encodeURIComponent(query) + "&page_size=12&page=" + page);
+          const data = await response.json();
+          return (data.results || [])
+            .filter(item => item.url && item.category === "music")
+            .map(item => ({
+              type: "music",
+              id: item.id,
+              title: item.title || "Untitled track",
+              creator: item.creator || "Unknown artist",
+              sourceLabel: item.provider || "Openverse",
+              description: item.attribution || (item.genres || []).join(", "),
+              genres: item.genres || [],
+              license: item.license ? String(item.license).toUpperCase() : "",
+              duration: item.duration ? Math.round(item.duration / 1000) : null,
+              image: item.thumbnail || "",
+              audioUrl: item.url,
+              sourceUrl: item.foreign_landing_url || item.detail_url || "",
+              licenseUrl: item.license_url || ""
+            }));
+        }
+      },
+      video: {
+        buffer: [],
+        lastFetch: 0,
+        errorUntil: 0,
+        async fetch() {
+          const query = sourceQuery("video");
+          const page = 1 + Math.floor(Math.random() * 24);
+          const fields = [
+            "id",
+            "title",
+            "description",
+            "thumbnail_720_url",
+            "thumbnail_url",
+            "duration",
+            "owner.screenname",
+            "url",
+            "created_time",
+            "views_total",
+            "tags"
+          ].join(",");
+          const response = await fetch("https://api.dailymotion.com/videos?search=" + encodeURIComponent(query) + "&fields=" + encodeURIComponent(fields) + "&limit=10&page=" + page);
+          const data = await response.json();
+          return (data.list || [])
+            .filter(item => item.id && item.title)
+            .map(item => ({
+              type: "video",
+              id: item.id,
+              title: item.title,
+              creator: item["owner.screenname"] || "Unknown channel",
+              description: stripHTML(item.description || ""),
+              duration: item.duration || 0,
+              image: item.thumbnail_720_url || item.thumbnail_url || "",
+              views: item.views_total || 0,
+              tags: item.tags || [],
+              sourceUrl: item.url || ("https://www.dailymotion.com/video/" + item.id),
+              embedUrl: "https://www.dailymotion.com/embed/video/" + item.id + "?autoplay=1"
+            }));
+        }
+      },
+      art: {
+        buffer: [],
+        lastFetch: 0,
+        errorUntil: 0,
+        async fetch() {
+          const query = sourceQuery("art");
+          const searchResponse = await fetch("https://collectionapi.metmuseum.org/public/collection/v1/search?hasImages=true&q=" + encodeURIComponent(query));
+          const searchData = await searchResponse.json();
+          const ids = shuffle(searchData.objectIDs || []).slice(0, 5);
+          const objects = await Promise.all(ids.map(async id => {
+            try {
+              const response = await fetch("https://collectionapi.metmuseum.org/public/collection/v1/objects/" + id);
+              return await response.json();
+            } catch {
+              return null;
+            }
+          }));
+          return objects
+            .filter(item => item && item.objectID && (item.primaryImageSmall || item.primaryImage))
+            .map(item => ({
+              type: "art",
+              id: item.objectID,
+              title: item.title || "Untitled work",
+              creator: item.artistDisplayName || item.culture || "Unknown maker",
+              description: item.objectDate || item.medium || item.classification || "",
+              medium: item.medium || item.classification || "Museum object",
+              date: item.objectDate || "Unknown date",
+              department: item.department || "",
+              image: item.primaryImageSmall || item.primaryImage || "",
+              fullImage: item.primaryImage || item.primaryImageSmall || "",
+              sourceUrl: item.objectURL || "",
+              tags: Array.isArray(item.tags) ? item.tags.slice(0, 4).map(tag => tag.term) : []
+            }));
+        }
+      },
+      books: {
+        buffer: [],
+        lastFetch: 0,
+        errorUntil: 0,
+        async fetch() {
+          const query = sourceQuery("books");
+          const offset = Math.floor(Math.random() * 24) * 10;
+          const fields = "key,title,author_name,first_publish_year,cover_i,ebook_access,ia,subject";
+          const response = await fetch("https://openlibrary.org/search.json?q=" + encodeURIComponent(query) + "&limit=10&offset=" + offset + "&fields=" + fields);
+          const data = await response.json();
+          return (data.docs || [])
+            .filter(item => item.key && item.title)
+            .map(item => ({
+              type: "books",
+              id: item.key,
+              title: item.title,
+              creator: Array.isArray(item.author_name) && item.author_name.length ? item.author_name.slice(0, 3).join(", ") : "Unknown author",
+              description: item.first_publish_year ? "First published " + item.first_publish_year : "Open Library record",
+              year: item.first_publish_year || "Unknown",
+              ebookAccess: item.ebook_access || "unknown",
+              image: item.cover_i ? "https://covers.openlibrary.org/b/id/" + item.cover_i + "-L.jpg" : "",
+              sourceUrl: "https://openlibrary.org" + item.key,
+              readUrl: Array.isArray(item.ia) && item.ia.length ? "https://archive.org/details/" + item.ia[0] : "https://openlibrary.org" + item.key,
+              subjects: Array.isArray(item.subject) ? item.subject.slice(0, 5) : []
+            }));
+        }
+      }
+    };
+
+    const pool = {
+      items: [],
+      filling: false,
+      activeKeys: new Set(["music", "video", "art", "books"]),
+      clearBuffers() {
+        this.items = [];
+        for (const key of Object.keys(sources)) sources[key].buffer = [];
+      },
+      async refill() {
+        if (this.filling) return;
+        this.filling = true;
+        const now = Date.now();
+        const keys = [...this.activeKeys].filter(key => {
+          const source = sources[key];
+          if (source.buffer.length) return false;
+          if (now < source.errorUntil) return false;
+          if (now - source.lastFetch < SOURCE_COOLDOWN) return false;
+          return true;
+        });
+
+        await Promise.allSettled(keys.map(async key => {
+          const source = sources[key];
+          source.lastFetch = Date.now();
+          try {
+            const items = await source.fetch();
+            source.buffer.push(...items);
+          } catch (error) {
+            source.errorUntil = Date.now() + ERROR_COOLDOWN;
+            console.warn("fetch failed", key, error);
+          }
+        }));
+
+        for (const key of this.activeKeys) {
+          const source = sources[key];
+          if (source.buffer.length) this.items.push(...source.buffer.splice(0));
+        }
+
+        this.items = this.items.filter(item => !seen.has(fingerprint(item)));
+        engagement.biasSort(this.items);
+        this.filling = false;
+      },
+      async next(count) {
+        if (this.items.length < count) await this.refill();
+        if (!this.items.length) await this.refill();
+        const out = this.items.splice(0, count);
+        out.forEach(item => seen.add(fingerprint(item)));
+        seen.save();
+        if (this.items.length < REFILL_THRESHOLD) this.refill();
+        return out;
+      }
+    };
+
+    const feed = document.getElementById("feed");
+    const loader = document.getElementById("loader");
+    const sentinel = document.getElementById("sentinel");
+    const counterEl = document.getElementById("counter");
+    const scrollTopBtn = document.getElementById("scroll-top");
+    const cardDataMap = new Map();
+    let loading = false;
+    let totalItems = 0;
+    let requestEpoch = 0;
+
+    function renderQueryLine() {
+      const line = document.getElementById("query-line");
+      if (currentTheme()) {
+        line.innerHTML = 'Refocused on <strong>' + esc(currentTheme()) + "</strong> across every modality.";
+      } else {
+        line.textContent = "Discovery mode is mixing source-specific seeds for each modality.";
+      }
+      document.querySelectorAll(".seed-btn").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.term === currentTheme());
+      });
+      document.getElementById("search-input").value = state.query;
+    }
+
+    function renderVisual(item, label) {
+      if (item.image) {
+        return '<div class="card-visual" data-fallback-label="' + esc(label) + '"><div class="visual-badge">' + esc(label) + '</div><img src="' + esc(item.image) + '" alt="' + esc(item.title) + '" loading="lazy" onerror="this.parentElement.classList.add(\'fallback\'); this.remove()"></div>';
+      }
+      return '<div class="card-visual fallback" data-fallback-label="' + esc(label) + '"><div class="visual-badge">' + esc(label) + "</div></div>";
+    }
+
+    function renderMusic(item) {
+      const chips = item.genres.slice(0, 4).map(genre => '<span class="chip">' + esc(genre) + "</span>").join("");
+      const credit = item.license
+        ? '<div class="credit-line">License: ' + esc(item.license) + (item.licenseUrl ? ' · <a href="' + esc(item.licenseUrl) + '" target="_blank" rel="noopener">details</a>' : "") + "</div>"
+        : "";
+      return renderVisual(item, "Open audio") +
+        '<div class="card-body">' +
+          '<div class="meta-row"><span class="type-pill">Music</span><span>' + esc(item.sourceLabel) + '</span><span>' + esc(item.duration ? formatDuration(item.duration) : "Unknown length") + "</span></div>" +
+          "<h2>" + esc(item.title) + "</h2>" +
+          '<p class="description">' + esc(item.creator) + "</p>" +
+          (item.description ? '<p class="description compact" style="margin-top:10px;">' + esc(clampText(item.description, 240)) + "</p>" : "") +
+          (chips ? '<div class="chip-row">' + chips + "</div>" : "") +
+          '<audio controls preload="none" data-audio-fp="' + esc(fingerprint(item)) + '"><source src="' + esc(item.audioUrl) + '"></audio>' +
+          '<div class="media-actions">' +
+            (item.sourceUrl ? '<a class="media-action" href="' + esc(item.sourceUrl) + '" target="_blank" rel="noopener">Source page</a>' : "") +
+          "</div>" +
+          credit +
+        "</div>";
+    }
+
+    function renderVideo(item) {
+      const chips = item.tags.slice(0, 4).map(tag => '<span class="chip">' + esc(tag) + "</span>").join("");
+      return renderVisual(item, "Public video") +
+        '<div class="card-body">' +
+          '<div class="meta-row"><span class="type-pill">Video</span><span>' + esc(item.creator) + '</span><span>' + esc(formatDuration(item.duration)) + '</span><span>' + esc(formatViews(item.views)) + ' views</span></div>' +
+          "<h2>" + esc(item.title) + "</h2>" +
+          (item.description ? '<p class="description compact">' + esc(clampText(item.description, 280)) + "</p>" : '<p class="description">Open in the player or jump to Dailymotion.</p>') +
+          (chips ? '<div class="chip-row">' + chips + "</div>" : "") +
+          '<div class="media-actions">' +
+            '<button type="button" class="media-action primary watch-btn" data-fp="' + esc(fingerprint(item)) + '">Watch inline</button>' +
+            '<a class="media-action" href="' + esc(item.sourceUrl) + '" target="_blank" rel="noopener">Open source</a>' +
+          "</div>" +
+        "</div>";
+    }
+
+    function renderArt(item) {
+      const chips = item.tags.slice(0, 4).map(tag => '<span class="chip">' + esc(tag) + "</span>").join("");
+      return renderVisual(item, "Museum art") +
+        '<div class="card-body">' +
+          '<div class="meta-row"><span class="type-pill">Art</span><span>' + esc(item.creator) + "</span></div>" +
+          "<h2>" + esc(item.title) + "</h2>" +
+          '<p class="description">' + esc(item.description || item.medium) + "</p>" +
+          '<div class="aux-grid">' +
+            '<div class="aux-item"><strong>Date</strong><span>' + esc(item.date) + "</span></div>" +
+            '<div class="aux-item"><strong>Department</strong><span>' + esc(item.department || "Collection object") + "</span></div>" +
+          "</div>" +
+          (chips ? '<div class="chip-row">' + chips + "</div>" : "") +
+          '<div class="media-actions">' +
+            (item.fullImage ? '<a class="media-action primary" href="' + esc(item.fullImage) + '" target="_blank" rel="noopener">Open image</a>' : "") +
+            (item.sourceUrl ? '<a class="media-action" href="' + esc(item.sourceUrl) + '" target="_blank" rel="noopener">Museum page</a>' : "") +
+          "</div>" +
+        "</div>";
+    }
+
+    function renderBooks(item) {
+      const chips = item.subjects.slice(0, 4).map(subject => '<span class="chip">' + esc(subject) + "</span>").join("");
+      return renderVisual(item, "Book") +
+        '<div class="card-body">' +
+          '<div class="meta-row"><span class="type-pill">Books</span><span>' + esc(item.creator) + '</span><span>' + esc(String(item.year)) + "</span></div>" +
+          "<h2>" + esc(item.title) + "</h2>" +
+          '<p class="description">' + esc(item.description) + "</p>" +
+          '<div class="aux-grid">' +
+            '<div class="aux-item"><strong>Access</strong><span>' + esc(item.ebookAccess) + "</span></div>" +
+            '<div class="aux-item"><strong>Source</strong><span>Open Library</span></div>' +
+          "</div>" +
+          (chips ? '<div class="chip-row">' + chips + "</div>" : "") +
+          '<div class="media-actions">' +
+            '<a class="media-action primary" href="' + esc(item.readUrl) + '" target="_blank" rel="noopener">Read / borrow</a>' +
+            '<a class="media-action" href="' + esc(item.sourceUrl) + '" target="_blank" rel="noopener">Metadata</a>' +
+          "</div>" +
+        "</div>";
+    }
+
+    function renderCard(item, restored) {
+      const fp = fingerprint(item);
+      cardDataMap.set(fp, item);
+
+      const renderers = {
+        music: renderMusic,
+        video: renderVideo,
+        art: renderArt,
+        books: renderBooks
+      };
+      const renderer = renderers[item.type];
+      if (!renderer) return null;
+
+      const card = document.createElement("article");
+      card.className = "card " + item.type + "-card" + (restored ? " restored" : "");
+      card.dataset.type = item.type;
+      card.dataset.fp = fp;
+      const isSaved = bookmarks.has(fp);
+      card.innerHTML =
+        '<button type="button" class="bookmark-btn' + (isSaved ? " saved" : "") + '" data-fp="' + esc(fp) + '" aria-label="Save item">' + (isSaved ? BOOKMARK_SVG_FILLED : BOOKMARK_SVG_OUTLINE) + "</button>" +
+        renderer(item);
+      return card;
+    }
+
+    const visObserver = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) return;
+        const card = entry.target;
+        if (card.dataset.viewed) return;
+        card.dataset.viewed = "1";
+        stats.recordView();
+        engagement.track(card.dataset.type, "view");
+        stats.save();
+        stats.render();
+      });
+    }, { threshold: 0.45 });
+
+    function appendCards(items, restored) {
+      items.forEach((item, index) => {
+        const card = renderCard(item, restored);
+        if (!card) return;
+        if (!restored) card.style.animationDelay = (index * 0.06) + "s";
+        feed.appendChild(card);
+        visObserver.observe(card);
+        totalItems += 1;
+      });
+      counterEl.textContent = totalItems + " media items surfaced";
+      stats.render();
+    }
+
+    function pauseOtherAudio(current) {
+      document.querySelectorAll("audio").forEach(player => {
+        if (player !== current) player.pause();
+      });
+    }
+
+    function openBookmarks() {
+      bookmarks.renderDrawer();
+      document.getElementById("bookmarks-drawer").classList.add("open");
+      document.getElementById("drawer-overlay").classList.add("open");
+    }
+
+    function closeBookmarks() {
+      document.getElementById("bookmarks-drawer").classList.remove("open");
+      document.getElementById("drawer-overlay").classList.remove("open");
+    }
+
+    function openVideoModal(item) {
+      const modalShell = document.getElementById("modal-shell");
+      const modalOverlay = document.getElementById("modal-overlay");
+      document.body.classList.add("modal-open");
+      modalShell.classList.add("open");
+      modalOverlay.classList.add("open");
+      document.getElementById("modal-title").textContent = item.title;
+      document.getElementById("modal-subtitle").textContent = item.creator + " · " + formatDuration(item.duration);
+      document.getElementById("modal-body").innerHTML =
+        '<div class="video-frame"><iframe src="' + esc(item.embedUrl) + '" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen title="' + esc(item.title) + '"></iframe></div>' +
+        (item.description ? '<p class="description" style="margin-top: 16px;">' + esc(clampText(item.description, 420)) + "</p>" : "") +
+        '<div class="media-actions" style="margin-top:16px;">' +
+          '<a class="media-action" href="' + esc(item.sourceUrl) + '" target="_blank" rel="noopener">Open on Dailymotion</a>' +
+        "</div>";
+      stats.recordOpen();
+      engagement.track("video", "open");
+      stats.save();
+      stats.render();
+    }
+
+    function closeVideoModal() {
+      document.body.classList.remove("modal-open");
+      document.getElementById("modal-shell").classList.remove("open");
+      document.getElementById("modal-overlay").classList.remove("open");
+      document.getElementById("modal-body").innerHTML = "";
+    }
+
+    async function loadMore() {
+      if (loading) return;
+      if (!pool.activeKeys.size) {
+        feed.innerHTML = '<div class="empty-state">Turn on at least one modality above to keep the stream going.</div>';
+        loader.classList.add("hidden");
+        return;
+      }
+
+      const epoch = requestEpoch;
+      loading = true;
+      loader.classList.remove("hidden");
+      const items = await pool.next(BATCH_SIZE);
+
+      if (epoch !== requestEpoch) {
+        loading = false;
+        loader.classList.add("hidden");
+        return;
+      }
+
+      if (!items.length) {
+        loader.classList.add("hidden");
+        loading = false;
+        showToast("No fresh results yet. Retrying shortly.", "info");
+        setTimeout(loadMore, 3500);
+        return;
+      }
+
+      const emptyState = feed.querySelector(".empty-state");
+      if (emptyState) emptyState.remove();
+      appendCards(items, false);
+      loader.classList.add("hidden");
+      loading = false;
+      sessionMgr.save();
+      stats.save();
+    }
+
+    function resetFeed(options = {}) {
+      const { preserveScroll = false } = options;
+      requestEpoch += 1;
+      loading = false;
+      feed.innerHTML = "";
+      cardDataMap.clear();
+      totalItems = 0;
+      counterEl.textContent = "";
+      loader.classList.remove("hidden");
+      pool.clearBuffers();
+      sessionMgr.clear();
+      if (!preserveScroll) window.scrollTo({ top: 0, behavior: "smooth" });
+      loadMore();
+    }
+
+    document.getElementById("search-form").addEventListener("submit", event => {
+      event.preventDefault();
+      const value = document.getElementById("search-input").value.trim();
+      if (value === state.query.trim()) return;
+      state.query = value;
+      safeSet(SKEYS.QUERY, state.query);
+      renderQueryLine();
+      showToast(state.query ? "Feed refocused on " + state.query : "Discovery mode restored", "info");
+      resetFeed();
+    });
+
+    document.getElementById("clear-query").addEventListener("click", () => {
+      if (!state.query) return;
+      state.query = "";
+      safeSet(SKEYS.QUERY, state.query);
+      renderQueryLine();
+      showToast("Back to mixed discovery mode", "info");
+      resetFeed();
+    });
+
+    document.getElementById("seed-row").addEventListener("click", event => {
+      const button = event.target.closest(".seed-btn");
+      if (!button) return;
+      state.query = button.dataset.term || "";
+      safeSet(SKEYS.QUERY, state.query);
+      renderQueryLine();
+      resetFeed();
+    });
+
+    document.querySelectorAll(".filter-btn[data-filter]").forEach(button => {
+      button.addEventListener("click", () => {
+        const key = button.dataset.filter;
+        button.classList.toggle("active");
+        if (pool.activeKeys.has(key)) pool.activeKeys.delete(key);
+        else pool.activeKeys.add(key);
+        safeSet(SKEYS.FILTERS, [...pool.activeKeys]);
+        if (!pool.activeKeys.size) {
+          feed.innerHTML = '<div class="empty-state">Turn on at least one modality above to keep the stream going.</div>';
+          counterEl.textContent = "";
+          return;
+        }
+        if (!feed.querySelector(".card")) resetFeed({ preserveScroll: true });
+      });
+    });
+
+    document.getElementById("bookmarks-btn").addEventListener("click", openBookmarks);
+    document.getElementById("drawer-close").addEventListener("click", closeBookmarks);
+    document.getElementById("drawer-overlay").addEventListener("click", closeBookmarks);
+    document.getElementById("modal-close").addEventListener("click", closeVideoModal);
+    document.getElementById("modal-overlay").addEventListener("click", closeVideoModal);
+
+    feed.addEventListener("play", event => {
+      const audio = event.target.closest("audio");
+      if (!audio) return;
+      pauseOtherAudio(audio);
+      const card = audio.closest(".card");
+      if (!audio.dataset.started && card) {
+        audio.dataset.started = "1";
+        stats.recordPlay();
+        engagement.track(card.dataset.type, "play");
+        stats.save();
+        stats.render();
+      }
+    }, true);
+
+    feed.addEventListener("click", event => {
+      const bookmarkBtn = event.target.closest(".bookmark-btn");
+      if (bookmarkBtn) {
+        const fp = bookmarkBtn.dataset.fp;
+        bookmarks.toggle(fp, cardDataMap.get(fp));
+        return;
+      }
+
+      const watchBtn = event.target.closest(".watch-btn");
+      if (watchBtn) {
+        const item = cardDataMap.get(watchBtn.dataset.fp);
+        if (item) openVideoModal(item);
+        return;
+      }
+
+      const link = event.target.closest(".media-action[href]");
+      if (link) {
+        const card = link.closest(".card");
+        if (card) {
+          stats.recordOpen();
+          engagement.track(card.dataset.type, "open");
+          stats.save();
+          stats.render();
+        }
+      }
+    });
+
+    document.getElementById("bookmarks-list").addEventListener("click", event => {
+      const button = event.target.closest(".drawer-remove");
+      if (!button) return;
+      const fp = button.dataset.fp;
+      bookmarks.toggle(fp, null);
+      bookmarks.renderDrawer();
+    });
+
+    window.addEventListener("scroll", () => {
+      scrollTopBtn.classList.toggle("visible", window.scrollY > 640);
+    }, { passive: true });
+
+    scrollTopBtn.addEventListener("click", () => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+
+    const scrollObserver = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && !loading) loadMore();
+    }, { rootMargin: "420px" });
+
+    scrollObserver.observe(sentinel);
+
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape") {
+        closeBookmarks();
+        closeVideoModal();
+      }
+    });
+
+    window.addEventListener("beforeunload", () => {
+      sessionMgr.save();
+      seen.save();
+      stats.save();
+      engagement.save();
+    });
+
+    (function init() {
+      seen.load();
+      stats.load();
+      engagement.load();
+      bookmarks.load();
+      bookmarks.updateCount();
+      renderQueryLine();
+
+      const savedFilters = safeGet(SKEYS.FILTERS, null);
+      if (savedFilters) {
+        pool.activeKeys = new Set(savedFilters);
+        document.querySelectorAll(".filter-btn[data-filter]").forEach(button => {
+          button.classList.toggle("active", pool.activeKeys.has(button.dataset.filter));
+        });
+      }
+
+      const saved = sessionMgr.load();
+      if (saved && saved.feedItems.length) {
+        state.query = saved.query || state.query;
+        safeSet(SKEYS.QUERY, state.query);
+        renderQueryLine();
+        loader.classList.add("hidden");
+
+        const banner = document.getElementById("resume-banner");
+        banner.classList.remove("hidden");
+        banner.innerHTML =
+          "<p>You had <strong>" + saved.feedItems.length + "</strong> media cards open " + timeAgo(saved.timestamp) + ".</p>" +
+          '<div class="resume-actions">' +
+            '<button type="button" class="action-btn" id="resume-yes">Resume</button>' +
+            '<button type="button" class="action-btn secondary" id="resume-no">Start fresh</button>' +
+          "</div>";
+
+        document.getElementById("resume-yes").addEventListener("click", () => {
+          banner.classList.add("hidden");
+          loader.classList.remove("hidden");
+          appendCards(saved.feedItems, true);
+          totalItems = saved.feedItems.length;
+          counterEl.textContent = totalItems + " media items surfaced";
+          requestAnimationFrame(() => window.scrollTo(0, saved.scrollY || 0));
+          const divider = document.createElement("div");
+          divider.className = "session-divider";
+          divider.textContent = "Fresh results below";
+          feed.appendChild(divider);
+          loadMore();
+        });
+
+        document.getElementById("resume-no").addEventListener("click", () => {
+          banner.classList.add("hidden");
+          sessionMgr.clear();
+          loader.classList.remove("hidden");
+          loadMore();
+        });
+      } else {
+        loadMore();
+      }
+    })();
+  </script>
+</body>
+</html>
