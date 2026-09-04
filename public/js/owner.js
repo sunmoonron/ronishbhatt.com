@@ -18,7 +18,9 @@ dialog{background:var(--card);color:var(--fg);border:1px solid var(--line);borde
 @media (max-width:900px){.ownerbar{order:-4}}@media (max-width:600px){.ownerbar{margin:-1rem -1rem 1.5rem;padding:.5rem 1rem}}`;
 if (typeof document !== 'undefined' && !document.getElementById('owner-css')) { const s = document.createElement('style'); s.id = 'owner-css'; s.textContent = CSS; document.head.append(s); }
 
-export async function publishTemplate(tmpl, relays = env.RELAYS) {
+// Where publishes go: the personal relay only, or the backups too. Deletions always go everywhere.
+export const targets = () => localStorage.getItem('rb.targets') === 'mine' ? [env.PRIMARY] : env.RELAYS;
+export async function publishTemplate(tmpl, relays = targets()) {
   const ev = sign(tmpl); apply(ev, { verified: true });
   const res = await publish(ev, relays), ok = res.filter(r => r.ok).length, mine = res.find(r => r.url === env.PRIMARY);
   toast(ok ? `published to ${ok}/${res.length} relays${mine?.ok ? ' (incl. mine)' : ', NOT on my relay: ' + mine?.msg}` : 'no relay accepted it: ' + res.map(r => r.msg).join('; '), ok ? '' : 'err');
@@ -59,7 +61,18 @@ function toTemplate(kind, f, ev, preset = {}) {
 }
 export async function deleteEvent(ev) {
   const tags = [['k', String(ev.kind)]]; if (!ev.draft) tags.push(['e', ev.id]); if (ev.kind >= 30000 || ev.kind === 0) tags.push(['a', addrOf(ev)]);
-  await publishTemplate({ kind: K.del, tags, content: 'removed from ronishbhatt.com' }); store.events.delete(keyOf(ev)); notify();
+  await publishTemplate({ kind: K.del, tags, content: 'removed from ronishbhatt.com' }, env.RELAYS); store.events.delete(keyOf(ev)); notify();
+}
+// Recall: one deletion event naming every signed event of the site key, sent to every relay.
+// Relays that honour NIP-09 (mine does, the big public ones do) drop them; the page falls back to its baked drafts.
+export async function recallAll() {
+  const evs = [...store.events.values()].filter(e => !e.draft && e.kind !== K.del);
+  if (!evs.length) return toast('nothing signed to recall');
+  const tags = [];
+  for (const e of evs) { tags.push(['e', e.id]); if (e.kind >= 30000 || e.kind === 0) tags.push(['a', addrOf(e)]); tags.push(['k', String(e.kind)]); }
+  const { res } = await publishTemplate({ kind: K.del, tags, content: 'recalled from ronishbhatt.com' }, env.RELAYS);
+  for (const e of evs) store.events.delete(keyOf(e));
+  notify(); toast(`recalled ${evs.length} events; accepted by ${res.filter(r => r.ok).length}/${res.length} relays`);
 }
 export async function publishDrafts() {
   const drafts = sel.drafts(); let n = 0;
@@ -76,7 +89,10 @@ export function OwnerBar({ onEdit, onConsole, unread }) {
     <button class="sm" onClick=${() => onEdit(K.article, null, { type: 'section' })}>+ block</button>
     <button class="sm" onClick=${() => onEdit(K.note, null)}>+ note</button>
     <button class="sm" onClick=${() => document.getElementById('chat')?.scrollIntoView({ behavior: 'smooth' })}>inbox${unread ? html`<span class="badge">${unread}</span>` : null}</button>
-    <span class="grow"></span><button class="sm" onClick=${onConsole}>console</button><button class="sm" onClick=${() => { lock(); location.reload(); }}>lock</button></div>`;
+    <span class="grow"></span>
+    <button class="sm" title="where publishes go; deletions always go to every relay" onClick=${() => { localStorage.setItem('rb.targets', targets().length === 1 ? 'all' : 'mine'); notify(); }}>publish to: ${targets().length === 1 ? 'my relay only' : 'all relays'}</button>
+    <button class="sm danger" onClick=${async () => { if (confirm('Send one deletion for every signed event of this key to every relay? The page keeps working from its baked drafts.')) await recallAll(); }}>recall all</button>
+    <button class="sm" onClick=${onConsole}>console</button><button class="sm" onClick=${() => { lock(); location.reload(); }}>lock</button></div>`;
 }
 export function UnlockDialog({ open, onClose }) {
   const ref = useRef(), [err, setErr] = useState('');
