@@ -1,4 +1,4 @@
-// dev-relay.mjs — a throwaway in-memory relay for local testing that applies
+// dev-relay.mjs, a throwaway in-memory relay for local testing that applies
 // the same write policy as the personal relay on the Dell
 // (dell-nix/modules/strfry-node.nix, mode "personal"). OWNER=<hex> PORT=7777
 import { WebSocketServer } from 'ws';

@@ -1,4 +1,4 @@
-// orbit.js — Canvas-based orbital visualization
+// orbit.js, Canvas-based orbital visualization
 // Concentric rings = halving eras · dots = events · position = block within era
 
 const PALETTE    = ['#f7931a', '#22c55e', '#38bdf8', '#a78bfa', '#f43f5e', '#fbbf24'];
@@ -88,7 +88,7 @@ export function drawOrbit(canvas, anchored, metrics) {
   return dots;
 }
 
-// Hit test — returns the event under cursor, or null
+// Hit test, returns the event under cursor, or null
 export function hitTest(dots, mx, my) {
   for (const d of dots) {
     if (Math.hypot(mx - d.x, my - d.y) < d.r) return d.event;

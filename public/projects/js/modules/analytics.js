@@ -1,4 +1,4 @@
-// analytics.js — Metrics computation from anchored Nostr events
+// analytics.js, Metrics computation from anchored Nostr events
 
 export const KIND = Object.freeze({
   NOTE: 1, REPOST: 6, REACTION: 7, ZAP: 9735, LONG_FORM: 30023,

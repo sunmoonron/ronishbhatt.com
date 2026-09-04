@@ -1,4 +1,4 @@
-// store.js — the page's content model. Every visible thing is a signed Nostr
+// store.js, the page's content model. Every visible thing is a signed Nostr
 // event by the site key: kind 0 header, 30078 layout (d=ronishbhatt.com) and
 // stylesheet (d=ronishbhatt.com/css), 30023 blocks, 1 notes, 5 deletions.
 // This module is DOM-free so tools/bake.mjs can render the same page in Node.
@@ -113,7 +113,7 @@ export function mine(event, bits) {
   });
 }
 
-// ---- the owner: one key — the relay's, the console's, this page's ----------------
+// ---- the owner: one key, the relay's, the console's, this page's ----------------
 export const owner = { sk: null };
 const KEY = 'dash.nsec'; // shared with /dash.html: one unlock opens both
 export const storedKey = () => { try { return JSON.parse(localStorage.getItem(KEY) || sessionStorage.getItem(KEY) || 'null'); } catch { return null; } };

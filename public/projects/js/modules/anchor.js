@@ -1,5 +1,5 @@
-// anchor.js — Maps Nostr event timestamps to Bitcoin block heights
-// Uses linear interpolation from genesis — fast, no API calls needed.
+// anchor.js, Maps Nostr event timestamps to Bitcoin block heights
+// Uses linear interpolation from genesis, fast, no API calls needed.
 // Average block time = 600s (10 min); good enough for analytics use.
 
 const GENESIS_TS  = 1231006505; // block 0, Jan 3 2009
@@ -19,7 +19,7 @@ export function heightToAnchor(height) {
   };
 }
 
-// Fast O(n) pass — no network required
+// Fast O(n) pass, no network required
 export function anchorEventsFast(events) {
   return events.map(e => ({
     ...e,

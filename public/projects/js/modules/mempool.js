@@ -1,4 +1,4 @@
-// mempool.js — Mempool.space API client
+// mempool.js, Mempool.space API client
 const BASE = 'https://mempool.space/api';
 
 const HALVINGS = [

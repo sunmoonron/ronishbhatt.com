@@ -1,4 +1,4 @@
-// chat.js — "say hi": NIP-17 private messages to the site key, no account.
+// chat.js, "say hi": NIP-17 private messages to the site key, no account.
 // A visitor's browser mints a key on first send; each message is a kind-14
 // rumor, sealed and gift-wrapped (NIP-59) with NIP-13 work on the wrap, then
 // published to the personal relay and the backups. The relay's write policy
@@ -12,7 +12,7 @@ export const POW_IN = 16, POW_OUT = 20; // must match the relay's write policy
 const randomPast = () => now() - Math.floor(Math.random() * 2 * 86400);
 const short = pk => npub(pk).slice(0, 12) + '…';
 const VISITOR_KEY = 'rb.visitor.nsec', NICK = 'rb.nick', CACHE = () => `rb.chat.${chat.mode}.v1`;
-export const chat = { mode: 'visitor', sk: null, me: null, nick: '', threads: new Map(), busy: '', sub: null, active: null, unread: 0, live: false };
+export const chat = { mode: 'visitor', sk: null, me: null, nick: '', threads: new Map(), busy: '', sub: null, active: null, unread: 0, live: false, seed: '' };
 const seen = new Set();
 
 function makeRumor(sk, to, text, subject) { const tags = [['p', to, env.PRIMARY]]; if (subject) tags.push(['subject', subject]); return env.NT.nip59.createRumor({ kind: 14, content: text, tags }, sk); }
@@ -70,7 +70,8 @@ export function chatConfigure(ownerMode) {
 }
 function ensureKey() { if (chat.sk) return; chat.sk = env.NT.generateSecretKey(); chat.me = env.NT.getPublicKey(chat.sk); localStorage.setItem(VISITOR_KEY, env.NT.nip19.nsecEncode(chat.sk)); subscribe(); }
 
-async function send(peer, text) {
+export function setNick(n) { chat.nick = String(n || '').trim().slice(0, 40); localStorage.setItem(NICK, chat.nick); }
+export async function send(peer, text) {
   text = text.trim().slice(0, 5000); if (!text || chat.busy || !env.NT) return;
   const isOwner = chat.mode === 'owner';
   if (isOwner && globalThis.Notification?.permission === 'default') Notification.requestPermission().catch(() => {}); // from a click, as browsers require
@@ -90,7 +91,7 @@ async function send(peer, text) {
   chat.busy = ''; notify();
 }
 
-// ---- component (live=false renders the exact shell the bake pre-renders) ----------
+// ---- component (live=false is the shell the bake pre-renders; boot.js wires it) ----
 const fmtTime = ts => { const d = new Date(ts * 1000); return `${d.toISOString().slice(5, 10).replace('-', '/')} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`; };
 const Delivery = ({ m }) => m.pending ? html`<small>${chat.busy === 'sealing' ? 'sealing (proof of work)…' : 'sending…'}</small>`
   : m.mine ? html`<small title=${(m.delivered || []).join('\n')}>${fmtTime(m.ts)} · ${m.delivered?.length ? `✓ ${m.delivered.length} relay${m.delivered.length > 1 ? 's' : ''}${m.delivered.includes(env.PRIMARY) ? ' incl. mine' : ''}` : '✗ not delivered'}</small>`
@@ -100,14 +101,14 @@ function Log({ msgs }) {
   useEffect(() => { if (ref.current) ref.current.scrollTop = ref.current.scrollHeight; }, [msgs.length, msgs[msgs.length - 1]?.pending]);
   return html`<div class="log" ref=${ref}>${msgs.map(m => html`<div key=${m.id} class=${'msg' + (m.mine ? ' out' : '')}>${m.text}<${Delivery} m=${m} /></div>`)}</div>`;
 }
-function Composer({ peer, placeholder, ready }) {
-  const [text, setText] = useState('');
+function Composer({ peer, placeholder }) {
+  const [text, setText] = useState(() => { const t = chat.seed || ''; chat.seed = ''; return t; });
   const go = e => { e?.preventDefault(); const t = text; setText(''); send(peer, t); };
-  return html`<form onSubmit=${go}><textarea rows="1" value=${text} placeholder=${placeholder} disabled=${!ready || !!chat.busy} onInput=${e => setText(e.target.value)} onKeyDown=${e => { if (e.key === 'Enter' && !e.shiftKey) go(e); }} />
-    <button class="pri" type="submit" disabled=${!ready || !!chat.busy || !text.trim()}>${chat.busy ? html`<span class="spin"></span>${chat.busy}` : ready ? 'send' : '…'}</button></form>`;
+  return html`<form onSubmit=${go}><textarea rows="1" value=${text} placeholder=${placeholder} disabled=${!!chat.busy} onInput=${e => setText(e.target.value)} onKeyDown=${e => { if (e.key === 'Enter' && !e.shiftKey) go(e); }} />
+    <button class="pri" type="submit" disabled=${!!chat.busy}>${chat.busy ? html`<span class="spin"></span>${chat.busy}` : 'send'}</button></form>`;
 }
 function Keys() {
-  const exportKey = () => { const k = localStorage.getItem(VISITOR_KEY); if (!k) return toast('no key yet — send a message first'); navigator.clipboard?.writeText(k).then(() => toast('key copied — keep it private'), () => prompt('your key:', k)); };
+  const exportKey = () => { const k = localStorage.getItem(VISITOR_KEY); if (!k) return toast('no key yet; send a message first'); navigator.clipboard?.writeText(k).then(() => toast('key copied, keep it private'), () => prompt('your key:', k)); };
   const importKey = () => { const v = prompt('paste an nsec1… key to continue an earlier conversation:'); if (!v) return; try { env.NT.nip19.decode(v.trim()); localStorage.setItem(VISITOR_KEY, v.trim()); localStorage.removeItem(CACHE()); location.reload(); } catch { toast('that is not a valid key', 'err'); } };
   const forget = () => { if (confirm("Forget this browser's key and conversation?")) { localStorage.removeItem(VISITOR_KEY); localStorage.removeItem(NICK); localStorage.removeItem(CACHE()); location.reload(); } };
   return html`<details class="keys"><summary>your key</summary><div>Messages are encrypted to my key and signed by one that lives only in this browser. Export it to pick the conversation up elsewhere.</div>
@@ -115,19 +116,18 @@ function Keys() {
 }
 export function Chat({ live, ownerMode }) {
   const [, bump] = useState(0);
-  const ready = !!(live && env.NT);
   if (ownerMode) {
     const threads = [...chat.threads.values()].sort((a, b) => (b.msgs.at(-1)?.ts || 0) - (a.msgs.at(-1)?.ts || 0));
     if (!chat.active && threads[0]) chat.active = threads[0].peer;
     const t = chat.threads.get(chat.active);
-    return html`<div class="chat"><div class="threads">${threads.length ? threads.map(x => html`<button key=${x.peer} class=${'sm' + (x.peer === chat.active ? ' on' : '')} onClick=${() => { chat.active = x.peer; chat.unread -= x.unread; x.unread = 0; bump(n => n + 1); notify(); }}>${x.subject || short(x.peer)}${x.unread ? html`<span class="badge">${x.unread}</span>` : null}</button>`) : html`<span class="empty">no conversations yet — they arrive here from the relay</span>`}</div>
-      ${t ? html`<div class="who">${t.subject || 'anonymous'} · <code>${short(t.peer)}</code> · ${t.msgs.length} messages</div><${Log} msgs=${t.msgs} /><${Composer} peer=${t.peer} ready=${ready} placeholder="reply (20-bit proof of work, a few seconds)" />` : null}</div>`;
+    return html`<div class="chat"><div class="threads">${threads.length ? threads.map(x => html`<button key=${x.peer} class=${'sm' + (x.peer === chat.active ? ' on' : '')} onClick=${() => { chat.active = x.peer; chat.unread -= x.unread; x.unread = 0; bump(n => n + 1); notify(); }}>${x.subject || short(x.peer)}${x.unread ? html`<span class="badge">${x.unread}</span>` : null}</button>`) : html`<span class="empty">no conversations yet; they arrive here from the relay</span>`}</div>
+      ${t ? html`<div class="who">${t.subject || 'anonymous'} · <code>${short(t.peer)}</code> · ${t.msgs.length} messages</div><${Log} msgs=${t.msgs} /><${Composer} peer=${t.peer} placeholder="reply (20-bit proof of work, a few seconds)" />` : null}</div>`;
   }
   const msgs = chat.threads.get(env.SITE)?.msgs || [];
   return html`<div class="chat">
     <div class="who">${msgs.length ? html`<span>you are <b>${chat.nick || 'anonymous'}</b></span><button class="lnk" onClick=${() => { const n = prompt('nickname:', chat.nick); if (n != null) { chat.nick = n.trim().slice(0, 40); localStorage.setItem(NICK, chat.nick); bump(x => x + 1); } }}>change</button>`
       : html`<span>call me</span><input placeholder="your name (optional)" maxlength="40" value=${chat.nick} onInput=${e => { chat.nick = e.target.value; }} />`}</div>
     ${msgs.length ? html`<${Log} msgs=${msgs} />` : html`<div class="hint">End-to-end encrypted, no account: your browser mints a key, wraps the message to mine (NIP-17) and hands it to my relay. I reply here; come back in the same browser or export your key below.</div>`}
-    <${Composer} peer=${env.SITE} ready=${ready} placeholder="say hi…" />
+    <${Composer} peer=${env.SITE} placeholder="say hi…" />
     <${Keys} /></div>`;
 }

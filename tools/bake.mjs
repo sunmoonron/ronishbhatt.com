@@ -1,15 +1,17 @@
 #!/usr/bin/env node
-// bake.mjs <public dir> — pull the site key's events from the relays, verify
+// bake.mjs <public dir>: pull the site key's events from the relays, verify
 // them, pre-render the page with the same components the browser uses, and
-// write index.html (title, description, stylesheet, body, snapshot, CSP hash)
-// plus site.json. Drafts survive until a signed event with the same address
-// exists. An unreachable relay keeps the previous snapshot.
+// write index.html (title, description, stylesheet, body, a tiny index of
+// baked event ids, import map with integrity, CSP and SRI hashes) plus
+// site.json (the full events + drafts the app fetches on demand). Drafts
+// survive until a signed event with the same address exists. An unreachable
+// relay keeps the previous snapshot.
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import { render } from 'preact-render-to-string';
 import { verifyEvent } from 'nostr-tools/pure';
 import { SimplePool } from 'nostr-tools/pool';
-import { init, env, store, apply, sel, keyOf, tagsOf, addrOf, K } from '../public/js/store.js';
+import { init, env, store, apply, sel, keyOf } from '../public/js/store.js';
 import { html, Page } from '../public/js/ui.js';
 import { Chat } from '../public/js/chat.js';
 
@@ -29,29 +31,29 @@ for (const d of snap.drafts || []) { const ev = { ...d, pubkey: env.SITE, create
 
 const events = [...store.events.values()].filter(e => !e.draft).concat(store.dels);
 const drafts = (snap.drafts || []).filter(d => { const ev = { ...d, pubkey: env.SITE, created_at: 0 }; return store.events.get(keyOf(ev))?.draft; });
-const out = { site: env.SITE, baked_at: Math.floor(Date.now() / 1000), events, drafts };
-fs.writeFileSync(PUB + 'site.json', JSON.stringify(out, null, 1));
+const baked_at = Math.floor(Date.now() / 1000);
+fs.writeFileSync(PUB + 'site.json', JSON.stringify({ site: env.SITE, baked_at, events, drafts }, null, 1));
 
 const cfg = sel.config(), p = sel.profileData();
 const body = render(html`<${Page} Chat=${Chat} chatProps=${{ live: false }} />`);
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 const sha = (algo, data) => crypto.createHash(algo).update(data).digest('base64');
 const sri = f => `sha384-${sha('sha384', fs.readFileSync(PUB + f))}`;
-// The import map: bare names -> pinned vendor files, plus subresource integrity
-// for every module the page can load (browsers that know the field verify it).
+// Import map: bare names to pinned vendor files, with integrity for every module the app can load.
 const VENDOR = { preact: '/vendor/preact-10.29.8.c30e721e.mjs', 'preact/hooks': '/vendor/preact-hooks-10.29.8.a6ee626f.mjs', htm: '/vendor/htm-3.1.1.mjs', marked: '/vendor/marked-18.0.11.05e41134.mjs' };
-const MODULES = [...Object.values(VENDOR), '/js/store.js', '/js/ui.js', '/js/chat.js', '/js/owner.js'];
+const MODULES = [...Object.values(VENDOR), '/js/app.js', '/js/store.js', '/js/ui.js', '/js/chat.js', '/js/owner.js'];
 const LAZY = ['/vendor/nostr-tools-2.25.2.bundle.js', '/vendor/dompurify-3.4.14.min.c2f26ea4.js'];
 const importmap = JSON.stringify({ imports: VENDOR, integrity: Object.fromEntries(MODULES.map(f => [f, sri(f)])) });
-const app = `globalThis.SRI=${JSON.stringify(Object.fromEntries(LAZY.map(f => [f, sri(f)])))};\n` + fs.readFileSync(PUB + 'js/app.js', 'utf8').replace(/<\/script/gi, '<\\/script');
-let html_ = src
+const index = JSON.stringify({ baked_at, ids: events.map(e => e.id) });
+const out = src
   .replace(/<title>[^<]*<\/title>/, `<title>${esc(cfg.title)}</title>`)
   .replace(/<meta name="description" content="[^"]*">/, `<meta name="description" content="${esc(p.about || '')}">`)
-  .replace(/'sha256-[^']*' 'sha256-[^']*'/, `'sha256-${sha('sha256', importmap)}' 'sha256-${sha('sha256', app)}'`)
+  .replace(/<meta name="site-sri" content="[^"]*">/, `<meta name="site-sri" content="${esc(JSON.stringify(Object.fromEntries(LAZY.map(f => [f, sri(f)]))))}">`)
+  .replace(/'sha256-[^']*'/, `'sha256-${sha('sha256', importmap)}'`)
   .replace(/<script type="importmap">[\s\S]*?<\/script>/, `<script type="importmap">${importmap}</script>`)
   .replace(/<style id="theme">[\s\S]*?<\/style>/, `<style id="theme">${sel.css().replace(/<\/style/gi, '')}</style>`)
   .replace(/<main id="app">[\s\S]*?<\/main>/, `<main id="app">${body}</main>`)
-  .replace(/(<script type="application\/json" id="snapshot">)[\s\S]*?(<\/script>)/, `$1${JSON.stringify(out).replace(/<\//g, '<\\/')}$2`)
-  .replace(/<script type="module"[^>]*>[\s\S]*?<\/script>\n<\/body>/, `<script type="module">${app}</script>\n</body>`);
-fs.writeFileSync(PUB + 'index.html', html_);
-console.log(`baked ${PUB}: ${events.length} signed events (${good.length} fetched from ${env.RELAYS.length} relays${useNew ? '' : ', kept previous'}), ${drafts.length} drafts, html ${(html_.length / 1024).toFixed(1)} KB`);
+  .replace(/(<script type="application\/json" id="snapshot">)[\s\S]*?(<\/script>)/, `$1${index}$2`)
+  .replace(/integrity="sha384-[^"]*"/, `integrity="${sri('/js/boot.js')}"`);
+fs.writeFileSync(PUB + 'index.html', out);
+console.log(`baked ${PUB}: ${events.length} signed events (${good.length} fetched from ${env.RELAYS.length} relays${useNew ? '' : ', kept previous'}), ${drafts.length} drafts, html ${(out.length / 1024).toFixed(1)} KB`);

@@ -1,4 +1,4 @@
-// pow-worker.js — NIP-13 mining off the main thread. Receives an unsigned
+// pow-worker.js, NIP-13 mining off the main thread. Receives an unsigned
 // event (with pubkey) plus a nonce stride, returns it with a nonce tag and
 // matching id. It keeps the event's created_at as given (nostr-tools'
 // minePow would overwrite it, undoing NIP-59's randomised wrap timestamps).

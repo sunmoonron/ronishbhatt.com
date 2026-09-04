@@ -1,4 +1,4 @@
-// policy-test.mjs — prove a personal relay's write policy from the outside
+// policy-test.mjs, prove a personal relay's write policy from the outside
 // with a throwaway key. Usage: node policy-test.mjs wss://relay.ronishbhatt.com <owner hex>
 // Expects: plain note REJECTED, unmined wrap REJECTED, 16-bit wrap to owner
 // ACCEPTED, 16-bit wrap to a stranger REJECTED (needs 20), 20-bit wrap to a stranger ACCEPTED.

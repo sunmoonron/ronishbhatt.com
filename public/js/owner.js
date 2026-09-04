@@ -1,4 +1,4 @@
-// owner.js — loaded only after "unlock": in-place editing of every block (the
+// owner.js, loaded only after "unlock": in-place editing of every block (the
 // stylesheet included), drafts, deletions, and the console (/dash.html, same key).
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { env, K, TAG, CONFIG_D, CSS_D, DEFAULT_CFG, store, sel, apply, publish, sign, unlock, lock, now, tag, tagsOf, dTag, addrOf, keyOf, notify } from './store.js';
@@ -16,16 +16,16 @@ if (typeof document !== 'undefined' && !document.getElementById('owner-css')) { 
 export async function publishTemplate(tmpl, relays = env.RELAYS) {
   const ev = sign(tmpl); apply(ev, { verified: true });
   const res = await publish(ev, relays), ok = res.filter(r => r.ok).length, mine = res.find(r => r.url === env.PRIMARY);
-  toast(ok ? `published to ${ok}/${res.length} relays${mine?.ok ? ' (incl. mine)' : ' — NOT on my relay: ' + mine?.msg}` : 'no relay accepted it: ' + res.map(r => r.msg).join('; '), ok ? '' : 'err');
+  toast(ok ? `published to ${ok}/${res.length} relays${mine?.ok ? ' (incl. mine)' : ', NOT on my relay: ' + mine?.msg}` : 'no relay accepted it: ' + res.map(r => r.msg).join('; '), ok ? '' : 'err');
   return { ev, res };
 }
 
 const SCHEMAS = {
-  0: [['name', 'Name'], ['about', 'About — one line'], ['picture', 'Picture URL'], ['nip05', 'NIP-05 (e.g. _@ronishbhatt.com)'], ['website', 'Website']],
-  layout: [['title', 'Site title'], ['sections', 'Sections in order, comma separated (chat, about, now, projects, writing, notes, or any block slug)'], ['links', 'Footer links — one per line: label | url'], ['chat', 'Chat enabled (yes / no)']],
-  css: [['content', 'Stylesheet — the whole page\'s CSS']],
-  30023: [['d', 'Slug — fixed once published'], ['type', 'Type: section / project / writing'], ['title', 'Title'], ['summary', 'One-line summary'], ['r', 'Link'], ['image', 'Image URL'], ['order', 'Order — lower first'], ['content', 'Body — Markdown']],
-  1: [['content', 'Note — Markdown']],
+  0: [['name', 'Name'], ['about', 'About, one line'], ['picture', 'Picture URL'], ['nip05', 'NIP-05 (e.g. _@ronishbhatt.com)'], ['website', 'Website']],
+  layout: [['title', 'Site title'], ['sections', 'Sections in order, comma separated (chat, about, now, projects, writing, notes, or any block slug)'], ['links', 'Footer links, one per line: label | url'], ['chat', 'Chat enabled (yes / no)']],
+  css: [['content', 'Stylesheet, the whole page\'s CSS']],
+  30023: [['d', 'Slug, fixed once published'], ['type', 'Type: section / project / writing'], ['title', 'Title'], ['summary', 'One-line summary'], ['r', 'Link'], ['image', 'Image URL'], ['order', 'Order, lower first'], ['content', 'Body, Markdown']],
+  1: [['content', 'Note, Markdown']],
 };
 const BIG = new Set(['content', 'links', 'about']);
 const formOf = (kind, ev, preset) => kind === K.config ? ((dTag(ev) || preset?.d) === CSS_D ? 'css' : 'layout') : kind;
@@ -46,7 +46,7 @@ function toTemplate(kind, f, ev, preset = {}) {
   if (form === 'css') return { kind: K.config, tags: [['d', CSS_D]], content: f.content || '' };
   if (form === 30023) {
     const d = (f.d || '').trim().toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-|-$/g, ''); if (!d) throw new Error('a slug is required');
-    const tags = [['d', d], ['title', f.title.trim() || d], ['t', TAG], ['t', (f.type || 'section').trim().toLowerCase()], ['published_at', tag(ev, 'published_at') || String(now())], ['alt', `${f.title.trim() || d} — a block of ronishbhatt.com`]];
+    const tags = [['d', d], ['title', f.title.trim() || d], ['t', TAG], ['t', (f.type || 'section').trim().toLowerCase()], ['published_at', tag(ev, 'published_at') || String(now())], ['alt', `${f.title.trim() || d}, a block of ronishbhatt.com`]];
     for (const k of ['summary', 'r', 'image', 'order']) if (f[k]?.trim()) tags.push([k, f[k].trim()]);
     return { kind: K.article, tags, content: f.content || '' };
   }
@@ -76,7 +76,7 @@ export function OwnerBar({ onEdit, onConsole, unread }) {
 export function UnlockDialog({ open, onClose }) {
   const ref = useRef(), [err, setErr] = useState('');
   useEffect(() => { const d = ref.current; if (!d) return; if (open && !d.open) d.showModal(); if (!open && d.open) d.close(); }, [open]);
-  const go = e => { e.preventDefault(); setErr(''); try { unlock(e.target.nsec.value, e.target.remember.checked); e.target.reset(); onClose(); toast('unlocked — every block is editable now'); } catch (x) { setErr(x.message); } };
+  const go = e => { e.preventDefault(); setErr(''); try { unlock(e.target.nsec.value, e.target.remember.checked); e.target.reset(); onClose(); toast('unlocked, every block is editable now'); } catch (x) { setErr(x.message); } };
   return html`<dialog ref=${ref} onClose=${onClose}><h2>unlock</h2><p>The site key signs every block on this page, receives the chat, and opens the console. It never leaves this browser.</p>
     <form onSubmit=${go} method="dialog"><input name="nsec" type="password" placeholder="nsec1…" autocomplete="off" />
       <label class="f" style="display:flex;gap:.4rem;align-items:center;text-transform:none;letter-spacing:0"><input name="remember" type="checkbox" style="width:auto" /> keep the key in this browser</label>

@@ -445,7 +445,7 @@ const MODEL = {"config":{"V":8192,"d":256,"heads":8,"layers":6,"ctx":256},"vocab
   q("#newstory").addEventListener("click", startRound);
   q("#len").addEventListener("change", e => { MAXWORDS = +e.target.value; renderStory(); toast(`Stories now run to about ${MAXWORDS} words.`, 1400); });
   q("#copy").addEventListener("click", async () => {
-    const text = layout(story).text + (ended ? " The end." : "") + `\n\n— a story by Bip, a 7M-parameter robot that lives inside a web page. Stars: ${hits.size}/${targets.length}`;
+    const text = layout(story).text + (ended ? " The end." : "") + `\n\n- a story by Bip, a 7M-parameter robot that lives inside a web page. Stars: ${hits.size}/${targets.length}`;
     try { await navigator.clipboard.writeText(text); toast("Story copied!", 1200); } catch (e) { toast("Select the story to copy it.", 1500); }
   });
   setTimeout(() => {

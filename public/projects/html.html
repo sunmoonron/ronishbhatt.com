@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>NOSTR ORBIT — Timechain Analytics</title>
+  <title>NOSTR ORBIT, Timechain Analytics</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     :root {
@@ -186,7 +186,7 @@
   </div>
   <div class="header-right">
     <a href="/">← back to site</a><br>
-    tip: <span id="tipH">—</span>
+    tip: <span id="tipH">-</span>
   </div>
 </header>
 
@@ -209,18 +209,18 @@
 <div id="dashboard">
   <div class="profile-bar">
     <div class="npub-info">
-      <strong id="pName">—</strong>
-      <span id="pNpub">—</span>
+      <strong id="pName">-</strong>
+      <span id="pNpub">-</span>
     </div>
-    <span class="og-badge" id="ogBadge">—</span>
+    <span class="og-badge" id="ogBadge">-</span>
     <span class="est-note">⚡ block heights estimated from avg 10-min block time</span>
   </div>
 
   <div class="stats">
-    <div class="sc"><div class="lbl">Total Events</div><div class="val" id="sTotal" style="color:var(--accent)">—</div><div class="sub" id="sSub">—</div></div>
-    <div class="sc"><div class="lbl">Blocks Active</div><div class="val" id="sBlocks" style="color:var(--blue)">—</div><div class="sub">unique blocks</div></div>
-    <div class="sc"><div class="lbl">Block Streak</div><div class="val" id="sStreak" style="color:var(--green)">—</div><div class="sub">consecutive active</div></div>
-    <div class="sc"><div class="lbl">Block Range</div><div class="val" id="sRange" style="color:var(--purple);font-size:1rem;padding-top:4px">—</div><div class="sub" id="sRangeSub">first → last</div></div>
+    <div class="sc"><div class="lbl">Total Events</div><div class="val" id="sTotal" style="color:var(--accent)">-</div><div class="sub" id="sSub">-</div></div>
+    <div class="sc"><div class="lbl">Blocks Active</div><div class="val" id="sBlocks" style="color:var(--blue)">-</div><div class="sub">unique blocks</div></div>
+    <div class="sc"><div class="lbl">Block Streak</div><div class="val" id="sStreak" style="color:var(--green)">-</div><div class="sub">consecutive active</div></div>
+    <div class="sc"><div class="lbl">Block Range</div><div class="val" id="sRange" style="color:var(--purple);font-size:1rem;padding-top:4px">-</div><div class="sub" id="sRangeSub">first → last</div></div>
   </div>
 
   <div class="grid2">
@@ -238,9 +238,9 @@
       <div class="ph" style="margin-top:auto"><h3>Event Breakdown</h3></div>
       <div class="pb">
         <div class="kind-grid">
-          <div class="ki"><div class="kv" id="kNotes"    style="color:var(--accent)">—</div><div class="kl">Notes</div></div>
-          <div class="ki"><div class="kv" id="kReact"    style="color:var(--green)">—</div><div class="kl">Reactions</div></div>
-          <div class="ki"><div class="kv" id="kRepost"   style="color:var(--blue)">—</div><div class="kl">Reposts</div></div>
+          <div class="ki"><div class="kv" id="kNotes"    style="color:var(--accent)">-</div><div class="kl">Notes</div></div>
+          <div class="ki"><div class="kv" id="kReact"    style="color:var(--green)">-</div><div class="kl">Reactions</div></div>
+          <div class="ki"><div class="kv" id="kRepost"   style="color:var(--blue)">-</div><div class="kl">Reposts</div></div>
         </div>
       </div>
 
@@ -322,7 +322,7 @@ async function run() {
     if (d.type !== 'npub') throw 0;
     hex = d.data;
   } catch {
-    setStatus('⚠ invalid npub — paste a valid npub1… string'); return;
+    setStatus('⚠ invalid npub, paste a valid npub1… string'); return;
   }
 
   analyzeBtn.disabled = true;
@@ -340,13 +340,13 @@ async function run() {
   const events = batches.flat().filter(e => !seen.has(e.id) && seen.add(e.id));
 
   if (!events.length) {
-    setStatus('no events found — try a different npub or check relay connectivity');
+    setStatus('no events found, try a different npub or check relay connectivity');
     loader.classList.remove('on');
     analyzeBtn.disabled = false;
     return;
   }
 
-  setStatus(`${events.length} events from ${batches.filter(b => b.length).length} relays — anchoring to blocks…`);
+  setStatus(`${events.length} events from ${batches.filter(b => b.length).length} relays, anchoring to blocks…`);
 
   anchored = anchorEventsFast(events);
   const m  = computeMetrics(anchored);
@@ -358,7 +358,7 @@ async function run() {
 }
 
 // ── Render ─────────────────────────────────────────────────────────────
-function fmt(n) { return n?.toLocaleString() ?? '—'; }
+function fmt(n) { return n?.toLocaleString() ?? '-'; }
 
 function render(m, npub, hex) {
   // Profile bar
