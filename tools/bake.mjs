@@ -9,9 +9,9 @@ import crypto from 'node:crypto';
 import { render } from 'preact-render-to-string';
 import { verifyEvent } from 'nostr-tools/pure';
 import { SimplePool } from 'nostr-tools/pool';
-import { init, env, store, apply, sel, keyOf, tagsOf, addrOf, K } from '../public/js/store.js';
-import { html, Page } from '../public/js/ui.js';
-import { Chat } from '../public/js/chat.js';
+import { init, env, store, apply, sel, keyOf, tagsOf, addrOf, K } from '../public/js/v2/store.js';
+import { html, Page } from '../public/js/v2/ui.js';
+import { Chat } from '../public/js/v2/chat.js';
 
 const PUB = (process.argv[2] || new URL('../public', import.meta.url).pathname).replace(/\/$/, '') + '/';
 const src = fs.readFileSync(PUB + 'index.html', 'utf8');

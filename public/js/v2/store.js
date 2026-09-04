@@ -105,7 +105,7 @@ export function mine(event, bits) {
     const n = CORES(), workers = []; let done = false;
     const finish = (err, ev) => { if (done) return; done = true; workers.forEach(w => w.terminate()); err ? reject(err) : resolve(ev); };
     for (let i = 0; i < n; i++) {
-      const w = new Worker('/js/pow-worker.js'); workers.push(w);
+      const w = new Worker(new URL('./pow-worker.js', import.meta.url)); workers.push(w);
       w.onmessage = ({ data }) => data.error ? finish(new Error(data.error)) : finish(null, data.event);
       w.onerror = e => finish(new Error(e.message || 'worker failed'));
       w.postMessage({ event: structuredClone(event), bits, start: i + 1, step: n });
