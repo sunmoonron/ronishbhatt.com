@@ -6,7 +6,8 @@ The page is a 22-line HTML template; the content is signed Nostr events.
 - `public/js/boot.js`: the only script a visitor runs (no libraries). Asks the relays for the site key's events; anything the bake did not know about, a chat message, an unlock or a paper preview hands off to the full app.
 - `public/js/app.js` + `store.js`, `ui.js`, `chat.js`, `owner.js`, `pow-worker.js`: the full app, loaded on demand. `ui.js` renders both in the browser and in Node (the bake).
 - `public/vendor/`: pinned upstream builds under content-hashed names (immutable; never edit in place, add a file and repoint `tools/bake.mjs`). See `VERSIONS.txt`.
-- `public/site.json`: the full snapshot the app fetches on demand (signed events from the relay plus unsigned drafts for blocks not published yet).
+- `public/drafts.json`: the seed content, permanent. A block with no live signed version (never published, deleted, or recalled) renders its draft; to retire a seeded block for good, remove it here and deploy.
+- `public/site.json`: bake output the app fetches on demand: signed events from the relay plus the drafts still unpublished.
 - everything else in `public/`: the archive of one-page experiments that survived the 2026-09 cut.
 
 Events, all by the site key (the key the personal relay admits and the console trusts):

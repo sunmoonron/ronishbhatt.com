@@ -3,9 +3,10 @@
 // them, pre-render the page with the same components the browser uses, and
 // write index.html (title, description, stylesheet, body, a tiny index of
 // baked event ids, import map with integrity, CSP and SRI hashes) plus
-// site.json (the full events + drafts the app fetches on demand). Drafts
-// survive until a signed event with the same address exists. An unreachable
-// relay keeps the previous snapshot.
+// site.json (the full events + still-unpublished drafts the app fetches on
+// demand). Drafts live in drafts.json for good: a block with no live signed
+// version, including one that was deleted or recalled, renders its draft.
+// An unreachable relay keeps the previous snapshot.
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import { render } from 'preact-render-to-string';
@@ -20,6 +21,7 @@ const src = fs.readFileSync(PUB + 'index.html', 'utf8');
 const meta = n => src.match(new RegExp(`<meta name="${n}" content="([^"]*)"`))?.[1] || '';
 init({ site: meta('site-pubkey'), relay: meta('site-relay'), backups: meta('site-backups').split(',').map(s => s.trim()).filter(Boolean), NT: { verifyEvent } });
 const snap = JSON.parse(fs.readFileSync(PUB + 'site.json', 'utf8'));
+const seed = JSON.parse(fs.readFileSync(PUB + 'drafts.json', 'utf8')).drafts; // permanent seed content: the fallback when a block has no live signed version
 
 const pool = new SimplePool(); let fetched = [];
 try { fetched = await pool.querySync(env.RELAYS, { authors: [env.SITE], kinds: [0, 1, 5, 30023, 30078], limit: 500 }, { maxWait: 8000 }); } catch (e) { console.error('relay query failed:', e.message); }
@@ -27,10 +29,10 @@ pool.destroy();
 const good = fetched.filter(e => e.pubkey === env.SITE && verifyEvent(e));
 const useNew = good.length > 0 || !(snap.events || []).length;
 for (const e of useNew ? good : snap.events) apply(e, { verified: true });
-for (const d of snap.drafts || []) { const ev = { ...d, pubkey: env.SITE, created_at: 0, sig: '' }; ev.id = 'draft:' + keyOf(ev); apply(ev, { draft: true }); }
+for (const d of seed) { const ev = { ...d, pubkey: env.SITE, created_at: 0, sig: '' }; ev.id = 'draft:' + keyOf(ev); apply(ev, { draft: true }); }
 
 const events = [...store.events.values()].filter(e => !e.draft).concat(store.dels);
-const drafts = (snap.drafts || []).filter(d => { const ev = { ...d, pubkey: env.SITE, created_at: 0 }; return store.events.get(keyOf(ev))?.draft; });
+const drafts = seed.filter(d => { const ev = { ...d, pubkey: env.SITE, created_at: 0 }; return store.events.get(keyOf(ev))?.draft; });
 const baked_at = Math.floor(Date.now() / 1000);
 fs.writeFileSync(PUB + 'site.json', JSON.stringify({ site: env.SITE, baked_at, events, drafts }, null, 1));
 

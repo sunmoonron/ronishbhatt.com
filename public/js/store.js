@@ -17,7 +17,7 @@ const replaceable = k => k === 0 || k === 3 || (k >= 10000 && k < 20000) || (k >
 export const addrOf = ev => `${ev.kind}:${ev.pubkey}:${dTag(ev)}`;
 export const keyOf = ev => !replaceable(ev.kind) ? ev.id : ev.kind >= 30000 ? addrOf(ev) : `${ev.kind}:${ev.pubkey}`;
 
-export const store = { events: new Map(), dels: [], ready: false, status: new Map() };
+export const store = { events: new Map(), dels: [], ready: false, status: new Map(), drafts: [] };
 const listeners = new Set(); let queued = false;
 export const onChange = fn => { listeners.add(fn); return () => listeners.delete(fn); };
 export const notify = () => { if (queued) return; queued = true; queueMicrotask(() => { queued = false; listeners.forEach(f => { try { f(); } catch (e) { console.error(e); } }); }); };
@@ -31,12 +31,13 @@ export function apply(ev, { verified = false, draft = false } = {}) {
   if (ev.kind === K.del) {
     if (store.dels.some(d => d.id === ev.id)) return false;
     store.dels.push(ev);
-    for (const [k, e] of store.events) if (deletedBy(e)) store.events.delete(k);
+    for (const [k, e] of store.events) if (!e.draft && deletedBy(e)) store.events.delete(k);
+    for (const d of store.drafts) apply(d, { draft: true }); // a deleted block falls back to its seed draft
     notify(); return true;
   }
-  if (deletedBy(ev)) return false;
   const k = keyOf(ev), cur = store.events.get(k);
-  if (draft) { if (cur) return false; store.events.set(k, { ...ev, draft: true }); notify(); return true; }
+  if (draft) { if (!store.drafts.includes(ev)) store.drafts.push(ev); if (cur) return false; store.events.set(k, { ...ev, draft: true }); notify(); return true; }
+  if (deletedBy(ev)) return false;
   if (cur && !cur.draft && (cur.created_at > ev.created_at || (cur.created_at === ev.created_at && cur.id <= ev.id))) return false;
   store.events.set(k, ev); notify(); return true;
 }
