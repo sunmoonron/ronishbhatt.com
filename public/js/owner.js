@@ -1,7 +1,7 @@
 // owner.js, loaded only after "unlock": in-place editing of every block (the
 // stylesheet included), drafts, deletions, and the console (/dash.html, same key).
 import { useState, useEffect, useRef } from 'preact/hooks';
-import { env, K, TAG, CONFIG_D, CSS_D, DEFAULT_CFG, store, sel, apply, publish, sign, unlock, lock, now, tag, tagsOf, dTag, addrOf, keyOf, notify } from './store.js';
+import { env, K, DEFAULT_CFG, store, sel, apply, publish, sign, unlock, lock, now, h, veil, meta, text, dTag, addrOf, keyOf, notify } from './store.js';
 import { html, toast, npub } from './ui.js';
 
 const CSS = `.ownerbar{grid-column:1/-1;position:sticky;top:0;z-index:5;display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;margin:-1.5rem -1.25rem 1.5rem;padding:.55rem 1.25rem;background:var(--card);border-bottom:1px solid var(--accent);font-size:.78rem;color:var(--mute)}.ownerbar .grow{flex:1}.ownerbar code{font:.78rem var(--mono);color:var(--fg)}
@@ -29,33 +29,38 @@ export async function publishTemplate(tmpl, relays = targets()) {
 
 const SCHEMAS = {
   0: [['name', 'Name'], ['about', 'About, one line'], ['picture', 'Picture URL'], ['nip05', 'NIP-05 (e.g. _@ronishbhatt.com)'], ['website', 'Website']],
-  layout: [['title', 'Site title'], ['sections', 'Sections in order, comma separated (chat, about, now, projects, writing, notes, or any block slug)'], ['links', 'Footer links, one per line: label | url'], ['chat', 'Chat enabled (yes / no)']],
+  layout: [['title', 'Site title'], ['sections', 'Sections in order, comma separated (chat, projects, writing, notes, or any block slug)'], ['links', 'Header pills, one per line: label | url'], ['chat', 'Chat enabled (yes / no)']],
   css: [['content', 'Stylesheet, the whole page\'s CSS']],
-  30023: [['d', 'Slug, fixed once published'], ['type', 'Type: section / project / writing'], ['display', 'Display: normal, or details (folded; the summary is the visible line)'], ['title', 'Title'], ['summary', 'One-line summary'], ['r', 'Link'], ['image', 'Image URL'], ['order', 'Order, lower first'], ['content', 'Body, Markdown']],
+  block: [['slug', 'Slug, fixed once published'], ['type', 'Type: section / project / writing'], ['display', 'Display: normal, or details (folded; the summary is the visible line)'], ['title', 'Title'], ['summary', 'One-line summary'], ['r', 'Link'], ['image', 'Image URL'], ['order', 'Order, lower first'], ['body', 'Body, Markdown']],
   1: [['content', 'Note, Markdown']],
 };
-const BIG = new Set(['content', 'links', 'about']);
-const formOf = (kind, ev, preset) => kind === K.config ? ((dTag(ev) || preset?.d) === CSS_D ? 'css' : 'layout') : kind;
+const BIG = new Set(['body', 'content', 'links', 'about']);
+// Blocks, the layout and the stylesheet are all kind 30078; the form is picked by slug.
+const formOf = (kind, ev, preset) => kind === 'block' || kind === K.block ? ({ layout: 'layout', css: 'css' }[preset?.slug || meta(ev)?.slug || slugOf(ev)] || 'block') : kind;
+const slugOf = ev => ev ? (dTag(ev) === h('layout') ? 'layout' : dTag(ev) === h('css') ? 'css' : meta(ev)?.slug) : undefined;
 
 function toFields(kind, ev, preset = {}) {
   const f = formOf(kind, ev, preset);
   if (f === 0) { try { return { ...JSON.parse(ev?.content || '{}') }; } catch { return {}; } }
   if (f === 'layout') { const c = sel.config(); return { title: c.title, sections: (c.sections || []).join(', '), links: (c.links || []).map(l => `${l.label} | ${l.url}`).join('\n'), chat: c.chat === false ? 'no' : 'yes' }; }
-  if (f === 'css') return { content: ev?.content || '' };
-  if (f === 30023) return { d: dTag(ev) || preset.d || '', type: tagsOf(ev, 't').find(t => t !== TAG) || preset.type || 'section', display: tag(ev, 'display') || '', title: tag(ev, 'title') || preset.title || '', summary: tag(ev, 'summary') || '', r: tag(ev, 'r') || '', image: tag(ev, 'image') || '', order: tag(ev, 'order') || '', content: ev?.content || '' };
-  return { content: ev?.content || '' };
+  if (f === 'css') return { content: ev ? text(ev) : '' };
+  if (f === 'block') { const m = ev ? meta(ev) || {} : {}; return { slug: m.slug || preset.slug || '', type: m.type || preset.type || 'section', display: m.display || '', title: m.title || preset.title || '', summary: m.summary || '', r: m.r || '', image: m.image || '', order: m.order || '', body: m.body || '' }; }
+  return { content: ev ? text(ev) : '' };
 }
+// A veiled event: hashed d, NIP-44 body under the page secret, nothing else in the tags.
+const veiled = (slug, plain) => ({ kind: K.block, tags: [['d', h(slug)], ['veil', 'nip44']], content: veil(plain) });
 function toTemplate(kind, f, ev, preset = {}) {
   const form = formOf(kind, ev, preset);
   if (form === 0) { const o = {}; for (const k of ['name', 'about', 'picture', 'nip05', 'website']) if (f[k]?.trim()) o[k] = f[k].trim(); return { kind: 0, content: JSON.stringify(o) }; }
-  if (form === 'layout') return { kind: K.config, tags: [['d', CONFIG_D]], content: JSON.stringify({ title: f.title?.trim() || DEFAULT_CFG.title, sections: f.sections.split(',').map(s => s.trim().toLowerCase()).filter(Boolean), chat: !/^n/i.test(f.chat || 'yes'),
-    links: f.links.split('\n').map(l => l.split('|').map(s => s.trim())).filter(p => p[0] && p[1]).map(([label, url]) => ({ label, url })) }) };
-  if (form === 'css') return { kind: K.config, tags: [['d', CSS_D]], content: f.content || '' };
-  if (form === 30023) {
-    const d = (f.d || '').trim().toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-|-$/g, ''); if (!d) throw new Error('a slug is required');
-    const tags = [['d', d], ['title', f.title.trim() || d], ['t', TAG], ['t', (f.type || 'section').trim().toLowerCase()], ['published_at', tag(ev, 'published_at') || String(now())], ['alt', `${f.title.trim() || d}, a block of ronishbhatt.com`]];
-    for (const k of ['summary', 'r', 'image', 'order', 'display']) if (f[k]?.trim()) tags.push([k, f[k].trim()]);
-    return { kind: K.article, tags, content: f.content || '' };
+  if (form === 'layout') return veiled('layout', JSON.stringify({ title: f.title?.trim() || DEFAULT_CFG.title, sections: f.sections.split(',').map(s => s.trim().toLowerCase()).filter(Boolean), chat: !/^n/i.test(f.chat || 'yes'),
+    links: f.links.split('\n').map(l => l.split('|').map(s => s.trim())).filter(p => p[0] && p[1]).map(([label, url]) => ({ label, url })) }));
+  if (form === 'css') return veiled('css', f.content || '');
+  if (form === 'block') {
+    const slug = (f.slug || '').trim().toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-|-$/g, ''); if (!slug) throw new Error('a slug is required');
+    if (slug === 'layout' || slug === 'css') throw new Error('that slug is reserved');
+    const m = { slug, type: (f.type || 'section').trim().toLowerCase(), title: f.title?.trim() || slug, published_at: meta(ev)?.published_at || now(), body: f.body || '' };
+    for (const k of ['summary', 'r', 'image', 'order', 'display']) if (f[k]?.trim()) m[k] = f[k].trim();
+    return veiled(slug, JSON.stringify(m));
   }
   if (!f.content?.trim()) throw new Error('empty note'); return { kind: K.note, content: f.content.trim() };
 }
@@ -76,7 +81,7 @@ export async function recallAll() {
 }
 export async function publishDrafts() {
   const drafts = sel.drafts(); let n = 0;
-  for (const d of drafts) { const { res } = await publishTemplate({ kind: d.kind, tags: (d.tags || []).map(t => t[0] === 'published_at' ? ['published_at', String(now())] : t), content: d.content }); if (res.some(r => r.ok)) n++; }
+  for (const d of drafts) { const tmpl = d.kind === K.block ? { kind: K.block, tags: [['d', dTag(d)], ['veil', 'nip44']], content: veil(text(d)) } : { kind: d.kind, tags: d.tags || [], content: text(d) }; const { res } = await publishTemplate(tmpl); if (res.some(r => r.ok)) n++; }
   toast(`${n}/${drafts.length} drafts published`);
 }
 
@@ -84,9 +89,9 @@ export function OwnerBar({ onEdit, onConsole, unread }) {
   const drafts = sel.drafts().length, [busy, setBusy] = useState(false);
   return html`<div class="ownerbar"><span>unlocked · <code>${npub(env.SITE).slice(0, 16)}…</code></span>
     ${drafts ? html`<button class="sm pri" disabled=${busy} onClick=${async () => { setBusy(true); try { await publishDrafts(); } finally { setBusy(false); } }}>${busy ? html`<span class="spin"></span>` : null}publish ${drafts} draft${drafts > 1 ? 's' : ''}</button>` : null}
-    <button class="sm" onClick=${() => onEdit(K.config, sel.configEvent(), { d: CONFIG_D })}>layout</button>
-    <button class="sm" onClick=${() => onEdit(K.config, sel.cssEvent(), { d: CSS_D })}>stylesheet</button>
-    <button class="sm" onClick=${() => onEdit(K.article, null, { type: 'section' })}>+ block</button>
+    <button class="sm" onClick=${() => onEdit('block', sel.layoutEvent(), { slug: 'layout' })}>layout</button>
+    <button class="sm" onClick=${() => onEdit('block', sel.cssEvent(), { slug: 'css' })}>stylesheet</button>
+    <button class="sm" onClick=${() => onEdit('block', null, { type: 'section' })}>+ block</button>
     <button class="sm" onClick=${() => onEdit(K.note, null)}>+ note</button>
     <button class="sm" onClick=${() => document.getElementById('chat')?.scrollIntoView({ behavior: 'smooth' })}>inbox${unread ? html`<span class="badge">${unread}</span>` : null}</button>
     <span class="grow"></span>
@@ -110,10 +115,10 @@ export function Editor({ target, onClose }) {
   const set = (k, v) => setF(x => ({ ...x, [k]: v }));
   const save = async () => { setErr(''); setBusy(true); try { await publishTemplate(toTemplate(kind, f, ev, preset)); onClose(); } catch (x) { setErr(x.message); } finally { setBusy(false); } };
   const del = async () => { if (!ev || !confirm('Delete this from the relays? (a kind-5 deletion is published)')) return; setBusy(true); try { await deleteEvent(ev); onClose(); } catch (x) { setErr(x.message); } finally { setBusy(false); } };
-  const title = { 0: 'header (kind 0)', layout: 'layout (kind 30078)', css: 'stylesheet (kind 30078)', 30023: `${f.type || 'section'} (kind 30023)`, 1: 'note (kind 1)' }[form];
+  const title = { 0: 'header (kind 0, plain)', layout: 'layout (veiled)', css: 'stylesheet (veiled)', block: `${f.type || 'section'} (veiled block)`, 1: 'note (kind 1, plain)' }[form];
   return html`<div class="panel"><h2>${ev ? 'edit' : 'new'} ${title}</h2>
     <p class="sub">${ev && !ev.draft ? `replaces the version signed ${new Date(ev.created_at * 1000).toLocaleString()}` : 'not on the relay yet'}</p>
-    ${SCHEMAS[form].map(([k, label]) => html`<label class="f" key=${k}>${label}</label>${BIG.has(k) ? html`<textarea class=${k === 'content' ? 'big' : ''} value=${f[k] || ''} onInput=${e => set(k, e.target.value)} />` : html`<input value=${f[k] || ''} disabled=${k === 'd' && ev && !ev.draft} onInput=${e => set(k, e.target.value)} />`}`)}
+    ${SCHEMAS[form].map(([k, label]) => html`<label class="f" key=${k}>${label}</label>${BIG.has(k) ? html`<textarea class=${k === 'content' ? 'big' : ''} value=${f[k] || ''} onInput=${e => set(k, e.target.value)} />` : html`<input value=${f[k] || ''} disabled=${k === 'slug' && ev && !ev.draft} onInput=${e => set(k, e.target.value)} />`}`)}
     ${err ? html`<div class="err" style="margin-top:.5rem">${err}</div>` : null}
     <div class="row"><button class="pri" disabled=${busy} onClick=${save}>${busy ? html`<span class="spin"></span>` : null}publish to ${env.RELAYS.length} relays</button><button disabled=${busy} onClick=${onClose}>cancel</button><span class="grow"></span>${ev ? html`<button class="danger" disabled=${busy} onClick=${del}>delete</button>` : null}</div></div>`;
 }

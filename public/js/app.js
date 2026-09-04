@@ -8,7 +8,7 @@ import { env, init, sel, onChange, notify, loadSnapshot, loadCache, keepCache, c
 import { Chat, chat, chatConfigure, send as chatSend, setNick } from './chat.js';
 
 const meta = n => document.querySelector(`meta[name="${n}"]`)?.content?.trim() || '';
-init({ site: meta('site-pubkey'), relay: meta('site-relay'), backups: meta('site-backups').split(',').map(s => s.trim()).filter(Boolean) });
+init({ site: meta('site-pubkey'), relay: meta('site-relay'), backups: meta('site-backups').split(',').map(s => s.trim()).filter(Boolean), veil: meta('site-veil') });
 let SRI = {}; try { SRI = JSON.parse(meta('site-sri') || '{}'); } catch {}
 const script = src => new Promise((ok, err) => { const s = document.createElement('script'); s.src = src; if (SRI[src]) s.integrity = SRI[src]; s.onload = ok; s.onerror = err; document.head.append(s); });
 let Owner = null, started = false; const initial = { unlockOpen: false };
@@ -35,9 +35,9 @@ function App() {
 export async function start(opts = {}) {
   if (started) return; started = true;
   const seedText = document.querySelector('#chat textarea')?.value || '', seedNick = document.querySelector('#chat .who input')?.value || '';
-  let snap = null; try { snap = await (await fetch('/site.json', { cache: 'no-cache' })).json(); } catch {}
+  const [snap] = await Promise.all([fetch('/site.json', { cache: 'no-cache' }).then(r => r.json()).catch(() => null), script('/vendor/nostr-tools-2.25.2.bundle.js')]);
+  env.NT = window.NostrTools; // the crypto is needed before anything is read: identifiers are hashed, bodies veiled
   loadSnapshot(snap); loadCache(); keepCache(); bindNotify(notify);
-  await script('/vendor/nostr-tools-2.25.2.bundle.js'); env.NT = window.NostrTools; reverify();
   script('/vendor/dompurify-3.4.14.min.c2f26ea4.js').then(notify).catch(() => {});
   connect(); chatConfigure(false);
   if (seedNick) setNick(seedNick);

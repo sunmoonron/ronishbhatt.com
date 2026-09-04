@@ -5,7 +5,7 @@ import { h } from 'preact';
 import { useState } from 'preact/hooks';
 import htm from 'htm';
 import { marked } from 'marked';
-import { store, env, sel, tag, dTag, seenOn } from './store.js';
+import { store, env, sel, meta, text, dTag, seenOn } from './store.js';
 export const html = htm.bind(h);
 
 marked.use({ gfm: true, renderer: { link({ href, title, tokens }) {
@@ -48,40 +48,40 @@ const EvLink = ({ ev }) => { if (!ev || ev.draft) return null; const from = seen
 const Label = ({ text, ev, children }) => html`<h2 class="label">${text}<${Draft} ev=${ev} /><span class="grow"></span><${EvLink} ev=${ev} />${children}</h2>`;
 
 // A tile's picture (or a placeholder) opens the thing inline; boot.js does the same before the app loads.
-const Thumb = ({ ev }) => { const [open, setOpen] = useState(false); const href = tag(ev, 'r') || '#', img = tag(ev, 'image');
+const Thumb = ({ ev }) => { const [open, setOpen] = useState(false); const m = meta(ev), href = m.r || '#', img = m.image;
   const toggle = e => { if (href === '#') return; e.preventDefault(); setOpen(o => !o); };
-  return html`<a class=${img ? 'thumb' : 'thumb ph'} href=${href} data-preview aria-label=${'open ' + (tag(ev, 'title') || '') + ' here'} onClick=${toggle}>${img ? html`<img class="th" src=${img} alt="" loading="lazy" />` : '▶'}</a>
-    ${open ? html`<iframe class="preview" src=${href} title=${tag(ev, 'title')} />` : null}`; };
+  return html`<a class=${img ? 'thumb' : 'thumb ph'} href=${href} data-preview aria-label=${'open ' + (m.title || '') + ' here'} onClick=${toggle}>${img ? html`<img class="th" src=${img} alt="" loading="lazy" />` : '▶'}</a>
+    ${open ? html`<iframe class="preview" src=${href} title=${m.title} />` : null}`; };
 const Items = ({ id, items, edit, add }) => html`<section class="c" id=${id}>
   <${Label} text=${id}>${add ? html`<button class="sm" onClick=${add}>+ add</button>` : null}</${Label}>
-  ${items.length ? html`<ul class="items">${items.map(e => html`<li key=${keyId(e)} class="item">
-    ${tag(e, 'r') ? html`<${Thumb} ev=${e} />` : null}
+  ${items.length ? html`<ul class="items">${items.map(e => { const m = meta(e); return html`<li key=${keyId(e)} class="item">
+    ${m.r ? html`<${Thumb} ev=${e} />` : null}
     <div class="b">
-      <div class="t"><a href=${tag(e, 'r') || njump(e)} target=${/^https?:/.test(tag(e, 'r') || '') ? '_blank' : null} rel="noopener">${tag(e, 'title') || dTag(e)}</a> <${Draft} ev=${e} /></div>
-      ${tag(e, 'summary') ? html`<div class="s">${tag(e, 'summary')}</div>` : null}
-      ${e.content?.trim() ? html`<${Markdown} src=${e.content} />` : null}
+      <div class="t"><a href=${m.r || njump(e)} target=${/^https?:/.test(m.r || '') ? '_blank' : null} rel="noopener">${m.title || m.slug}</a> <${Draft} ev=${e} /></div>
+      ${m.summary ? html`<div class="s">${m.summary}</div>` : null}
+      ${m.body?.trim() ? html`<${Markdown} src=${m.body} />` : null}
       <div class="meta">${edit ? edit(e) : null}<${EvLink} ev=${e} /></div>
-    </div></li>`)}</ul>` : html`<p class="empty">nothing here yet</p>`}
+    </div></li>`; })}</ul>` : html`<p class="empty">nothing here yet</p>`}
 </section>`;
-const keyId = e => e.draft ? e.id : keyOfEv(e);
-const keyOfEv = e => e.kind >= 30000 ? `${e.kind}:${dTag(e)}` : e.id;
+const keyId = e => e.kind >= 30000 ? `${e.kind}:${dTag(e)}` : e.id;
 
 const Notes = ({ notes, edit, compose }) => html`<section class="c" id="notes">
   <${Label} text="notes">${compose ? html`<button class="sm" onClick=${compose}>+ note</button>` : null}</${Label}>
-  ${notes.length ? notes.map(n => html`<div class="note" key=${n.id}><time>${fmtDate(n.created_at)}</time><${Markdown} src=${n.content} /><div class="meta">${edit ? edit(n) : null}<${EvLink} ev=${n} /></div></div>`) : html`<p class="empty">no notes yet</p>`}
+  ${notes.length ? notes.map(n => html`<div class="note" key=${n.id}><time>${fmtDate(n.created_at)}</time><${Markdown} src=${text(n)} /><div class="meta">${edit ? edit(n) : null}<${EvLink} ev=${n} /></div></div>`) : html`<p class="empty">no notes yet</p>`}
 </section>`;
 
 export function Page({ Chat, chatProps, edit, onUnlock, ownerOn, children }) {
   const cfg = sel.config(), p = sel.profileData(), profile = sel.profile();
   const blocks = cfg.sections.map(id => {
     if (id === 'projects' || id === 'writing') { const type = id === 'projects' ? 'project' : 'writing';
-      return html`<${Items} key=${id} id=${id} items=${sel.articles(type)} edit=${edit && (e => edit(30023, e))} add=${edit && (() => edit(30023, null, { type }))} />`; }
+      return html`<${Items} key=${id} id=${id} items=${sel.articles(type)} edit=${edit && (e => edit('block', e))} add=${edit && (() => edit('block', null, { type }))} />`; }
     if (id === 'notes') return html`<${Notes} key="notes" notes=${sel.notes()} edit=${edit && (e => edit(1, e))} compose=${edit && (() => edit(1, null))} />`;
     if (id === 'chat') return cfg.chat === false && !ownerOn ? null : html`<section class=${ownerOn ? 'c owner' : 'c'} id="chat" key="chat"><${Label} text=${ownerOn ? 'inbox' : 'say hi'} /><${Chat} ...${chatProps} /></section>`;
     const ev = sel.section(id);
-    if (!ev) return ownerOn ? html`<section class="c" key=${id}><${Label} text=${id}>${edit(30023, null, { d: id, type: 'section', title: id })}</${Label}><p class="empty">no ${id} block on the relay yet</p></section>` : null;
-    if (tag(ev, 'display') === 'details') return html`<details class="fold" id=${id} key=${id}><summary>${tag(ev, 'summary') || tag(ev, 'title') || id}<${Draft} ev=${ev} /><span class="grow"></span>${edit ? edit(30023, ev) : null}<${EvLink} ev=${ev} /></summary><${Markdown} src=${ev.content} /></details>`;
-    return html`<section class="c" id=${id} key=${id}><${Label} text=${tag(ev, 'title') || id} ev=${ev}>${edit ? edit(30023, ev) : null}</${Label}><${Markdown} src=${ev.content} /></section>`;
+    if (!ev) return ownerOn ? html`<section class="c" key=${id}><${Label} text=${id}>${edit('block', null, { slug: id, type: 'section', title: id })}</${Label}><p class="empty">no ${id} block on the relay yet</p></section>` : null;
+    const m = meta(ev);
+    if (m.display === 'details') return html`<details class="fold" id=${id} key=${id}><summary>${m.summary || m.title || id}<${Draft} ev=${ev} /><span class="grow"></span>${edit ? edit('block', ev) : null}<${EvLink} ev=${ev} /></summary><${Markdown} src=${m.body} /></details>`;
+    return html`<section class="c" id=${id} key=${id}><${Label} text=${m.title || id} ev=${ev}>${edit ? edit('block', ev) : null}</${Label}><${Markdown} src=${m.body} /></section>`;
   });
   return html`${children}
     <header class="me"><img src="/favicon.svg?k=0bfcddd3" alt="" width="56" height="56" /><div class="who"><h1>${p.name || 'Ronish Bhatt'}</h1><p class="line">${p.about || ''}<${Draft} ev=${profile} /></p>

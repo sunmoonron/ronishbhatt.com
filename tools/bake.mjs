@@ -10,28 +10,29 @@
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import { render } from 'preact-render-to-string';
-import { verifyEvent } from 'nostr-tools/pure';
+import { verifyEvent, getEventHash } from 'nostr-tools/pure';
+import * as nip44 from 'nostr-tools/nip44';
 import { SimplePool } from 'nostr-tools/pool';
-import { init, env, store, apply, sel, keyOf } from '../public/js/store.js';
+import { init, env, store, apply, sel, loadSnapshot } from '../public/js/store.js';
 import { html, Page } from '../public/js/ui.js';
 import { Chat } from '../public/js/chat.js';
 
 const PUB = (process.argv[2] || new URL('../public', import.meta.url).pathname).replace(/\/$/, '') + '/';
 const src = fs.readFileSync(PUB + 'index.html', 'utf8');
 const meta = n => src.match(new RegExp(`<meta name="${n}" content="([^"]*)"`))?.[1] || '';
-init({ site: meta('site-pubkey'), relay: meta('site-relay'), backups: meta('site-backups').split(',').map(s => s.trim()).filter(Boolean), NT: { verifyEvent } });
+init({ site: meta('site-pubkey'), relay: meta('site-relay'), backups: meta('site-backups').split(',').map(s => s.trim()).filter(Boolean), veil: meta('site-veil'), NT: { verifyEvent, getEventHash, nip44 } });
 const snap = JSON.parse(fs.readFileSync(PUB + 'site.json', 'utf8'));
 const seed = JSON.parse(fs.readFileSync(PUB + 'drafts.json', 'utf8')).drafts; // permanent seed content: the fallback when a block has no live signed version
 
 const pool = new SimplePool(); let fetched = [];
-try { fetched = await pool.querySync(env.RELAYS, { authors: [env.SITE], kinds: [0, 1, 5, 30023, 30078], limit: 500 }, { maxWait: 8000 }); } catch (e) { console.error('relay query failed:', e.message); }
+try { fetched = await pool.querySync(env.RELAYS, { authors: [env.SITE], kinds: [0, 1, 5, 30078], limit: 500 }, { maxWait: 8000 }); } catch (e) { console.error('relay query failed:', e.message); }
 pool.destroy();
 const good = fetched.filter(e => e.pubkey === env.SITE && verifyEvent(e));
 const useNew = good.length > 0 || !(snap.events || []).length;
 for (const e of useNew ? good : snap.events) apply(e, { verified: true });
-for (const d of seed) { const ev = { ...d, pubkey: env.SITE, created_at: 0, sig: '' }; ev.id = 'draft:' + keyOf(ev); apply(ev, { draft: true }); }
+loadSnapshot({ events: [], drafts: seed });
 
-const events = [...store.events.values()].filter(e => !e.draft).concat(store.dels);
+const events = [...store.events.values()].filter(e => !e.draft).map(({ plain, meta, ...e }) => e).concat(store.dels);
 const drafts = seed; // the whole seed ships every time: a draft only fills a key with no live signed version, so it costs nothing until it is needed
 const baked_at = Math.floor(Date.now() / 1000);
 fs.writeFileSync(PUB + 'site.json', JSON.stringify({ site: env.SITE, baked_at, events, drafts }, null, 1));
