@@ -5,7 +5,7 @@ import { env, K, TAG, CONFIG_D, CSS_D, DEFAULT_CFG, store, sel, apply, publish, 
 import { html, toast, npub } from './ui.js';
 
 const CSS = `.ownerbar{grid-column:1/-1;position:sticky;top:0;z-index:5;display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;margin:-1.5rem -1.25rem 1.5rem;padding:.55rem 1.25rem;background:var(--card);border-bottom:1px solid var(--accent);font-size:.78rem;color:var(--mute)}.ownerbar .grow{flex:1}.ownerbar code{font:.78rem var(--mono);color:var(--fg)}
-.edit{position:absolute;right:0;top:0}.label .edit,summary .edit{position:static}#chat.owner{grid-column:1/-1;grid-row:auto;position:static}
+.edit{position:absolute;right:0;top:0}.label .edit,summary .edit,.meta .edit{position:static}#chat.owner{grid-column:1/-1;grid-row:auto;position:static}
 .panel{position:fixed;top:0;right:0;bottom:0;width:min(34rem,100%);background:var(--card);border-left:1px solid var(--line);z-index:20;overflow:auto;padding:1.25rem;box-shadow:-20px 0 60px rgba(0,0,0,.35)}.panel h2{margin:0 0 .25rem;font-size:1.05rem}.panel .sub{font-size:.78rem;color:var(--mute);margin:0}
 label.f{display:block;font-size:.72rem;color:var(--mute);margin:.75rem 0 .25rem;letter-spacing:.04em}textarea.big{min-height:16rem;font-family:var(--mono);font-size:.8rem}.err{color:var(--err);font-size:.8rem}
 .console{position:fixed;inset:0;z-index:30;background:var(--bg);display:flex;flex-direction:column}.console iframe{flex:1;border:0;width:100%;background:#0b0c0f}.console .bar{display:flex;gap:.6rem;align-items:center;padding:.45rem .8rem;border-bottom:1px solid var(--line);font-size:.78rem;color:var(--mute)}
