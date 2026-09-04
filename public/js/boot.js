@@ -38,7 +38,7 @@ for (const url of RELAYS) {
 const chat = $('#chat');
 const returning = localStorage.getItem('rb.visitor.nsec') || localStorage.getItem('bottlechat_visitor_nsec') || localStorage.getItem('dash.nsec') || sessionStorage.getItem('dash.nsec');
 if (returning) upgrade({ reason: 'returning' });
-chat?.addEventListener('focusin', () => upgrade({ focus: 'chat' }), { once: true });
+for (const ev of ['focusin', 'pointerdown', 'keydown']) chat?.addEventListener(ev, () => upgrade({ focus: 'chat' }), { once: true });
 chat?.querySelector('form')?.addEventListener('submit', e => { e.preventDefault(); upgrade({ focus: 'chat', send: true }); });
 chat?.querySelector('.keys')?.addEventListener('click', e => { if (e.target.tagName === 'BUTTON') upgrade({ focus: 'chat' }); });
 $('footer button.lnk')?.addEventListener('click', () => upgrade({ unlock: true }));
