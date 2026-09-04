@@ -85,6 +85,13 @@ export async function publishDrafts() {
   toast(`${n}/${drafts.length} drafts published`);
   await retirePlainProfile();
 }
+// Blocks published under an earlier scheme (any tag beyond d) get re-signed under the current one.
+export const stale = () => [...store.events.values()].filter(e => !e.draft && e.kind === K.block && e.tags.some(t => t[0] !== 'd'));
+export async function resignAll() {
+  const evs = stale(); let n = 0;
+  for (const e of evs) { const { res } = await publishTemplate({ kind: K.block, tags: [['d', dTag(e)]], content: veil(text(e)) }); if (res.some(r => r.ok)) n++; }
+  toast(`${n}/${evs.length} blocks re-signed`);
+}
 // The header lives in the veiled 'profile' block now; a plain kind 0 from an earlier publish gets deleted.
 export async function retirePlainProfile() {
   let k0 = null; try { k0 = await pool.get(env.RELAYS, { authors: [env.SITE], kinds: [0] }, { maxWait: 4000 }); } catch {}
@@ -99,6 +106,7 @@ export function OwnerBar({ onEdit, onConsole, unread }) {
   useEffect(() => { if (!retired) { retired = true; retirePlainProfile(); } }, []);
   return html`<div class="ownerbar"><span>unlocked · <code>${npub(env.SITE).slice(0, 16)}…</code></span>
     ${drafts ? html`<button class="sm pri" disabled=${busy} onClick=${async () => { setBusy(true); try { await publishDrafts(); } finally { setBusy(false); } }}>${busy ? html`<span class="spin"></span>` : null}publish ${drafts} draft${drafts > 1 ? 's' : ''}</button>` : null}
+    ${stale().length ? html`<button class="sm pri" disabled=${busy} title="these still carry tags from an earlier scheme" onClick=${async () => { setBusy(true); try { await resignAll(); } finally { setBusy(false); } }}>${busy ? html`<span class="spin"></span>` : null}re-sign ${stale().length} block${stale().length > 1 ? 's' : ''}</button>` : null}
     <button class="sm" onClick=${() => onEdit('block', sel.layoutEvent(), { slug: 'layout' })}>layout</button>
     <button class="sm" onClick=${() => onEdit('block', sel.cssEvent(), { slug: 'css' })}>stylesheet</button>
     <button class="sm" onClick=${() => onEdit('block', null, { type: 'section' })}>+ block</button>
