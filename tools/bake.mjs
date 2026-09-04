@@ -32,7 +32,7 @@ for (const e of useNew ? good : snap.events) apply(e, { verified: true });
 for (const d of seed) { const ev = { ...d, pubkey: env.SITE, created_at: 0, sig: '' }; ev.id = 'draft:' + keyOf(ev); apply(ev, { draft: true }); }
 
 const events = [...store.events.values()].filter(e => !e.draft).concat(store.dels);
-const drafts = seed.filter(d => { const ev = { ...d, pubkey: env.SITE, created_at: 0 }; return store.events.get(keyOf(ev))?.draft; });
+const drafts = seed; // the whole seed ships every time: a draft only fills a key with no live signed version, so it costs nothing until it is needed
 const baked_at = Math.floor(Date.now() / 1000);
 fs.writeFileSync(PUB + 'site.json', JSON.stringify({ site: env.SITE, baked_at, events, drafts }, null, 1));
 
@@ -71,4 +71,4 @@ const out = src
   .replace(/(<script type="application\/json" id="snapshot">)[\s\S]*?(<\/script>)/, `$1${index}$2`)
   .replace(/<script type="module" src="[^"]*" integrity="[^"]*">/, `<script type="module" src="/js/${hashed.boot}" integrity="${sri('/js/' + hashed.boot)}">`);
 fs.writeFileSync(PUB + 'index.html', out);
-console.log(`baked ${PUB}: ${events.length} signed events (${good.length} fetched from ${env.RELAYS.length} relays${useNew ? '' : ', kept previous'}), ${drafts.length} drafts, html ${(out.length / 1024).toFixed(1)} KB`);
+console.log(`baked ${PUB}: ${events.length} signed events (${good.length} fetched from ${env.RELAYS.length} relays${useNew ? '' : ', kept previous'}), ${seed.length} seed drafts (${[...store.events.values()].filter(e => e.draft).length} showing), html ${(out.length / 1024).toFixed(1)} KB`);
