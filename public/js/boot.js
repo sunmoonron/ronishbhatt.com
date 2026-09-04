@@ -22,7 +22,7 @@ for (const url of RELAYS) {
   sockets.push(ws);
   const dot = document.querySelector(`[data-relay="${url}"] .dot`);
   ws.onopen = () => { dot?.classList.add('open'); dot?.classList.remove('err');
-    ws.send(JSON.stringify(['REQ', 'boot', { authors: [SITE], kinds: [0, 1, 5, 30078], limit: 300 }])); };
+    ws.send(JSON.stringify(['REQ', 'boot', { authors: [SITE], kinds: [1, 5, 30078], limit: 300 }])); };
   ws.onerror = ws.onclose = () => { dot?.classList.remove('open'); dot?.classList.add('err'); if (++closed === sockets.length && !upgrading) say(`${known.size} signed events, relays unreachable`); };
   ws.onmessage = e => {
     let m; try { m = JSON.parse(e.data); } catch { return; }

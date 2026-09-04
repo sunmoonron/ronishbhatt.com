@@ -25,7 +25,7 @@ const snap = JSON.parse(fs.readFileSync(PUB + 'site.json', 'utf8'));
 const seed = JSON.parse(fs.readFileSync(PUB + 'drafts.json', 'utf8')).drafts; // permanent seed content: the fallback when a block has no live signed version
 
 const pool = new SimplePool(); let fetched = [];
-try { fetched = await pool.querySync(env.RELAYS, { authors: [env.SITE], kinds: [0, 1, 5, 30078], limit: 500 }, { maxWait: 8000 }); } catch (e) { console.error('relay query failed:', e.message); }
+try { fetched = await pool.querySync(env.RELAYS, { authors: [env.SITE], kinds: [1, 5, 30078], limit: 500 }, { maxWait: 8000 }); } catch (e) { console.error('relay query failed:', e.message); }
 pool.destroy();
 const good = fetched.filter(e => e.pubkey === env.SITE && verifyEvent(e));
 const useNew = good.length > 0 || !(snap.events || []).length;

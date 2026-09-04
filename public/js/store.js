@@ -1,6 +1,5 @@
 // store.js: the page's content model. Every visible thing is a signed Nostr
-// event by the site key. kind 0 is the plain profile (NIP-05 clients need it);
-// everything else is kind 30078 app data with a hashed identifier and a
+// event by the site key: kind 30078 app data (the header too, as the 'profile' block) with a hashed identifier and a
 // NIP-44 body under the page secret, so relays and clients see noise while
 // anyone holding the page can read it. Kind 1 notes and kind 5 deletions
 // stay plain. DOM-free, so tools/bake.mjs renders the same page in Node.
@@ -42,7 +41,7 @@ export function apply(ev, { verified = false, draft = false } = {}) {
     for (const d of store.drafts) apply(d, { draft: true }); // a deleted block falls back to its seed draft
     notify(); return true;
   }
-  if (!draft && tag(ev, 'veil') && ev.plain === undefined) { try { ev.plain = unveil(ev.content); } catch { return false; } }
+  if (!draft && ev.kind === K.block && ev.plain === undefined) { try { ev.plain = unveil(ev.content); } catch { ev.plain = ev.content; } } // plain 30078s still read
   const k = keyOf(ev), cur = store.events.get(k);
   if (draft) { if (!store.drafts.includes(ev)) store.drafts.push(ev); if (cur) return false; store.events.set(k, { ...ev, draft: true }); notify(); return true; }
   if (deletedBy(ev)) return false;
@@ -52,10 +51,11 @@ export function apply(ev, { verified = false, draft = false } = {}) {
 export function reverify() { for (const [k, e] of store.events) if (!e.draft && !env.NT.verifyEvent(e)) store.events.delete(k); store.dels = store.dels.filter(d => env.NT.verifyEvent(d)); notify(); }
 
 const num = v => { const n = parseFloat(v); return Number.isFinite(n) ? n : 1e9; };
-const blocks = () => [...store.events.values()].filter(e => e.kind === K.block && meta(e)?.slug);
+const RESERVED = new Set(['layout', 'css', 'profile']);
+const blocks = () => [...store.events.values()].filter(e => e.kind === K.block && meta(e)?.slug && !RESERVED.has(meta(e).slug));
 export const sel = {
-  profile: () => store.events.get(`0:${env.SITE}`),
-  profileData: () => { try { return JSON.parse(sel.profile()?.content || '{}'); } catch { return {}; } },
+  profile: () => store.events.get(`${K.block}:${env.SITE}:${h('profile')}`),
+  profileData: () => { const e = sel.profile(); return (e && meta(e)) || {}; },
   layoutEvent: () => store.events.get(`${K.block}:${env.SITE}:${h('layout')}`),
   config: () => { try { const e = sel.layoutEvent(); return e ? { ...DEFAULT_CFG, ...JSON.parse(text(e)) } : DEFAULT_CFG; } catch { return DEFAULT_CFG; } },
   cssEvent: () => store.events.get(`${K.block}:${env.SITE}:${h('css')}`),
@@ -98,7 +98,7 @@ function pollStatus() {
 }
 export function connect() {
   pool = new env.NT.SimplePool({ enableReconnect: true }); pool.trackRelays = true;
-  pool.subscribe(env.RELAYS, { authors: [env.SITE], kinds: [K.profile, K.note, K.del, K.block], limit: 300 },
+  pool.subscribe(env.RELAYS, { authors: [env.SITE], kinds: [K.note, K.del, K.block], limit: 300 },
     { label: 'site', onevent: ev => apply(ev, { verified: true }), oneose: () => { store.ready = true; notify(); } });
   pollStatus(); setInterval(pollStatus, 3000);
 }

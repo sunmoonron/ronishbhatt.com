@@ -28,7 +28,7 @@ export async function publishTemplate(tmpl, relays = targets()) {
 }
 
 const SCHEMAS = {
-  0: [['name', 'Name'], ['about', 'About, one line'], ['picture', 'Picture URL'], ['nip05', 'NIP-05 (e.g. _@ronishbhatt.com)'], ['website', 'Website']],
+  profile: [['name', 'Name'], ['about', 'About, one line'], ['picture', 'Picture URL (other clients only; the header uses the site mark)']],
   layout: [['title', 'Site title'], ['sections', 'Sections in order, comma separated (chat, projects, writing, notes, or any block slug)'], ['links', 'Header pills, one per line: label | url'], ['chat', 'Chat enabled (yes / no)']],
   css: [['content', 'Stylesheet, the whole page\'s CSS']],
   block: [['slug', 'Slug, fixed once published'], ['type', 'Type: section / project / writing'], ['display', 'Display: normal, or details (folded; the summary is the visible line)'], ['title', 'Title'], ['summary', 'One-line summary'], ['r', 'Link'], ['image', 'Image URL'], ['order', 'Order, lower first'], ['body', 'Body, Markdown']],
@@ -36,28 +36,28 @@ const SCHEMAS = {
 };
 const BIG = new Set(['body', 'content', 'links', 'about']);
 // Blocks, the layout and the stylesheet are all kind 30078; the form is picked by slug.
-const formOf = (kind, ev, preset) => kind === 'block' || kind === K.block ? ({ layout: 'layout', css: 'css' }[preset?.slug || meta(ev)?.slug || slugOf(ev)] || 'block') : kind;
-const slugOf = ev => ev ? (dTag(ev) === h('layout') ? 'layout' : dTag(ev) === h('css') ? 'css' : meta(ev)?.slug) : undefined;
+const formOf = (kind, ev, preset) => kind === 'block' || kind === K.block ? ({ layout: 'layout', css: 'css', profile: 'profile' }[preset?.slug || meta(ev)?.slug || slugOf(ev)] || 'block') : kind;
+const slugOf = ev => ev ? (dTag(ev) === h('layout') ? 'layout' : dTag(ev) === h('css') ? 'css' : dTag(ev) === h('profile') ? 'profile' : meta(ev)?.slug) : undefined;
 
 function toFields(kind, ev, preset = {}) {
   const f = formOf(kind, ev, preset);
-  if (f === 0) { try { return { ...JSON.parse(ev?.content || '{}') }; } catch { return {}; } }
+  if (f === 'profile') { const m = ev ? meta(ev) || {} : {}; return { name: m.name || '', about: m.about || '', picture: m.picture || '' }; }
   if (f === 'layout') { const c = sel.config(); return { title: c.title, sections: (c.sections || []).join(', '), links: (c.links || []).map(l => `${l.label} | ${l.url}`).join('\n'), chat: c.chat === false ? 'no' : 'yes' }; }
   if (f === 'css') return { content: ev ? text(ev) : '' };
   if (f === 'block') { const m = ev ? meta(ev) || {} : {}; return { slug: m.slug || preset.slug || '', type: m.type || preset.type || 'section', display: m.display || '', title: m.title || preset.title || '', summary: m.summary || '', r: m.r || '', image: m.image || '', order: m.order || '', body: m.body || '' }; }
   return { content: ev ? text(ev) : '' };
 }
 // A veiled event: hashed d, NIP-44 body under the page secret, nothing else in the tags.
-const veiled = (slug, plain) => ({ kind: K.block, tags: [['d', h(slug)], ['veil', 'nip44']], content: veil(plain) });
+const veiled = (slug, plain) => ({ kind: K.block, tags: [['d', h(slug)]], content: veil(plain) });
 function toTemplate(kind, f, ev, preset = {}) {
   const form = formOf(kind, ev, preset);
-  if (form === 0) { const o = {}; for (const k of ['name', 'about', 'picture', 'nip05', 'website']) if (f[k]?.trim()) o[k] = f[k].trim(); return { kind: 0, content: JSON.stringify(o) }; }
+  if (form === 'profile') { const o = {}; for (const k of ['name', 'about', 'picture']) if (f[k]?.trim()) o[k] = f[k].trim(); return veiled('profile', JSON.stringify(o)); }
   if (form === 'layout') return veiled('layout', JSON.stringify({ title: f.title?.trim() || DEFAULT_CFG.title, sections: f.sections.split(',').map(s => s.trim().toLowerCase()).filter(Boolean), chat: !/^n/i.test(f.chat || 'yes'),
     links: f.links.split('\n').map(l => l.split('|').map(s => s.trim())).filter(p => p[0] && p[1]).map(([label, url]) => ({ label, url })) }));
   if (form === 'css') return veiled('css', f.content || '');
   if (form === 'block') {
     const slug = (f.slug || '').trim().toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-|-$/g, ''); if (!slug) throw new Error('a slug is required');
-    if (slug === 'layout' || slug === 'css') throw new Error('that slug is reserved');
+    if (['layout', 'css', 'profile'].includes(slug)) throw new Error('that slug is reserved');
     const m = { slug, type: (f.type || 'section').trim().toLowerCase(), title: f.title?.trim() || slug, published_at: meta(ev)?.published_at || now(), body: f.body || '' };
     for (const k of ['summary', 'r', 'image', 'order', 'display']) if (f[k]?.trim()) m[k] = f[k].trim();
     return veiled(slug, JSON.stringify(m));
@@ -65,8 +65,8 @@ function toTemplate(kind, f, ev, preset = {}) {
   if (!f.content?.trim()) throw new Error('empty note'); return { kind: K.note, content: f.content.trim() };
 }
 export async function deleteEvent(ev) {
-  const tags = [['k', String(ev.kind)]]; if (!ev.draft) tags.push(['e', ev.id]); if (ev.kind >= 30000) tags.push(['a', addrOf(ev)]);
-  await publishTemplate({ kind: K.del, tags, content: 'removed from ronishbhatt.com' }, env.RELAYS); // apply() drops the event and restores its draft, if any
+  const tags = []; if (!ev.draft) tags.push(['e', ev.id]); if (ev.kind >= 30000) tags.push(['a', addrOf(ev)]);
+  await publishTemplate({ kind: K.del, tags, content: '' }, env.RELAYS); // apply() drops the event and restores its draft, if any
   if (ev.draft) { store.events.delete(keyOf(ev)); notify(); }
 }
 // Recall: one deletion event naming every signed event of the site key, sent to every relay.
@@ -75,14 +75,22 @@ export async function recallAll() {
   const evs = [...store.events.values()].filter(e => !e.draft && e.kind !== K.del);
   if (!evs.length) return toast('nothing signed to recall');
   const tags = [];
-  for (const e of evs) { tags.push(['e', e.id]); if (e.kind >= 30000) tags.push(['a', addrOf(e)]); tags.push(['k', String(e.kind)]); }
-  const { res } = await publishTemplate({ kind: K.del, tags, content: 'recalled from ronishbhatt.com' }, env.RELAYS); // apply() drops them and the seed drafts take over
+  for (const e of evs) { tags.push(['e', e.id]); if (e.kind >= 30000) tags.push(['a', addrOf(e)]); }
+  const { res } = await publishTemplate({ kind: K.del, tags, content: '' }, env.RELAYS); // apply() drops them and the seed drafts take over
   notify(); toast(`recalled ${evs.length} events; accepted by ${res.filter(r => r.ok).length}/${res.length} relays`);
 }
 export async function publishDrafts() {
   const drafts = sel.drafts(); let n = 0;
-  for (const d of drafts) { const tmpl = d.kind === K.block ? { kind: K.block, tags: [['d', dTag(d)], ['veil', 'nip44']], content: veil(text(d)) } : { kind: d.kind, tags: d.tags || [], content: text(d) }; const { res } = await publishTemplate(tmpl); if (res.some(r => r.ok)) n++; }
+  for (const d of drafts) { const tmpl = d.kind === K.block ? { kind: K.block, tags: [['d', dTag(d)]], content: veil(text(d)) } : { kind: d.kind, tags: d.tags || [], content: text(d) }; const { res } = await publishTemplate(tmpl); if (res.some(r => r.ok)) n++; }
   toast(`${n}/${drafts.length} drafts published`);
+  await retirePlainProfile();
+}
+// The header lives in the veiled 'profile' block now; a plain kind 0 from an earlier publish gets deleted.
+export async function retirePlainProfile() {
+  const k0 = [...store.events.values()].find(e => e.kind === 0 && !e.draft);
+  if (!k0) return;
+  await publishTemplate({ kind: K.del, tags: [['e', k0.id]], content: '' }, env.RELAYS);
+  toast('plain kind-0 profile retired from the relays');
 }
 
 export function OwnerBar({ onEdit, onConsole, unread }) {
@@ -115,7 +123,7 @@ export function Editor({ target, onClose }) {
   const set = (k, v) => setF(x => ({ ...x, [k]: v }));
   const save = async () => { setErr(''); setBusy(true); try { await publishTemplate(toTemplate(kind, f, ev, preset)); onClose(); } catch (x) { setErr(x.message); } finally { setBusy(false); } };
   const del = async () => { if (!ev || !confirm('Delete this from the relays? (a kind-5 deletion is published)')) return; setBusy(true); try { await deleteEvent(ev); onClose(); } catch (x) { setErr(x.message); } finally { setBusy(false); } };
-  const title = { 0: 'header (kind 0, plain)', layout: 'layout (veiled)', css: 'stylesheet (veiled)', block: `${f.type || 'section'} (veiled block)`, 1: 'note (kind 1, plain)' }[form];
+  const title = { profile: 'header (veiled)', layout: 'layout (veiled)', css: 'stylesheet (veiled)', block: `${f.type || 'section'} (veiled block)`, 1: 'note (kind 1, plain)' }[form];
   return html`<div class="panel"><h2>${ev ? 'edit' : 'new'} ${title}</h2>
     <p class="sub">${ev && !ev.draft ? `replaces the version signed ${new Date(ev.created_at * 1000).toLocaleString()}` : 'not on the relay yet'}</p>
     ${SCHEMAS[form].map(([k, label]) => html`<label class="f" key=${k}>${label}</label>${BIG.has(k) ? html`<textarea class=${k === 'content' ? 'big' : ''} value=${f[k] || ''} onInput=${e => set(k, e.target.value)} />` : html`<input value=${f[k] || ''} disabled=${k === 'slug' && ev && !ev.draft} onInput=${e => set(k, e.target.value)} />`}`)}

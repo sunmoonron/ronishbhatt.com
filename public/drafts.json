@@ -1,8 +1,9 @@
 {
  "drafts": [
   {
-   "kind": 0,
-   "content": "{\"name\": \"Ronish Bhatt\", \"about\": \"My favicon is my public key, and this page is what it signed.\", \"picture\": \"https://ronishbhatt.com/favicon.svg\", \"website\": \"https://ronishbhatt.com\", \"nip05\": \"_@ronishbhatt.com\"}"
+   "kind": 30078,
+   "d": "profile",
+   "content": "{\"name\": \"Ronish Bhatt\", \"about\": \"My favicon is my public key, and this page is what it signed.\", \"picture\": \"https://ronishbhatt.com/favicon.svg\"}"
   },
   {
    "kind": 30078,
