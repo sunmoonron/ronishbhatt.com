@@ -201,6 +201,43 @@
     .oicon { width: 40px; height: 40px; border-radius: 9px; flex-shrink: 0; background: #101318; }
     .oicon-wrap { display: flex; align-items: center; gap: 0.5rem; font: 0.62rem var(--mono); color: var(--muted); line-height: 1.5; }
     .oicon-wrap a { color: var(--accent); cursor: pointer; }
+    #blocksPanel { margin-bottom: 1.25rem; }
+    .blk-row { display: flex; align-items: flex-start; gap: 30px; overflow-x: auto; padding: 38px 28px 18px; perspective: 1100px; perspective-origin: 50% 30%; --tilt: 0deg; scrollbar-width: thin; }
+    .blk { flex: 0 0 auto; width: 96px; cursor: pointer; transition: opacity .25s; }
+    .blk.faint { opacity: .3; }
+    .cube { position: relative; width: 96px; height: 96px; transform-style: preserve-3d; transform: rotateY(calc(-24deg + var(--tilt))) rotateX(-12deg); transition: transform .25s; }
+    .blk:hover .cube, .cube.open { transform: rotateY(calc(-24deg + var(--tilt))) rotateX(-12deg) translateZ(26px); }
+    .cube .f { position: absolute; left: 0; top: 0; width: 96px; height: 96px; border: 1px solid color-mix(in srgb, var(--c) 45%, transparent); background: var(--c); }
+    .cube .front { overflow: hidden; background: #0b0e0d; }
+    .cube .front canvas { width: 100%; height: 100%; display: block; }
+    .cube .top { height: var(--d); transform-origin: top; transform: rotateX(-90deg); background: color-mix(in srgb, var(--c) 70%, #fff 8%); filter: brightness(1.15); }
+    .cube .side { width: var(--d); left: auto; right: 0; transform-origin: right; transform: rotateY(-90deg); filter: brightness(.55); }
+    .cube.open .f { box-shadow: 0 0 0 2px var(--mint), 0 0 26px color-mix(in srgb, var(--accent) 50%, transparent); }
+    .cube.mining .f { border-style: dashed; background: transparent; }
+    .cube.mining .front { background: rgba(125,211,168,.06); }
+    .cube.mining .fill { position: absolute; left: 0; right: 0; bottom: 0; background: color-mix(in srgb, var(--accent) 35%, transparent); border-top: 1px dashed var(--accent); }
+    .blk-label { margin-top: 26px; font: 0.6rem var(--mono); color: var(--muted); line-height: 1.5; text-align: center; }
+    .blk-label .l1 { color: var(--text); }
+    .blk-label .l2 { color: var(--accent); }
+    .blk-divider { flex: 0 0 1px; align-self: stretch; border-left: 1px dashed var(--border); margin: 0 4px; }
+    .blk-open { border-top: 1px solid var(--border); padding: 0.9rem 1rem 1rem; }
+    .blk-open[hidden] { display: none; }
+    .bh { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; flex-wrap: wrap; margin-bottom: 0.7rem; }
+    .bt .b1 { font: 700 0.95rem var(--mono); color: var(--text); }
+    .bt .b2 { font: 0.68rem var(--mono); color: var(--accent); margin-top: 0.15rem; }
+    .bt .b3 { font: 0.64rem var(--mono); color: var(--muted); margin-top: 0.15rem; }
+    .bl { display: flex; gap: 0.5rem; align-items: center; font: 0.65rem var(--mono); }
+    .bl a { color: var(--accent); }
+    .bm { position: relative; width: 100%; height: clamp(300px, 46vw, 540px); background: #0b0e0d; border: 1px solid var(--border); border-radius: 0.5rem; overflow: hidden; }
+    .tile { position: absolute; box-sizing: border-box; border: 1px solid #0b0e0d; overflow: hidden; cursor: pointer; transition: transform .55s cubic-bezier(.2,.8,.2,1), opacity .4s, filter .2s; }
+    .tile:hover { filter: brightness(1.25); z-index: 2; outline: 1px solid var(--mint); }
+    .tile.dim { opacity: .18; }
+    .tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .tile.media { border: 2px solid #e9c46a; }
+    .tile .tx { padding: 4px 5px; font: 0.62rem/1.35 var(--mono); color: #08150e; word-break: break-word; overflow: hidden; max-height: 100%; }
+    .tile .badge { position: absolute; right: 3px; bottom: 3px; font: 0.56rem var(--mono); color: var(--mint); background: rgba(11,14,13,.8); padding: 1px 5px; border-radius: 999px; }
+    .bempty { padding: 2rem; font: 0.7rem var(--mono); color: var(--muted); text-align: center; }
+    @media (max-width: 760px) { .blk, .cube, .cube .f { width: 78px; } .cube, .cube .f { height: 78px; } .blk-row { gap: 22px; } }
   </style>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/theme.css">
@@ -259,6 +296,12 @@
     <div class="sc"><div class="lbl">OTS proofs</div><div class="val" id="sOts" style="color:var(--green)">-</div><div class="sub" id="sOtsSub">NIP-03 attestations</div></div>
   </div>
 
+  <div class="panel" id="blocksPanel">
+    <div class="ph"><h3>Your Blocks</h3><div class="modes" id="goggles"></div></div>
+    <div id="blocks"></div>
+    <div class="hint-row">one cube per difficulty epoch you were active in · thickness = how much · newest sits beside the epoch still being mined · click a cube to open it · goggles light up a kind of note across every block</div>
+  </div>
+
   <div class="grid2">
     <!-- Orbit canvas -->
     <div class="panel">
@@ -310,6 +353,7 @@ import { computeMetrics, eraMeta }                            from '/projects/js
 import { drawOrbit, hitTest, drawTimeline, blockAngle }       from '/projects/js/orbit/orbit.js';
 import { createTower }                                        from '/projects/js/orbit/tower.js?v=2';
 import { getTipHeight, getDifficultyAdjustments }             from '/projects/js/orbit/mempool.js';
+import { createBlocks, GOGGLES, topTags, hasTag }             from '/projects/js/orbit/blocks.js';
 
 const $ = id => document.getElementById(id);
 const JACK = 'npub1sg6plzptd64u62a878hep2kev88swjh3tw00gjsfl8f237lmu63q0uf63m';
@@ -318,14 +362,15 @@ const POTATO = (navigator.hardwareConcurrency || 4) <= 2 || (navigator.deviceMem
 const GREENS = ['#0b1a12','#10261a','#153223','#1a3f2c','#1f4c35','#255a3f','#2b6849','#327754','#3a865f','#43956b','#4ea477','#5ab384','#68c291','#79d09f','#8dddae','#a4e9bf'];
 const KINDS = { 1: 'note', 6: 'repost', 7: 'reaction' };
 
-let anchored = [], metrics = null, dots = [], mode = 'orbit', tower = null, hover = null, sweep = 0, audio = null, npub = '';
+let anchored = [], metrics = null, dots = [], mode = 'orbit', tower = null, hover = null, sweep = 0, audio = null, npub = '', blocks = null;
+const chainChange = new Map(); // epoch start height -> difficulty change for that adjustment
 let orbitC = $('orbitCanvas');
 const tlC = $('tlCanvas'), tip = $('tip'), npubIn = $('npubIn'), analyzeBtn = $('analyzeBtn'), loader = $('loader'), dashboard = $('dashboard');
 
 // chain facts: the tip and the newest difficulty rows, awaited briefly before anchoring
 const chain = Promise.allSettled([
   getTipHeight().then(h => { setTip(h); $('tipH').textContent = Number(h).toLocaleString(); }),
-  getDifficultyAdjustments().then(rows => addRows(rows.map(([ts, h]) => [h, ts]))),
+  getDifficultyAdjustments().then(rows => { addRows(rows.map(([ts, h]) => [h, ts])); for (const [, h, , change] of rows) chainChange.set(h, change - 1); // the API gives a ratio, 0.92 = minus 8% }),
 ]);
 
 $('demoA').addEventListener('click', () => { npubIn.value = JACK; run(); });
@@ -458,7 +503,37 @@ function render(npub, hex) {
   $('timeSlider').value = 500;
 
   dashboard.classList.add('on');
-  requestAnimationFrame(() => { showView(); drawTimeline(tlC, m); });
+  // synchronous on purpose (a background tab never gets an animation frame), and each view on its own so one cannot sink the others
+  safe(showView); safe(() => drawTimeline(tlC, m)); safe(buildBlocks);
+}
+function safe(fn) { try { fn(); } catch (e) { console.warn('view skipped:', e.message); } }
+document.addEventListener('visibilitychange', () => { if (!document.hidden && metrics) { safe(showView); safe(() => drawTimeline(tlC, metrics)); } });
+
+// the blocks panel: cubes per epoch, goggles, engagement fetched when a block opens
+function buildBlocks() {
+  blocks = createBlocks($('blocks'), anchored, { tip: showTip, pick, engage: engagement, change: h => chainChange.get(h) });
+  const g = $('goggles'); g.textContent = '';
+  const chips = [...Object.keys(GOGGLES).map(k => [k, GOGGLES[k]]), ...topTags(anchored).map(([t]) => ['#' + t, hasTag(t)])];
+  for (const [name, fn] of chips) {
+    const b = document.createElement('button'); b.className = 'mb' + (name === 'all' ? ' on' : ''); b.textContent = name;
+    b.addEventListener('click', () => { for (const o of g.children) o.classList.toggle('on', o === b); blocks.setGoggle(fn); });
+    g.append(b);
+  }
+}
+function satsFromZap(ev) {
+  const m = /^ln(?:bc|tb|bcrt)(\d+)([munp])?1/i.exec(ev.tags.find(t => t[0] === 'bolt11')?.[1] || '');
+  if (!m) return 0;
+  return Math.round(Number(m[1]) * ({ m: 1e5, u: 1e2, n: 1e-1, p: 1e-4 }[m[2]?.toLowerCase()] ?? 1e8));
+}
+async function engagement(ids) {
+  const out = new Map(ids.map(id => [id, { replies: 0, reactions: 0, zaps: 0, sats: 0 }])), seen = new Set();
+  const batches = await Promise.all(RELAYS.map(r => fetchRelay(r, [{ kinds: [1, 7, 9735], '#e': ids, limit: 500 }], 5000)));
+  for (const ev of batches.flat()) {
+    if (seen.has(ev.id)) continue; seen.add(ev.id);
+    const targets = new Set(ev.tags.filter(t => t[0] === 'e' && out.has(t[1])).map(t => t[1]));
+    for (const id of targets) { const c = out.get(id); if (ev.kind === 7) c.reactions++; else if (ev.kind === 1) c.replies++; else { c.zaps++; c.sats += satsFromZap(ev); } }
+  }
+  return out;
 }
 
 function orbitIcon() {
@@ -611,10 +686,10 @@ window.addEventListener('resize', () => {
   rTimer = setTimeout(() => {
     if (!metrics) return;
     if (mode === 'tower') tower?.resize(); else dots = drawOrbit(orbitC, anchored, metrics, { hover });
-    drawTimeline(tlC, metrics);
+    drawTimeline(tlC, metrics); blocks?.relayout();
   }, 250);
 });
-window.orbit = { get anchored() { return anchored; }, get metrics() { return metrics; }, get tower() { return tower; }, run, mode: m => { mode = m; showView(); } };
+window.orbit = { get anchored() { return anchored; }, get metrics() { return metrics; }, get tower() { return tower; }, get blocks() { return blocks; }, run, mode: m => { mode = m; showView(); } };
 
 // a shared link runs on arrival (last, so every binding above exists)
 const qs = new URLSearchParams(location.search).get('npub');
