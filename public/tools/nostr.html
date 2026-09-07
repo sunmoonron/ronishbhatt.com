@@ -7825,7 +7825,7 @@ document.getElementById('go_dm').onclick = async () => { out.textContent = ''; t
   const inbox = lists[0] ? lists[0].tags.filter(t => t[0] === 'relay').map(t => t[1]) : [];
   say(inbox.length ? 'their inbox relays: ' + inbox.join(', ') : 'no inbox relay list published, using the relays above');
   const me = T.getPublicKey(sk);
-  const wraps = T.nip17.wrapManyEvents(sk, [{ publicKey: to }, { publicKey: me }], text);
+  const wraps = T.nip17.wrapManyEvents(sk, [{ publicKey: to }], text); // the library adds the sender's own copy
   const targets = [...new Set([...inbox, ...relays()])];
   for (const w of wraps) { say('wrap for ' + (w.tags.find(t => t[0] === 'p')?.[1] === to ? 'them' : 'you') + ':'); await publish(w, targets); }
   say('done. They see it in any NIP-17 client.');
