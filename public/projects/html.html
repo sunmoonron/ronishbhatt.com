@@ -172,6 +172,35 @@
     #tip .tip-block { color: var(--accent); margin-bottom: 3px; }
     #tip .tip-date  { color: var(--muted); margin-bottom: 5px; font-size: 0.65rem; }
     #tip .tip-text  { color: var(--text); word-break: break-word; }
+    #tip { max-width: 290px; }
+    #tipMedia { display: flex; gap: 4px; }
+    #tipMedia:not(:empty) { margin-top: 6px; }
+    #tipMedia img { height: 72px; max-width: 136px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border); }
+    canvas#orbitCanvas { touch-action: none; }
+    .modes { display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap; }
+    .mb { background: var(--bg); border: 1px solid var(--border); color: var(--muted); border-radius: 0.4rem; padding: 0.25rem 0.55rem; font: 0.62rem var(--mono); cursor: pointer; letter-spacing: 0.06em; text-transform: uppercase; }
+    .mb.on { color: var(--accent); border-color: var(--accent); }
+    .mb:hover { color: var(--text); }
+    .mb[hidden] { display: none; }
+    #timeRow { display: flex; align-items: center; gap: 0.6rem; padding: 0 0.9rem 0.6rem; font: 0.6rem var(--mono); color: var(--muted); }
+    #timeRow[hidden] { display: none; }
+    #timeSlider { flex: 1; accent-color: var(--accent); min-width: 0; }
+    .hint-row { padding: 0 0.9rem 0.7rem; font: 0.62rem var(--mono); color: var(--muted); }
+    #focus { position: fixed; right: 1rem; bottom: 1rem; width: min(440px, calc(100vw - 2rem)); max-height: 70vh; overflow: auto; background: var(--card); border: 1px solid var(--accent); border-radius: 0.75rem; padding: 1rem 1.1rem; z-index: 1200; font-size: 0.82rem; line-height: 1.55; box-shadow: 0 20px 50px -20px #000; }
+    #focus[hidden] { display: none; }
+    #focus .fh { display: flex; justify-content: space-between; gap: 0.5rem; align-items: center; font: 0.65rem var(--mono); color: var(--accent); margin-bottom: 0.4rem; }
+    #focus .fh button { background: none; border: 0; color: var(--muted); font-size: 1rem; cursor: pointer; }
+    #focus .fd { font: 0.62rem var(--mono); color: var(--muted); margin-bottom: 0.6rem; }
+    #focus .ft { white-space: pre-wrap; word-break: break-word; }
+    #focus .ft a { color: var(--accent); }
+    #focus .fm { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; }
+    #focus .fm:not(:empty) { margin-top: 0.6rem; }
+    #focus .fm img { width: 100%; border-radius: 0.4rem; border: 1px solid var(--border); }
+    #focus .fl { margin-top: 0.6rem; font: 0.65rem var(--mono); }
+    #focus .fl a { color: var(--accent); margin-right: 0.8rem; }
+    .oicon { width: 40px; height: 40px; border-radius: 9px; flex-shrink: 0; background: #101318; }
+    .oicon-wrap { display: flex; align-items: center; gap: 0.5rem; font: 0.62rem var(--mono); color: var(--muted); line-height: 1.5; }
+    .oicon-wrap a { color: var(--accent); cursor: pointer; }
   </style>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/theme.css">
@@ -197,12 +226,12 @@
 
 <section class="hero">
   <h2>Your social footprint<br>on the <em>timechain</em>.</h2>
-  <p>Anchor your Nostr activity to Bitcoin block heights. See which halving era you joined in. Track your orbit across epochs. Prove your presence.</p>
+  <p>Anchor your Nostr history to Bitcoin block heights, see which halving era you joined in, then walk it as a tower. Timestamps are claims; NIP-03 proofs are counted on their own.</p>
   <div class="input-row">
     <input id="npubIn" type="text" placeholder="npub1..." autocomplete="off" spellcheck="false">
     <button class="btn" id="analyzeBtn">ANALYZE</button>
   </div>
-  <p class="hint">try: <a id="demoA">jack (npub1sg6plz...)</a> · or paste any npub</p>
+  <p class="hint">try: <a id="demoA">jack (npub1sg6plz...)</a> · or paste any npub · the link you get is shareable</p>
 </section>
 
 <div id="status"></div>
@@ -218,7 +247,8 @@
       <span id="pNpub">-</span>
     </div>
     <span class="og-badge" id="ogBadge">-</span>
-    <span class="est-note">⚡ block heights estimated from avg 10-min block time</span>
+    <span class="oicon-wrap"><img class="oicon" id="oicon" alt=""><span>your orbit as an icon<br><a id="oiconDl" download>download svg</a> · <a id="shareBtn">copy link</a></span></span>
+    <span class="est-note" id="estNote">⛓ heights interpolated inside real difficulty epochs (±5 blocks)</span>
   </div>
 
   <div class="stats">
@@ -226,13 +256,16 @@
     <div class="sc"><div class="lbl">Blocks Active</div><div class="val" id="sBlocks" style="color:var(--blue)">-</div><div class="sub">unique blocks</div></div>
     <div class="sc"><div class="lbl">Block Streak</div><div class="val" id="sStreak" style="color:var(--green)">-</div><div class="sub">consecutive active</div></div>
     <div class="sc"><div class="lbl">Block Range</div><div class="val" id="sRange" style="color:var(--purple);font-size:1rem;padding-top:4px">-</div><div class="sub" id="sRangeSub">first → last</div></div>
+    <div class="sc"><div class="lbl">OTS proofs</div><div class="val" id="sOts" style="color:var(--green)">-</div><div class="sub" id="sOtsSub">NIP-03 attestations</div></div>
   </div>
 
   <div class="grid2">
     <!-- Orbit canvas -->
     <div class="panel">
-      <div class="ph"><h3>Orbital View</h3><span>hover for event preview</span></div>
-      <div style="padding:0.75rem"><canvas id="orbitCanvas"></canvas></div>
+      <div class="ph"><h3 id="viewTitle">Orbital View</h3><div class="modes"><button class="mb on" id="modeOrbit">orbit</button><button class="mb" id="modeTower">tower 3D</button><button class="mb" id="playBtn">▶ play</button><button class="mb" id="resetBtn" hidden>reset</button></div></div>
+      <div id="orbitWrap" style="padding:0.75rem"><canvas id="orbitCanvas"></canvas></div>
+      <div id="timeRow" hidden><span id="timeFirst"></span><input type="range" id="timeSlider" min="0" max="1000" value="500"><span id="timeLast"></span></div>
+      <div class="hint-row" id="viewHint">hover a dot · click for the note</div>
     </div>
 
     <!-- Right panel -->
@@ -259,51 +292,55 @@
   <div class="tip-block" id="tipBlock"></div>
   <div class="tip-date" id="tipDate"></div>
   <div class="tip-text" id="tipText"></div>
+  <div id="tipMedia"></div>
+</div>
+
+<div id="focus" hidden>
+  <div class="fh"><span id="fKind"></span><button id="fClose" aria-label="close">✕</button></div>
+  <div class="fd" id="fDate"></div>
+  <div class="ft" id="fText"></div>
+  <div class="fm" id="fMedia"></div>
+  <div class="fl" id="fLinks"></div>
 </div>
 
 <script src="/vendor/nostr-tools-2.25.2.bundle.js"></script>
 <script type="module">
-import { anchorEventsFast, blockToDate, blockLabel } from '/projects/js/modules/anchor.js';
-import { computeMetrics, ERA_META }                  from '/projects/js/modules/analytics.js';
-import { drawOrbit, hitTest, drawTimeline }           from '/projects/js/modules/orbit.js';
-import { getTipHeight }                               from '/projects/js/modules/mempool.js';
+import { anchorEventsFast, blockToDate, addRows, setTip, tipHeight, BLOCKS_PER_EPOCH } from '/projects/js/modules/anchor.js';
+import { computeMetrics, eraMeta }                            from '/projects/js/modules/analytics.js';
+import { drawOrbit, hitTest, drawTimeline, blockAngle }       from '/projects/js/modules/orbit.js';
+import { createTower }                                        from '/projects/js/modules/tower.js';
+import { getTipHeight, getDifficultyAdjustments }             from '/projects/js/modules/mempool.js';
 
-// ── State ──────────────────────────────────────────────────────────────
-let dots = [], anchored = [];
-
-// ── DOM ────────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
-const npubIn   = $('npubIn'),   analyzeBtn = $('analyzeBtn');
-const loader   = $('loader'),   dashboard  = $('dashboard');
-const orbitC   = $('orbitCanvas'), tlC    = $('tlCanvas');
-const tip      = $('tip');
+const JACK = 'npub1sg6plzptd64u62a878hep2kev88swjh3tw00gjsfl8f237lmu63q0uf63m';
+const RELAYS = ['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.primal.net'];
+const POTATO = (navigator.hardwareConcurrency || 4) <= 2 || (navigator.deviceMemory || 4) <= 2;
+const GREENS = ['#0b1a12','#10261a','#153223','#1a3f2c','#1f4c35','#255a3f','#2b6849','#327754','#3a865f','#43956b','#4ea477','#5ab384','#68c291','#79d09f','#8dddae','#a4e9bf'];
+const KINDS = { 1: 'note', 6: 'repost', 7: 'reaction' };
 
-// ── Live block tip ─────────────────────────────────────────────────────
-getTipHeight().then(h => { $('tipH').textContent = Number(h).toLocaleString(); }).catch(() => {});
+let anchored = [], metrics = null, dots = [], mode = 'orbit', tower = null, hover = null, sweep = 0, audio = null, npub = '';
+let orbitC = $('orbitCanvas');
+const tlC = $('tlCanvas'), tip = $('tip'), npubIn = $('npubIn'), analyzeBtn = $('analyzeBtn'), loader = $('loader'), dashboard = $('dashboard');
 
-// ── Demo ───────────────────────────────────────────────────────────────
-$('demoA').addEventListener('click', () => {
-  npubIn.value = 'npub1sg6plzptd64u62a878hep2kev88swjh3tw00gjsfl8f237lmu63q0uf63m';
-  run();
-});
+// chain facts: the tip and the newest difficulty rows, awaited briefly before anchoring
+const chain = Promise.allSettled([
+  getTipHeight().then(h => { setTip(h); $('tipH').textContent = Number(h).toLocaleString(); }),
+  getDifficultyAdjustments().then(rows => addRows(rows.map(([ts, h]) => [h, ts]))),
+]);
 
-// ── Entry points ───────────────────────────────────────────────────────
+$('demoA').addEventListener('click', () => { npubIn.value = JACK; run(); });
 analyzeBtn.addEventListener('click', run);
 npubIn.addEventListener('keydown', e => e.key === 'Enter' && run());
 
 function setStatus(msg) { $('status').textContent = msg; }
 
-// ── Relay fetch ────────────────────────────────────────────────────────
 function fetchRelay(url, filters, timeoutMs = 6000) {
   return new Promise(resolve => {
     const events = [], sub = 'orb_' + Math.random().toString(36).slice(2);
     let ws, timer;
-
     const done = () => { clearTimeout(timer); try { ws.close(); } catch {} resolve(events); };
     timer = setTimeout(done, timeoutMs);
-
     try { ws = new WebSocket(url); } catch { return resolve(events); }
-
     ws.onopen = () => ws.send(JSON.stringify(['REQ', sub, ...filters]));
     ws.onmessage = ({ data }) => {
       try {
@@ -316,133 +353,272 @@ function fetchRelay(url, filters, timeoutMs = 6000) {
   });
 }
 
-// ── Main analysis ──────────────────────────────────────────────────────
+// up to four pages of 500 per relay, walking back with `until`; NIP-03 proofs ride on the first page
+const PAGES = 4;
+async function fetchHistory(url, hex, onPage) {
+  const out = []; let until;
+  for (let page = 0; page < PAGES; page++) {
+    const filters = [{ authors: [hex], kinds: [1, 6, 7], limit: 500, ...(until ? { until } : {}) }];
+    if (page === 0) filters.push({ authors: [hex], kinds: [1040], limit: 200 });
+    const evs = await fetchRelay(url, filters);
+    const main = evs.filter(e => e.kind !== 1040);
+    out.push(...evs); onPage?.(out.length);
+    if (main.length < 500) break;
+    until = Math.min(...main.map(e => e.created_at)) - 1;
+    if (page === PAGES - 1) out.truncated = true;
+  }
+  return out;
+}
+
+const IMG = /https?:\/\/[^\s<>"')]+\.(?:png|jpe?g|gif|webp|avif)(?:\?[^\s<>"')]*)?/gi;
+const VID = /https?:\/\/[^\s<>"')]+\.(?:mp4|webm|mov|m4v)(?:\?[^\s<>"')]*)?/gi;
+function decorate(e) {
+  e.media = (e.content?.match(IMG) || []).slice(0, 4);
+  e.videos = (e.content?.match(VID) || []).slice(0, 2);
+  return e;
+}
+
 async function run() {
   const raw = npubIn.value.trim();
   if (!raw) return;
-
   let hex;
-  try {
-    const d = window.NostrTools.nip19.decode(raw);
-    if (d.type !== 'npub') throw 0;
-    hex = d.data;
-  } catch {
-    setStatus('⚠ invalid npub, paste a valid npub1… string'); return;
-  }
+  try { const d = window.NostrTools.nip19.decode(raw); if (d.type !== 'npub') throw 0; hex = d.data; }
+  catch { setStatus('⚠ invalid npub, paste a valid npub1… string'); return; }
 
   analyzeBtn.disabled = true;
-  dashboard.classList.remove('on');
-  loader.classList.add('on');
-  setStatus('connecting to 3 relays simultaneously…');
+  dashboard.classList.remove('on'); loader.classList.add('on'); closeFocus(); stopPlay();
+  if (tower) { orbitC = tower.destroy(); tower = null; }
+  setStatus('connecting to 3 relays…');
 
-  const RELAYS  = ['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.primal.net']; // nostr.band went dark; it used to eat the whole timeout
-  const FILTERS = [{ authors: [hex], kinds: [1, 6, 7], limit: 500 }];
-
-  const batches = await Promise.all(RELAYS.map(r => fetchRelay(r, FILTERS)));
-
-  // Deduplicate across relays
+  const counts = RELAYS.map(() => 0);
+  const batches = await Promise.all(RELAYS.map((r, i) => fetchHistory(r, hex, n => {
+    counts[i] = n; setStatus(`${counts.reduce((a, b) => a + b, 0).toLocaleString()} events so far from ${counts.filter(Boolean).length} relays…`);
+  })));
   const seen = new Set();
-  const events = batches.flat().filter(e => !seen.has(e.id) && seen.add(e.id));
+  const all = batches.flat().filter(e => !seen.has(e.id) && seen.add(e.id));
+  const ots = all.filter(e => e.kind === 1040);
+  const events = all.filter(e => e.kind !== 1040).map(decorate);
 
   if (!events.length) {
     setStatus('no events found, try a different npub or check relay connectivity');
-    loader.classList.remove('on');
-    analyzeBtn.disabled = false;
-    return;
+    loader.classList.remove('on'); analyzeBtn.disabled = false; return;
   }
-
-  setStatus(`${events.length} events from ${batches.filter(b => b.length).length} relays, anchoring to blocks…`);
+  await Promise.race([chain, new Promise(r => setTimeout(r, 4000))]);
+  setStatus(`${events.length.toLocaleString()} events from ${batches.filter(b => b.length).length} relays, anchoring to blocks…`);
 
   anchored = anchorEventsFast(events);
-  const m  = computeMetrics(anchored);
+  metrics = computeMetrics(anchored);
+  const stamped = new Set(ots.flatMap(o => o.tags.filter(t => t[0] === 'e').map(t => t[1])));
+  metrics.ots = [...stamped].filter(id => seen.has(id)).length;
+  metrics.otsTotal = ots.length;
+  metrics.truncated = batches.some(b => b.truncated);
+  npub = raw;
+  history.replaceState(null, '', '?npub=' + raw);
 
-  loader.classList.remove('on');
-  setStatus('');
-  render(m, raw, hex);
+  loader.classList.remove('on'); setStatus('');
+  render(raw, hex);
   analyzeBtn.disabled = false;
 }
 
-// ── Render ─────────────────────────────────────────────────────────────
-function fmt(n) { return n?.toLocaleString() ?? '-'; }
+const fmt = n => n?.toLocaleString() ?? '-';
+const monthYear = d => d.toLocaleString('default', { month: 'short', year: 'numeric' });
 
-function render(m, npub, hex) {
-  // Profile bar
-  $('pName').textContent = `₿ ${hex.slice(0,12)}…`;
-  $('pNpub').textContent = npub.length > 32 ? npub.slice(0,20) + '…' + npub.slice(-8) : npub;
-  const og = m.og;
+function render(npub, hex) {
+  const m = metrics;
+  $('pName').textContent = `₿ ${hex.slice(0, 12)}…`;
+  $('pNpub').textContent = npub.length > 32 ? npub.slice(0, 20) + '…' + npub.slice(-8) : npub;
   const badge = $('ogBadge');
-  badge.textContent = og.label;
-  badge.style.color = badge.style.borderColor = og.color;
+  badge.textContent = m.og.label; badge.style.color = badge.style.borderColor = m.og.color;
 
-  // Stat cards
-  $('sTotal').textContent   = fmt(m.total);
-  $('sSub').textContent     = `${fmt(m.notes)} notes · ${fmt(m.reactions)} reactions`;
-  $('sBlocks').textContent  = fmt(m.blocksActive);
-  $('sStreak').textContent  = fmt(m.maxStreak);
-  $('sRange').textContent   = `${fmt(m.firstBlock)} → ${fmt(m.lastBlock)}`;
-  $('sRangeSub').textContent = `${blockToDate(m.firstBlock).getFullYear()} → ${blockToDate(m.lastBlock).getFullYear()}`;
+  $('sTotal').textContent = fmt(m.total);
+  $('sSub').textContent = `${fmt(m.notes)} notes · ${fmt(m.reactions)} reactions${m.media ? ` · ${fmt(m.media)} with media` : ''}`;
+  $('sBlocks').textContent = fmt(m.blocksActive);
+  $('sStreak').textContent = fmt(m.maxStreak);
+  $('sRange').textContent = `${fmt(m.firstBlock)} → ${fmt(m.lastBlock)}`;
+  $('sRangeSub').textContent = `${monthYear(blockToDate(m.firstBlock))} → ${monthYear(blockToDate(m.lastBlock))}`;
+  $('sOts').textContent = fmt(m.ots);
+  $('estNote').textContent = m.truncated ? `⛓ heights interpolated inside real difficulty epochs (±5 blocks) · newest ${(PAGES * 500).toLocaleString()} events per relay, older history not fetched` : '⛓ heights interpolated inside real difficulty epochs (±5 blocks)';
+  $('sOtsSub').textContent = m.otsTotal ? `${fmt(m.otsTotal)} kind-1040 proofs published, ${fmt(m.ots)} on events here` : 'NIP-03 attestations, none published';
+  $('kNotes').textContent = fmt(m.notes); $('kReact').textContent = fmt(m.reactions); $('kRepost').textContent = fmt(m.reposts);
 
-  // Kind breakdown
-  $('kNotes').textContent  = fmt(m.notes);
-  $('kReact').textContent  = fmt(m.reactions);
-  $('kRepost').textContent = fmt(m.reposts);
-
-  // Era bars
-  const eraList = $('eraList');
-  eraList.innerHTML = '';
+  const eraList = $('eraList'); eraList.innerHTML = '';
   const maxEra = Math.max(...m.eraMap.values());
   for (const [era, ct] of [...m.eraMap.entries()].sort((a, b) => a[0] - b[0])) {
-    const meta  = ERA_META[era] ?? { name: `Era ${era}`, color: '#9ca3af' };
-    const pct   = (ct / maxEra) * 100;
-    eraList.innerHTML += `
-      <div class="era-row">
-        <div class="era-dot" style="background:${meta.color}"></div>
-        <span class="era-name">${meta.name}</span>
-        <div class="era-track"><div class="era-fill" style="width:${pct}%;background:${meta.color}"></div></div>
-        <span class="era-ct">${fmt(ct)}</span>
-      </div>`;
+    const meta = eraMeta(era), pct = (ct / maxEra) * 100;
+    eraList.insertAdjacentHTML('beforeend', `<div class="era-row"><div class="era-dot" style="background:${meta.color}"></div><span class="era-name">${meta.name}</span><div class="era-track"><div class="era-fill" style="width:${pct}%;background:${meta.color}"></div></div><span class="era-ct">${fmt(ct)}</span></div>`);
   }
+
+  // the history as an icon: 64 cells across the active span, brighter = busier; it becomes this tab's favicon
+  const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(orbitIcon());
+  $('oicon').src = url; $('oiconDl').href = url; $('oiconDl').download = `orbit-${npub.slice(5, 13)}.svg`;
+  document.querySelectorAll('link[rel="icon"]').forEach(l => { l.href = url; l.type = 'image/svg+xml'; });
+
+  $('timeFirst').textContent = `${fmt(m.firstBlock)} · ${monthYear(blockToDate(m.firstBlock))}`;
+  $('timeLast').textContent = `${fmt(m.lastBlock)} · ${monthYear(blockToDate(m.lastBlock))}`;
+  $('timeSlider').value = 500;
 
   dashboard.classList.add('on');
-
-  requestAnimationFrame(() => {
-    dots = drawOrbit(orbitC, anchored, m);
-    drawTimeline(tlC, m);
-  });
+  requestAnimationFrame(() => { showView(); drawTimeline(tlC, m); });
 }
 
-// ── Orbit hover ────────────────────────────────────────────────────────
-orbitC.addEventListener('mousemove', e => {
-  const rect = orbitC.getBoundingClientRect();
-  const sx   = orbitC.clientWidth / orbitC.clientWidth; // always 1, kept for clarity
-  const mx   = (e.clientX - rect.left) * sx;
-  const my   = (e.clientY - rect.top)  * sx;
-  const hit  = hitTest(dots, mx, my);
+function orbitIcon() {
+  const { firstBlock, lastBlock } = metrics, spanB = Math.max(1, lastBlock - firstBlock + 1), bins = new Array(64).fill(0);
+  for (const e of anchored) bins[Math.min(63, Math.floor((e.anchor.height - firstBlock) / spanB * 64))]++;
+  const max = Math.max(...bins);
+  const cells = bins.map((n, i) => {
+    const r = Math.floor(i / 8), c = i % 8, s = 6.5, x = 6 + c * s + 0.55, y = 6 + r * s + 0.55;
+    const idx = n ? 3 + Math.round(12 * Math.log(1 + n) / Math.log(1 + max)) : 0;
+    return `<rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="5.4" height="5.4" rx="1.4" fill="${GREENS[idx]}"/>`;
+  }).join('');
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="15" fill="#101318"/>${cells}</svg>`;
+}
 
-  if (hit) {
-    $('tipBlock').textContent = `~block ${hit.anchor.height.toLocaleString()}`;
-    $('tipDate').textContent  = new Date(hit.created_at * 1000).toLocaleString();
-    $('tipText').textContent  = (hit.content || '[no text]').slice(0, 140) + (hit.content?.length > 140 ? '…' : '');
-    tip.style.left = (e.clientX + 14) + 'px';
-    tip.style.top  = (e.clientY - 12) + 'px';
-    tip.classList.add('on');
+// views
+function showView() {
+  if (mode === 'tower') {
+    if (!tower) tower = createTower(orbitC, anchored, { potato: POTATO, truncated: metrics.truncated, onHover: showTip, onPick: pick });
+    $('timeRow').hidden = false; $('resetBtn').hidden = false;
+    $('viewTitle').textContent = 'Timechain Tower';
+    $('viewHint').textContent = 'one turn = one difficulty epoch (2016 blocks) · drag to orbit · wheel or pinch to zoom · slider or two fingers to time-travel · click a bead';
   } else {
-    tip.classList.remove('on');
+    if (tower) { orbitC = tower.destroy(); tower = null; }
+    $('timeRow').hidden = true; $('resetBtn').hidden = true;
+    $('viewTitle').textContent = 'Orbital View';
+    $('viewHint').textContent = 'every halving era since genesis is a ring, 12 o\'clock is the halving · hover a dot · click for the note';
+    dots = drawOrbit(orbitC, anchored, metrics, { hover });
   }
-});
-orbitC.addEventListener('mouseleave', () => tip.classList.remove('on'));
+  $('modeOrbit').classList.toggle('on', mode === 'orbit');
+  $('modeTower').classList.toggle('on', mode === 'tower');
+}
+$('modeOrbit').addEventListener('click', () => { if (mode !== 'orbit') { stopPlay(); mode = 'orbit'; showView(); } });
+$('modeTower').addEventListener('click', () => { if (mode !== 'tower') { stopPlay(); mode = 'tower'; showView(); } });
+$('resetBtn').addEventListener('click', () => { tower?.reset(); $('timeSlider').value = 500; });
+$('timeSlider').addEventListener('input', e => tower?.travel(e.target.value / 1000));
 
-// Redraw canvases on window resize
+// 2D interaction lives on the wrapper because the canvas element is swapped between views
+const wrap = $('orbitWrap');
+const local = ev => { const r = orbitC.getBoundingClientRect(); return [ev.clientX - r.left, ev.clientY - r.top]; };
+wrap.addEventListener('mousemove', ev => {
+  if (mode !== 'orbit' || !dots.length) return;
+  const [mx, my] = local(ev), hit = hitTest(dots, mx, my);
+  if (hit !== hover) { hover = hit; dots = drawOrbit(orbitC, anchored, metrics, { hover, sweep: sweep || null }); }
+  showTip(hit, ev);
+});
+wrap.addEventListener('mouseleave', () => { if (mode === 'orbit' && hover) { hover = null; showTip(null); dots = drawOrbit(orbitC, anchored, metrics, {}); } });
+wrap.addEventListener('click', ev => {
+  if (mode !== 'orbit' || !dots.length) return;
+  const [mx, my] = local(ev), hit = hitTest(dots, mx, my);
+  if (hit) pick(hit);
+});
+
+// tooltip: block, date, text, up to two thumbnails
+function showTip(e, ev) {
+  if (!e) { tip.classList.remove('on'); return; }
+  const media = $('tipMedia'); media.textContent = '';
+  if (e.cluster) {
+    const c = e.cluster;
+    $('tipBlock').textContent = `epoch ${Math.floor(c.u)} · ${c.n} events${c.media ? ` · ${c.media} with media` : ''}`;
+    $('tipDate').textContent = monthYear(blockToDate(c.u * BLOCKS_PER_EPOCH)) + ' · click to zoom in';
+    $('tipText').textContent = (c.items.find(x => x.kind === 1)?.content || '').slice(0, 120);
+  } else {
+    $('tipBlock').textContent = `${KINDS[e.kind] || 'kind ' + e.kind} · ~block ${e.anchor.height.toLocaleString()} · ${eraMeta(e.anchor.era).name}`;
+    $('tipDate').textContent = new Date(e.created_at * 1000).toLocaleString();
+    $('tipText').textContent = (e.content || '[no text]').slice(0, 160) + (e.content?.length > 160 ? '…' : '');
+    for (const u of e.media.slice(0, 2)) { const img = new Image(); img.src = u; img.loading = 'lazy'; img.decoding = 'async'; img.referrerPolicy = 'no-referrer'; media.append(img); }
+  }
+  if (ev) {
+    const x = ev.clientX + 14 + 300 > innerWidth ? ev.clientX - 306 : ev.clientX + 14;
+    const y = Math.min(ev.clientY - 12, innerHeight - 200);
+    tip.style.left = x + 'px'; tip.style.top = y + 'px';
+  }
+  tip.classList.add('on');
+}
+
+// the focus card: the whole note, its media, and a way out to njump
+const URLRX = /https?:\/\/[^\s<>"']+/g;
+function pick(e) {
+  if (e.cluster) { tower?.focus(e.cluster.u); return; }
+  const f = $('focus'), meta = eraMeta(e.anchor.era);
+  $('fKind').textContent = `${KINDS[e.kind] || 'kind ' + e.kind} · ~block ${e.anchor.height.toLocaleString()} · epoch ${e.anchor.epoch} · ${meta.name}`;
+  $('fDate').textContent = `${new Date(e.created_at * 1000).toLocaleString()} · id ${e.id.slice(0, 12)}…`;
+  const text = $('fText'); text.textContent = '';
+  const content = e.content || (e.kind === 7 ? '[reaction]' : e.kind === 6 ? '[repost]' : '[no text]');
+  let last = 0;
+  for (const mt of content.matchAll(URLRX)) {
+    text.append(content.slice(last, mt.index));
+    const a = document.createElement('a'); a.href = mt[0]; a.textContent = mt[0]; a.target = '_blank'; a.rel = 'noopener noreferrer'; text.append(a);
+    last = mt.index + mt[0].length;
+  }
+  text.append(content.slice(last));
+  const fm = $('fMedia'); fm.textContent = '';
+  for (const u of e.media) { const img = new Image(); img.src = u; img.loading = 'lazy'; img.decoding = 'async'; img.referrerPolicy = 'no-referrer'; fm.append(img); }
+  const fl = $('fLinks'); fl.textContent = '';
+  try {
+    const nevent = window.NostrTools.nip19.neventEncode({ id: e.id, author: e.pubkey, kind: e.kind });
+    const a = document.createElement('a'); a.href = 'https://njump.me/' + nevent; a.textContent = 'open on njump ↗'; a.target = '_blank'; a.rel = 'noopener noreferrer'; fl.append(a);
+  } catch {}
+  for (const v of e.videos || []) { const a = document.createElement('a'); a.href = v; a.textContent = 'video ↗'; a.target = '_blank'; a.rel = 'noopener noreferrer'; fl.append(a); }
+  f.hidden = false;
+}
+function closeFocus() { $('focus').hidden = true; }
+$('fClose').addEventListener('click', closeFocus);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFocus(); });
+
+// play: a sweep through the history with a blip per event (radar hand in 2D, a rising plane in 3D)
+function blip(kind, era) {
+  if (!audio) return;
+  const t = audio.currentTime;
+  if (t < blip.next) return; blip.next = t + 0.035;
+  const o = audio.createOscillator(), g = audio.createGain();
+  o.type = kind === 1 ? 'triangle' : 'sine';
+  o.frequency.value = (kind === 1 ? 440 : kind === 6 ? 330 : 660) * Math.pow(2, (era % 3) / 12) * (1 + (Math.random() - 0.5) * 0.02);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(kind === 1 ? 0.12 : 0.05, t + 0.005); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.07);
+  o.connect(g).connect(audio.destination); o.start(t); o.stop(t + 0.08);
+}
+blip.next = 0;
+let sweepRaf = 0, sweepStart = 0;
+function stopPlay() {
+  if (sweepRaf) { cancelAnimationFrame(sweepRaf); sweepRaf = 0; sweep = 0; if (mode === 'orbit' && metrics) dots = drawOrbit(orbitC, anchored, metrics, {}); }
+  tower?.stop();
+  $('playBtn').textContent = '▶ play';
+}
+$('playBtn').addEventListener('click', () => {
+  if (!metrics) return;
+  if (sweepRaf || tower?.playing()) { stopPlay(); return; }
+  try { audio ||= new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch {}
+  $('playBtn').textContent = '■ stop';
+  if (mode === 'tower') { tower.play(9000, e => blip(e.kind, e.anchor.era), () => { $('playBtn').textContent = '▶ play'; }); return; }
+  const passed = new Set(); sweepStart = performance.now();
+  const step = now => {
+    const k = Math.min(1, (now - sweepStart) / 8000), a = -Math.PI / 2 + k * Math.PI * 2;
+    sweep = a;
+    for (const e of anchored) { if (!passed.has(e) && blockAngle(e.anchor.height) <= a) { passed.add(e); blip(e.kind, e.anchor.era); } }
+    dots = drawOrbit(orbitC, anchored, metrics, { sweep: a, hover });
+    if (k < 1) sweepRaf = requestAnimationFrame(step); else { sweepRaf = 0; sweep = 0; dots = drawOrbit(orbitC, anchored, metrics, {}); $('playBtn').textContent = '▶ play'; }
+  };
+  sweepRaf = requestAnimationFrame(step);
+});
+
+$('shareBtn').addEventListener('click', async () => {
+  const url = location.origin + location.pathname + '?npub=' + npub;
+  try { await navigator.clipboard.writeText(url); $('shareBtn').textContent = 'copied'; setTimeout(() => { $('shareBtn').textContent = 'copy link'; }, 1500); }
+  catch { prompt('copy this link', url); }
+});
+
 let rTimer;
 window.addEventListener('resize', () => {
   clearTimeout(rTimer);
   rTimer = setTimeout(() => {
-    if (!anchored.length) return;
-    const m = computeMetrics(anchored);
-    dots = drawOrbit(orbitC, anchored, m);
-    drawTimeline(tlC, m);
+    if (!metrics) return;
+    if (mode === 'tower') tower?.resize(); else dots = drawOrbit(orbitC, anchored, metrics, { hover });
+    drawTimeline(tlC, metrics);
   }, 250);
 });
+window.orbit = { get anchored() { return anchored; }, get metrics() { return metrics; }, get tower() { return tower; }, run, mode: m => { mode = m; showView(); } };
+
+// a shared link runs on arrival (last, so every binding above exists)
+const qs = new URLSearchParams(location.search).get('npub');
+if (qs) { npubIn.value = qs; run(); }
 </script>
 </body>
 </html>

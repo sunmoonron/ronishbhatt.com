@@ -1,7 +1,7 @@
-// mempool.js, Mempool.space API client
+// mempool.js: the two mempool.space calls the page makes (tip height, difficulty adjustments).
 const BASE = 'https://mempool.space/api';
 
-const HALVINGS = [
+export const HALVINGS = [
   { height: 0,       name: 'Genesis',     year: 2009 },
   { height: 210000,  name: '1st Halving', year: 2012 },
   { height: 420000,  name: '2nd Halving', year: 2016 },
@@ -10,37 +10,13 @@ const HALVINGS = [
   { height: 1050000, name: '5th Halving', year: 2028 },
 ];
 
-const NOTABLE = {
-  840000: '4th Halving',
-  774628: 'First Ordinal Inscription',
-  630000: '3rd Halving',
-  500000: '500K Milestone',
-  420000: '2nd Halving',
-  210000: '1st Halving',
-};
-
-async function apiFetch(path) {
-  const r = await fetch(BASE + path);
+async function apiFetch(path, ms = 5000) {
+  const r = await fetch(BASE + path, { signal: AbortSignal.timeout(ms) });
   if (!r.ok) throw new Error(`mempool ${r.status}: ${path}`);
   const ct = r.headers.get('content-type') || '';
   return ct.includes('json') ? r.json() : r.text();
 }
 
-export const getTipHeight      = ()  => apiFetch('/blocks/tip/height');
-export const getBlockAtTs      = ts  => apiFetch(`/v1/mining/blocks/timestamp/${ts}`);
-export const getBlockHash      = h   => apiFetch(`/block-height/${h}`);
-export const getBlock          = id  => apiFetch(`/block/${id}`);
-
-// Returns a canonical anchor object from a precise API lookup
-export async function preciseAnchor(timestamp) {
-  const b = await getBlockAtTs(timestamp);
-  return {
-    height:    b.height,
-    epoch:     Math.floor(b.height / 2016),
-    era:       Math.floor(b.height / 210000),
-    timestamp: b.timestamp,
-    precise:   true,
-  };
-}
-
-export { HALVINGS, NOTABLE };
+export const getTipHeight = () => apiFetch('/blocks/tip/height');
+// [[timestamp, height, difficulty, change], ...] newest first
+export const getDifficultyAdjustments = () => apiFetch('/v1/mining/difficulty-adjustments');

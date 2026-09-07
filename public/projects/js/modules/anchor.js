@@ -1,38 +1,54 @@
-// anchor.js, Maps Nostr event timestamps to Bitcoin block heights
-// Uses linear interpolation from genesis, fast, no API calls needed.
-// Average block time = 600s (10 min); good enough for analytics use.
+// anchor.js: timestamps to block heights, interpolated inside real difficulty epochs.
+// EPOCHS holds [height, timestamp] for every adjustment since genesis (tools/epochs.mjs);
+// addRows() merges what mempool.space reports live and setTip() pins the current
+// segment, so a height is off by a few blocks at most instead of tens of thousands.
+import { EPOCHS } from './epochs.js';
 
-const GENESIS_TS  = 1231006505; // block 0, Jan 3 2009
-const AVG_BLOCK   = 600;        // seconds
+export const BLOCKS_PER_EPOCH = 2016, BLOCKS_PER_ERA = 210000;
+const GENESIS_TS = 1231006505, AVG_BLOCK = 600;
+let table = EPOCHS.slice();
+let tip = null;
 
-export function estimateHeight(unixTs) {
-  if (unixTs < GENESIS_TS) return 0;
-  return Math.round((unixTs - GENESIS_TS) / AVG_BLOCK);
+export function addRows(rows) {
+  const known = new Set(table.map(r => r[0]));
+  for (const r of rows) if (r[0] % BLOCKS_PER_EPOCH === 0 && !known.has(r[0])) table.push([r[0], r[1]]);
+  table.sort((a, b) => a[0] - b[0]);
+}
+export function setTip(height, ts = Math.floor(Date.now() / 1000)) { tip = { height: Number(height), ts }; }
+export function tipHeight() {
+  if (tip) return tip.height;
+  const [h, t] = table.at(-1);
+  return h + Math.round((Date.now() / 1000 - t) / AVG_BLOCK);
 }
 
-export function heightToAnchor(height) {
-  return {
-    height,
-    epoch: Math.floor(height / 2016),     // difficulty adjustment period
-    era:   Math.floor(height / 210000),   // halving era
-    isEstimate: true,
-  };
+function bisect(key, idx) {
+  let lo = 0, hi = table.length - 1;
+  while (lo < hi) { const m = (lo + hi + 1) >> 1; if (table[m][idx] <= key) lo = m; else hi = m - 1; }
+  return lo;
+}
+function segment(lo) {
+  const [h0, t0] = table[lo];
+  if (lo + 1 < table.length) return [h0, t0, table[lo + 1][0], table[lo + 1][1]];
+  if (tip && tip.height > h0 && tip.ts > t0) return [h0, t0, tip.height, tip.ts];
+  return [h0, t0, h0 + BLOCKS_PER_EPOCH, t0 + BLOCKS_PER_EPOCH * AVG_BLOCK];
 }
 
-// Fast O(n) pass, no network required
-export function anchorEventsFast(events) {
-  return events.map(e => ({
-    ...e,
-    anchor: heightToAnchor(estimateHeight(e.created_at)),
-  }));
+export function estimateHeight(ts) {
+  if (!(ts > GENESIS_TS)) return 0;
+  const [h0, t0, h1, t1] = segment(bisect(ts, 1));
+  const h = Math.round(h0 + (ts - t0) / (t1 - t0) * (h1 - h0));
+  return Math.max(h0, tip ? Math.min(h, tip.height) : h);
 }
-
-// Estimate calendar date from block height
 export function blockToDate(height) {
-  return new Date((GENESIS_TS + height * AVG_BLOCK) * 1000);
+  const [h0, t0, h1, t1] = segment(bisect(height, 0));
+  return new Date((t0 + (height - h0) / (h1 - h0) * (t1 - t0)) * 1000);
 }
-
-// Block → human label  e.g.  "block 840,000 · Apr 2024"
+export function heightToAnchor(height) {
+  return { height, epoch: Math.floor(height / BLOCKS_PER_EPOCH), era: Math.floor(height / BLOCKS_PER_ERA), precision: 'epoch' };
+}
+export function anchorEventsFast(events) {
+  return events.map(e => ({ ...e, anchor: heightToAnchor(estimateHeight(e.created_at)) }));
+}
 export function blockLabel(height) {
   const d = blockToDate(height);
   return `block ${height.toLocaleString()} · ${d.toLocaleString('default', { month: 'short', year: 'numeric' })}`;
