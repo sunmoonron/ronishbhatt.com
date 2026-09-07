@@ -4,13 +4,12 @@
 // engagement the relays report, pictures shown where there were pictures.
 import { BLOCKS_PER_EPOCH, BLOCKS_PER_ERA, blockToDate, tipHeight } from './anchor.js';
 import { eraMeta } from './analytics.js';
+import { H, fmt as fmtN, dayShort, dayYear } from './time.js';
 
 const GREENS = ['#0b1a12','#10261a','#153223','#1a3f2c','#1f4c35','#255a3f','#2b6849','#327754','#3a865f','#43956b','#4ea477','#5ab384','#68c291','#79d09f','#8dddae','#a4e9bf'];
 const AMBER = '#e9c46a';
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const el = (cls, text) => { const d = document.createElement('div'); if (cls) d.className = cls; if (text != null) d.textContent = text; return d; };
-const dayMonth = d => d.toLocaleString('default', { month: 'short', day: 'numeric' });
-const monthYear = d => d.toLocaleString('default', { month: 'short', year: 'numeric' });
 const fmt = n => n.toLocaleString();
 
 export const isReply = e => e.kind === 1 && e.tags.some(t => t[0] === 'e');
@@ -66,8 +65,16 @@ export function createBlocks(root, anchored, opts = {}) {
   let goggle = GOGGLES.all, openEpoch = null, tiles = [];
 
   root.textContent = '';
+  const caps = el('blk-caps'); caps.append(el('c1', 'in progress'), el('c2', 'mined · newest first →'));
   const row = el('blk-row'), panel = el('blk-open'); panel.hidden = true;
-  root.append(row, panel);
+  root.append(caps, row, panel);
+  document.addEventListener('keydown', ev => {
+    if (openEpoch == null || ev.target?.closest?.('input, textarea')) return;
+    if (ev.key === 'Escape') api.close();
+    const order = [cur, ...past], i = order.indexOf(openEpoch);
+    if (ev.key === 'ArrowLeft' && i > 0) { ev.preventDefault(); open(order[i - 1]); }
+    if (ev.key === 'ArrowRight' && i >= 0 && i < order.length - 1) { ev.preventDefault(); open(order[i + 1]); }
+  });
   row.addEventListener('pointermove', ev => { const r = row.getBoundingClientRect(); row.style.setProperty('--tilt', ((ev.clientX - r.left) / r.width - 0.5) * 16 + 'deg'); });
   row.addEventListener('pointerleave', () => row.style.setProperty('--tilt', '0deg'));
 
@@ -83,10 +90,14 @@ export function createBlocks(root, anchored, opts = {}) {
       const fill = el('fill'); fill.style.height = ((tip % BLOCKS_PER_EPOCH) / BLOCKS_PER_EPOCH * 100).toFixed(1) + '%'; front.append(fill);
     }
     const label = el('blk-label');
-    const h0 = epoch * BLOCKS_PER_EPOCH;
-    label.append(el('l1', inProgress ? 'mining now' : `epoch ${epoch}`), el('l2', `~${fmt(h0)}`), el('l3', inProgress ? `${n} so far · ${fmt(BLOCKS_PER_EPOCH - tip % BLOCKS_PER_EPOCH)} blocks left` : `${monthYear(blockToDate(h0))} · ${n}`));
+    const h0 = epoch * BLOCKS_PER_EPOCH, h1 = h0 + BLOCKS_PER_EPOCH - 1;
+    const when = inProgress ? `${dayShort(blockToDate(h0))} → now` : `${dayShort(blockToDate(h0))} → ${dayShort(blockToDate(h1))}`;
+    label.append(el('l1', when), el('l2', H(h0)), el('l3', inProgress ? `E${epoch} · ${fmt(tip % BLOCKS_PER_EPOCH)} of ${fmt(BLOCKS_PER_EPOCH)}` : `E${epoch} · ${n} event${n === 1 ? '' : 's'}`));
     wrap.append(c, label);
+    wrap.setAttribute('role', 'button'); wrap.tabIndex = 0;
+    wrap.setAttribute('aria-label', inProgress ? `epoch ${epoch}, still being mined, ${n} events so far` : `epoch ${epoch}, ${when}, ${n} events`);
     wrap.addEventListener('click', () => open(epoch));
+    wrap.addEventListener('keydown', ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); open(epoch); } });
     cubes.set(epoch, { wrap, c, cv, events, era });
     return wrap;
   }
@@ -118,14 +129,18 @@ export function createBlocks(root, anchored, opts = {}) {
     const change = opts.change?.(h0);
     panel.textContent = ''; panel.hidden = false;
     const head = el('bh');
-    const title = el('bt'); title.append(el('b1', epoch === cur ? `epoch ${epoch} · mining now` : `epoch ${epoch}`),
-      el('b2', `blocks ${fmt(h0)} → ${fmt(h1)} · ${dayMonth(blockToDate(h0))} → ${dayMonth(blockToDate(Math.min(h1, tip)))}, ${blockToDate(h0).getFullYear()}${change != null ? ` · difficulty ${change > 0 ? '+' : ''}${(change * 100).toFixed(2)}%` : ''}`),
-      el('b3', `${fmt(events.length)} events · ${fmt(notes)} notes · ${fmt(reposts)} reposts · ${fmt(reactions)} reactions${media ? ` · ${fmt(media)} with media` : ''} · colour = engagement the relays report · size = length`));
+    const title = el('bt'); title.append(el('b1', epoch === cur ? `E${epoch} · mining now` : `E${epoch}`),
+      el('b2', `${H(h0)} → ${H(h1)} · ${dayShort(blockToDate(h0))} → ${dayYear(blockToDate(Math.min(h1, tip)))}${change != null ? ` · difficulty ${change > 0 ? '+' : ''}${(change * 100).toFixed(2)}%` : ''}`),
+      el('b3', `${fmt(events.length)} events · ${fmt(notes)} notes · ${fmt(reposts)} reposts · ${fmt(reactions)} reactions${media ? ` · ${fmt(media)} with media` : ''}`));
+    const legend = el('blegend');
+    for (const [name, color] of [['note', eraMeta(era).color], ['repost', GREENS[6]], ['reaction', GREENS[4]], ['media', AMBER]]) { const k = el('lk', name); k.style.setProperty('--k', color); legend.append(k); }
+    const scale = el('lscale'); scale.append(el('ls1', 'quiet'), el('lbar'), el('ls2', 'loud')); scale.title = 'tile colour: the replies, reactions and zaps the relays report for that note · tile size: length of the note';
+    legend.append(scale); title.append(legend);
     const links = el('bl');
     const a = document.createElement('a'); a.href = `https://mempool.space/block/${h0}`; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = `block ${fmt(h0)} on mempool.space ↗`;
     const close = document.createElement('button'); close.className = 'mb'; close.textContent = '✕ close'; close.addEventListener('click', () => { panel.hidden = true; cb.c.classList.remove('open'); openEpoch = null; tiles = []; });
     links.append(a, close); head.append(title, links);
-    const map = el('bm'); panel.append(head, map);
+    const map = el('bm'); panel.append(head, strip(events, h0, h1, era), map);
     if (!events.length) { map.append(el('bempty', 'nothing from you in this epoch yet')); return; }
     layout(map, events, era, engagement.get(epoch));
     panel.scrollIntoView({ block: 'nearest', behavior: reduced ? 'auto' : 'smooth' });
@@ -134,6 +149,24 @@ export function createBlocks(root, anchored, opts = {}) {
       if (ids.length) { const counts = await opts.engage(ids); engagement.set(epoch, counts); if (openEpoch === epoch) recolor(counts); }
     }
   }
+
+  // the epoch as a ruler: 2016 blocks left to right, a tick per 144 blocks (about a day),
+  // every event a bar where its created_at lands, so chain time, calendar and the notes share one axis
+  function strip(events, h0, h1, era) {
+    const st = el('bstrip'), t0 = blockToDate(h0).getTime() / 1000, t1 = blockToDate(h1 + 1).getTime() / 1000;
+    for (let d = 0; d <= 14; d++) { const tk = el('tick'); tk.style.left = (d / 14 * 100) + '%'; if (d % 7 === 0) { tk.classList.add('major'); tk.append(el('tl', d === 0 ? `${H(h0)} · ${dayShort(new Date(t0 * 1000))}` : d === 14 ? `${H(h1)} · ${dayShort(new Date(t1 * 1000))}` : `+${fmt(d * 144)} blocks · ${dayShort(new Date((t0 + d * 86400) * 1000))}`)); } st.append(tk); }
+    for (const e of events) {
+      const bar = el('bev'), x = Math.min(1, Math.max(0, (e.created_at - t0) / (t1 - t0)));
+      bar.style.left = (x * 100) + '%'; bar.style.background = kindColor(e, era); bar.style.height = (e.kind === 7 ? 30 : e.kind === 6 ? 55 : 100) + '%';
+      bar.addEventListener('pointerenter', ev => { opts.tip?.(e, ev); mark(e, true); });
+      bar.addEventListener('pointermove', ev => opts.tip?.(e, ev));
+      bar.addEventListener('pointerleave', () => { opts.tip?.(null); mark(e, false); });
+      bar.addEventListener('click', () => opts.pick?.(e));
+      st.append(bar); bar.ev = e;
+    }
+    return st;
+  }
+  function mark(e, on) { for (const { t, e: te } of tiles) if (te === e) t.classList.toggle('hi', on); for (const bar of panel.querySelectorAll('.bev')) if (bar.ev === e) bar.classList.toggle('hi', on); }
 
   function layout(map, events, era, counts) {
     map.textContent = ''; tiles = [];
@@ -151,9 +184,9 @@ export function createBlocks(root, anchored, opts = {}) {
       else if (r.w > 54 && r.h > 26) { const txt = el('tx', e.kind === 6 ? '↻ repost' : e.kind === 7 ? (e.content || '+').slice(0, 4) : (e.content || '').slice(0, 140)); t.append(txt); }
       else if (e.kind === 7 && r.w > 14 && r.h > 14) t.append(el('tx', (e.content || '+').slice(0, 2)));
       if (!goggle(e)) t.classList.add('dim');
-      t.addEventListener('pointerenter', ev => opts.tip?.(e, ev));
+      t.addEventListener('pointerenter', ev => { opts.tip?.(e, ev); mark(e, true); });
       t.addEventListener('pointermove', ev => opts.tip?.(e, ev));
-      t.addEventListener('pointerleave', () => opts.tip?.(null));
+      t.addEventListener('pointerleave', () => { opts.tip?.(null); mark(e, false); });
       t.addEventListener('click', () => opts.pick?.(e));
       if (!reduced) { t.style.transform = `translate(${(Math.random() - 0.5) * 320}px, ${(Math.random() - 0.5) * 240}px) scale(.3)`; t.style.opacity = '0'; t.style.transitionDelay = Math.min(i, 80) * 7 + 'ms'; }
       map.append(t); tiles.push({ t, e, r });
@@ -182,7 +215,7 @@ export function createBlocks(root, anchored, opts = {}) {
       paintFaces();
       for (const { t, e } of tiles) t.classList.toggle('dim', !goggle(e));
     },
-    open, close() { panel.hidden = true; openEpoch = null; tiles = []; },
+    open, close() { panel.hidden = true; for (const [, o] of cubes) o.c.classList.remove('open'); openEpoch = null; tiles = []; },
     relayout() { if (openEpoch == null) return; const cb = cubes.get(openEpoch); layout(panel.querySelector('.bm'), cb.events, cb.era, engagement.get(openEpoch)); },
     epochs: () => past.length,
   };

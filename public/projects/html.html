@@ -238,6 +238,32 @@
     .tile .badge { position: absolute; right: 3px; bottom: 3px; font: 0.56rem var(--mono); color: var(--mint); background: rgba(11,14,13,.8); padding: 1px 5px; border-radius: 999px; }
     .bempty { padding: 2rem; font: 0.7rem var(--mono); color: var(--muted); text-align: center; }
     @media (max-width: 760px) { .blk, .cube, .cube .f { width: 78px; } .cube, .cube .f { height: 78px; } .blk-row { gap: 22px; } }
+    .tstack { display: grid; gap: 2px; font: 0.66rem/1.35 var(--mono); }
+    .tstack .tr { display: grid; grid-template-columns: 1.1rem 1fr; gap: 0.35rem; align-items: baseline; }
+    .tstack .tr b { font-weight: 400; text-align: center; opacity: .8; }
+    .tstack .chain { color: var(--accent); }
+    .tstack .human { color: var(--text); }
+    .tstack .raw { color: var(--muted); }
+    .tstack .tr span { white-space: nowrap; }
+    .tstack.now { text-align: left; margin-top: 0.35rem; min-width: 21rem; }
+    .header-right { line-height: 1.4; flex-shrink: 0; }
+    @media (max-width: 640px) { .tstack.now { min-width: 0; } .tstack.now .tr span { white-space: normal; } }
+    #tipWhen:not(:empty) { margin: 3px 0 6px; }
+    #focus .fd .tstack { font-size: 0.64rem; }
+    .blk-caps { display: flex; justify-content: space-between; padding: 0.6rem 1.2rem 0; font: 0.6rem var(--mono); color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+    .blk:focus-visible { outline: none; } .blk:focus-visible .cube .f { box-shadow: 0 0 0 2px var(--accent); }
+    .blegend { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.9rem; margin-top: 0.45rem; font: 0.62rem var(--mono); color: var(--muted); }
+    .blegend .lk::before { content: ''; display: inline-block; width: 9px; height: 9px; border-radius: 2px; background: var(--k); margin-right: 5px; vertical-align: -1px; }
+    .blegend .lscale { display: inline-flex; align-items: center; gap: 5px; }
+    .blegend .lbar { width: 70px; height: 7px; border-radius: 4px; background: linear-gradient(90deg, #2b6849, #5ab384, #a4e9bf); }
+    .bstrip { position: relative; height: 46px; margin: 0 0 6px; border-bottom: 1px solid var(--border); }
+    .bstrip .tick { position: absolute; bottom: 0; width: 1px; height: 6px; background: var(--border); }
+    .bstrip .tick.major { height: 12px; background: var(--muted); }
+    .bstrip .tick .tl { position: absolute; top: -14px; left: 3px; white-space: nowrap; font: 0.58rem var(--mono); color: var(--muted); }
+    .bstrip .tick:last-of-type .tl, .bstrip .tick:nth-of-type(15) .tl { left: auto; right: 3px; }
+    .bstrip .bev { position: absolute; bottom: 0; width: 2px; margin-left: -1px; opacity: .85; cursor: pointer; transition: transform .15s, opacity .15s; }
+    .bstrip .bev:hover, .bstrip .bev.hi { transform: scaleX(3); opacity: 1; z-index: 2; box-shadow: 0 0 6px var(--mint); }
+    .tile.hi { outline: 2px solid var(--mint); z-index: 2; filter: brightness(1.2); }
   </style>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/theme.css">
@@ -255,10 +281,7 @@
       <p>TIMECHAIN-ANCHORED SOCIAL ANALYTICS</p>
     </div>
   </div>
-  <div class="header-right">
-    <a href="/">← back to site</a><br>
-    tip: <span id="tipH">-</span>
-  </div>
+  <div class="header-right"><a href="/">← back to site</a><div id="now"></div><span id="tipH" hidden></span></div>
 </header>
 
 <section class="hero">
@@ -334,6 +357,7 @@
 <div id="tip">
   <div class="tip-block" id="tipBlock"></div>
   <div class="tip-date" id="tipDate"></div>
+  <div id="tipWhen"></div>
   <div class="tip-text" id="tipText"></div>
   <div id="tipMedia"></div>
 </div>
@@ -353,7 +377,8 @@ import { computeMetrics, eraMeta }                            from '/projects/js
 import { drawOrbit, hitTest, drawTimeline, blockAngle }       from '/projects/js/orbit/orbit.js';
 import { createTower }                                        from '/projects/js/orbit/tower.js?v=2';
 import { getTipHeight, getDifficultyAdjustments }             from '/projects/js/orbit/mempool.js';
-import { createBlocks, GOGGLES, topTags, hasTag }             from '/projects/js/orbit/blocks.js';
+import { createBlocks, GOGGLES, topTags, hasTag }             from '/projects/js/orbit/blocks.js?v=2';
+import { stack, nowStack, H }                                 from '/projects/js/orbit/time.js';
 
 const $ = id => document.getElementById(id);
 const JACK = 'npub1sg6plzptd64u62a878hep2kev88swjh3tw00gjsfl8f237lmu63q0uf63m';
@@ -372,6 +397,7 @@ const chain = Promise.allSettled([
   getTipHeight().then(h => { setTip(h); $('tipH').textContent = Number(h).toLocaleString(); }),
   getDifficultyAdjustments().then(rows => { addRows(rows.map(([ts, h]) => [h, ts])); for (const [, h, , change] of rows) chainChange.set(h, change - 1); /* the API gives a ratio, 0.92 = minus 8% */ }),
 ]);
+$('now').append(nowStack());
 
 $('demoA').addEventListener('click', () => { npubIn.value = JACK; run(); });
 analyzeBtn.addEventListener('click', run);
@@ -479,7 +505,7 @@ function render(npub, hex) {
   $('sSub').textContent = `${fmt(m.notes)} notes · ${fmt(m.reactions)} reactions${m.media ? ` · ${fmt(m.media)} with media` : ''}`;
   $('sBlocks').textContent = fmt(m.blocksActive);
   $('sStreak').textContent = fmt(m.maxStreak);
-  $('sRange').textContent = `${fmt(m.firstBlock)} → ${fmt(m.lastBlock)}`;
+  $('sRange').textContent = `${H(m.firstBlock)} → ${H(m.lastBlock)}`;
   $('sRangeSub').textContent = `${monthYear(blockToDate(m.firstBlock))} → ${monthYear(blockToDate(m.lastBlock))}`;
   $('sOts').textContent = fmt(m.ots);
   $('estNote').textContent = m.truncated ? `⛓ heights interpolated inside real difficulty epochs (±5 blocks) · newest ${(PAGES * 500).toLocaleString()} events per relay, older history not fetched` : '⛓ heights interpolated inside real difficulty epochs (±5 blocks)';
@@ -589,15 +615,16 @@ wrap.addEventListener('click', ev => {
 // tooltip: block, date, text, up to two thumbnails
 function showTip(e, ev) {
   if (!e) { tip.classList.remove('on'); return; }
-  const media = $('tipMedia'); media.textContent = '';
+  const media = $('tipMedia'); media.textContent = ''; const when = $('tipWhen'); when.textContent = '';
   if (e.cluster) {
     const c = e.cluster;
     $('tipBlock').textContent = `epoch ${Math.floor(c.u)} · ${c.n} events${c.media ? ` · ${c.media} with media` : ''}`;
     $('tipDate').textContent = monthYear(blockToDate(c.u * BLOCKS_PER_EPOCH)) + ' · click to zoom in';
     $('tipText').textContent = (c.items.find(x => x.kind === 1)?.content || '').slice(0, 120);
   } else {
-    $('tipBlock').textContent = `${KINDS[e.kind] || 'kind ' + e.kind} · ~block ${e.anchor.height.toLocaleString()} · ${eraMeta(e.anchor.era).name}`;
-    $('tipDate').textContent = new Date(e.created_at * 1000).toLocaleString();
+    $('tipBlock').textContent = KINDS[e.kind] || 'kind ' + e.kind;
+    $('tipDate').textContent = '';
+    when.append(stack(e.created_at, e.anchor.height));
     $('tipText').textContent = (e.content || '[no text]').slice(0, 160) + (e.content?.length > 160 ? '…' : '');
     for (const u of e.media.slice(0, 2)) { const img = new Image(); img.src = u; img.loading = 'lazy'; img.decoding = 'async'; img.referrerPolicy = 'no-referrer'; media.append(img); }
   }
@@ -614,8 +641,8 @@ const URLRX = /https?:\/\/[^\s<>"']+/g;
 function pick(e) {
   if (e.cluster) { tower?.focus(e.cluster.u); return; }
   const f = $('focus'), meta = eraMeta(e.anchor.era);
-  $('fKind').textContent = `${KINDS[e.kind] || 'kind ' + e.kind} · ~block ${e.anchor.height.toLocaleString()} · epoch ${e.anchor.epoch} · ${meta.name}`;
-  $('fDate').textContent = `${new Date(e.created_at * 1000).toLocaleString()} · id ${e.id.slice(0, 12)}…`;
+  $('fKind').textContent = `${KINDS[e.kind] || 'kind ' + e.kind} · id ${e.id.slice(0, 12)}…`;
+  const fd = $('fDate'); fd.textContent = ''; fd.append(stack(e.created_at, e.anchor.height));
   const text = $('fText'); text.textContent = '';
   const content = e.content || (e.kind === 7 ? '[reaction]' : e.kind === 6 ? '[repost]' : '[no text]');
   let last = 0;

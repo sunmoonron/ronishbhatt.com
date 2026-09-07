@@ -20,7 +20,7 @@ html.wild .veil{color:#43956b!important;text-shadow:none!important}html.wild #wi
 .hud{position:fixed;left:1rem;bottom:1rem;z-index:61;font:12px var(--mono);color:#a4e9bf;background:rgba(3,6,4,.88);border:1px solid rgba(125,211,168,.35);border-radius:10px;padding:.5rem .8rem;display:none;max-width:16rem}.hud.on{display:block}.hud canvas{display:block;width:100%;height:auto;margin-bottom:.35rem}
 @media (prefers-reduced-motion:reduce){html.wild *{animation:none!important;transition:none!important}html.wild #rain{display:none}}`;
 
-let cipher = '', ctx = null, soundOn = false, events = [];
+let cipher = '0123456789abcdef', ctx = null, soundOn = false, events = [];
 const $ = s => document.querySelector(s), sleep = ms => new Promise(r => setTimeout(r, ms));
 const rnd = n => Math.floor(Math.random() * n);
 const blip = f => { if (!soundOn || !ctx) return; const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine'; o.frequency.value = f; g.gain.value = .05; o.connect(g); g.connect(ctx.destination); o.start(); g.gain.exponentialRampToValueAtTime(.0005, ctx.currentTime + .14); o.stop(ctx.currentTime + .15); };
@@ -78,13 +78,30 @@ async function terminal() {
 
 // ---- descramble: from the relay's bytes to the words ----
 function textNodes(root) { const out = [], w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: n => n.nodeValue.trim() && !n.parentElement.closest('svg, form, input, textarea, button, style, script, .keys') ? 1 : 2 }); let n; while ((n = w.nextNode())) out.push(n); return out; }
-function descramble(blocks, ms, stagger) {
-  const jobs = [...blocks].map((b, i) => ({ nodes: textNodes(b).map(n => ({ n, text: n.nodeValue })), at: performance.now() + i * stagger }));
-  return new Promise(res => { const step = () => { const now = performance.now(); let busy = false;
-    for (const j of jobs) { const p = Math.min(1, Math.max(0, (now - j.at) / ms)); if (p < 1) busy = true;
-      for (const { n, text } of j.nodes) { const k = Math.floor(text.length * p); let s = text.slice(0, k); for (let i = k; i < text.length; i++) s += text[i] === ' ' ? ' ' : cipher[rnd(cipher.length)]; n.nodeValue = s; n.parentElement?.classList.toggle('veil', p < 1); } }
+// Every text node remembers its real words (ORIG) and is owned by at most one job (LOCK), so a
+// hover on an item inside a section that is still resolving cannot capture ciphertext as the
+// original, which is how the page used to get stuck on gibberish. A hidden tab, a click that
+// re-renders, or anything else that stops the frames just restores the words at once.
+const ORIG = new WeakMap(), LOCK = new WeakSet(), LIVE = new Set();
+export function descramble(blocks, ms, stagger) {
+  const jobs = [...blocks].map((b, i) => ({ at: performance.now() + i * stagger, done: false,
+    nodes: textNodes(b).filter(n => !LOCK.has(n)).map(n => { LOCK.add(n); ORIG.set(n, n.nodeValue); return n; }) }));
+  const finish = j => { if (j.done) return; j.done = true; LIVE.delete(j);
+    for (const n of j.nodes) { n.nodeValue = ORIG.get(n); n.parentElement?.classList.remove('veil'); LOCK.delete(n); } };
+  for (const j of jobs) { j.finish = () => finish(j); LIVE.add(j); }
+  return new Promise(res => {
+    // a watchdog, because frames stop in a hidden or throttled tab: the words come back on time no matter what
+    setTimeout(() => { for (const j of jobs) finish(j); res(); }, ms + stagger * jobs.length + 400);
+    const step = () => { const now = performance.now(); let busy = false;
+    for (const j of jobs) { if (j.done) continue; const p = Math.min(1, Math.max(0, (now - j.at) / ms));
+      if (p >= 1 || document.hidden || now - j.at > ms + 4000) { finish(j); continue; } busy = true;
+      for (const n of j.nodes) { const text = ORIG.get(n), k = Math.floor(text.length * p); let s = text.slice(0, k);
+        for (let i = k; i < text.length; i++) s += text[i] === ' ' ? ' ' : cipher[rnd(cipher.length)]; n.nodeValue = s; n.parentElement?.classList.add('veil'); } }
     if (busy) requestAnimationFrame(step); else res(); }; requestAnimationFrame(step); });
 }
+export function settle() { for (const j of [...LIVE]) j.finish(); }
+document.addEventListener('visibilitychange', () => { if (document.hidden) settle(); });
+addEventListener('pagehide', settle);
 
 // ---- orbit: the relays around the key ----
 async function orbit() {
