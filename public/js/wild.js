@@ -18,6 +18,7 @@ html.wild .veil{color:#43956b!important;text-shadow:none!important}html.wild #wi
 .term .l{white-space:pre-wrap;word-break:break-all}.term .ok{color:#7dd3a8}.term .dim{color:#43956b}.term .cur{display:inline-block;width:.6em;height:1em;background:#a4e9bf;vertical-align:-2px;animation:blink 1s steps(2) infinite}@keyframes blink{50%{opacity:0}}
 .term .bar{display:flex;gap:.5rem;justify-content:flex-end;margin-top:.35rem}.term button{font:11px var(--mono);padding:.15rem .5rem;background:rgba(125,211,168,.12);border:1px solid rgba(125,211,168,.35);color:#a4e9bf;border-radius:6px}
 .hud{position:fixed;left:1rem;bottom:1rem;z-index:61;font:12px var(--mono);color:#a4e9bf;background:rgba(3,6,4,.88);border:1px solid rgba(125,211,168,.35);border-radius:10px;padding:.5rem .8rem;display:none;max-width:16rem}.hud.on{display:block}.hud canvas{display:block;width:100%;height:auto;margin-bottom:.35rem}
+@media (max-width:640px){html.wild main{padding-bottom:3.4rem}#orbit{display:none!important}.hud{left:.5rem;bottom:3rem;max-width:12rem}.term.min{inset:auto 0 0 0;width:100%;max-height:2.5rem;border-radius:10px 10px 0 0;border-width:1px 0 0;padding:.35rem .7rem;font-size:10px;overflow:hidden;display:flex;align-items:center;gap:.6rem;cursor:pointer}.term.min>div:first-child{flex:1;min-width:0;overflow:hidden}.term.min .l:not(:last-child){display:none}.term.min .l{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.term.min .bar{margin:0;flex:0 0 auto}.term.min.open{max-height:60vh;overflow:auto;display:block;padding:.55rem .8rem}.term.min.open .l{display:block;white-space:pre-wrap}.term.min.open .bar{margin-top:.35rem}}
 @media (prefers-reduced-motion:reduce){html.wild *{animation:none!important;transition:none!important}html.wild #rain{display:none}}`;
 
 let cipher = '0123456789abcdef', ctx = null, soundOn = false, events = [];
@@ -60,6 +61,8 @@ async function terminal() {
   // the full boot plays once per browser session; later loads start minimised
   let skip = !!sessionStorage.getItem('rb.booted'); try { sessionStorage.setItem('rb.booted', '1'); } catch {}
   const started = performance.now(); t.addEventListener('click', () => { skip = true; }, { once: true });
+  // on a phone the minimised terminal is a one-line dock; tapping it opens the log, tapping again closes it
+  t.addEventListener('click', e => { if (t.classList.contains('min') && !e.target.closest('button')) t.classList.toggle('open'); });
   if (skip) t.classList.add('min');
   // typewriter with a hard budget: whatever the timers do, the boot never takes more than ~3 s
   const line = async (text, cls = '') => { const l = document.createElement('div'); l.className = 'l ' + cls; out.append(l);
