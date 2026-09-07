@@ -43,7 +43,7 @@ function rain() {
   const g = c.getContext('2d'); let cols = [], w = 0, h = 0, last = 0;
   const size = () => { w = c.width = innerWidth; h = c.height = innerHeight; cols = Array.from({ length: Math.ceil(w / 16) }, () => rnd(h / 16)); };
   size(); addEventListener('resize', size);
-  const tick = t => { requestAnimationFrame(tick); if (document.hidden || t - last < 50) return; last = t;
+  const tick = t => { requestAnimationFrame(tick); if (t - last < 50) return; last = t;
     g.fillStyle = 'rgba(5,8,6,.18)'; g.fillRect(0, 0, w, h); g.font = '14px ui-monospace,Menlo,monospace';
     cols.forEach((y, i) => { g.fillStyle = P[8 + rnd(8)]; g.fillText(cipher[rnd(cipher.length)], i * 16, y * 16); cols[i] = y * 16 > h && Math.random() > .975 ? 0 : y + 1; }); };
   requestAnimationFrame(tick);
@@ -91,7 +91,7 @@ async function orbit() {
   const cells = [...svg.matchAll(/fill="(#[0-9a-f]{6})"/gi)].map(m => m[1]).filter(f => P.includes(f.toLowerCase()));
   const relays = [...document.querySelectorAll('footer [data-relay]')].map(el => ({ el, name: el.dataset.relay.replace(/^wss?:\/\//, '').replace(/\..*/, '') }));
   let t0 = performance.now();
-  const draw = now => { requestAnimationFrame(draw); if (document.hidden) return; const t = (now - t0) / 1000; g.clearRect(0, 0, 240, 150);
+  const draw = now => { requestAnimationFrame(draw); const t = (now - t0) / 1000; g.clearRect(0, 0, 240, 150);
     const cx = 120, cy = 75; cells.forEach((f, i) => { g.fillStyle = f; g.fillRect(cx - 12 + (i % 8) * 3, cy - 12 + Math.floor(i / 8) * 3, 2.5, 2.5); });
     relays.forEach((r, i) => { const open = r.el.querySelector('.dot')?.classList.contains('open'), a = t * (0.25 + i * 0.07) + i * 1.6, R = 42 + i * 14, x = cx + Math.cos(a) * R, y = cy + Math.sin(a) * R * 0.55;
       g.strokeStyle = open ? 'rgba(125,211,168,.35)' : 'rgba(229,72,77,.35)'; g.beginPath(); g.ellipse(cx, cy, R, R * 0.55, 0, 0, Math.PI * 2); g.stroke();
