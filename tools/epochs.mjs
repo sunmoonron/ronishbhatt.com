@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-// epochs.mjs: refresh public/projects/js/modules/epochs.js, the difficulty-adjustment
+// epochs.mjs: refresh public/projects/js/orbit/epochs.js, the difficulty-adjustment
 // table NOSTR ORBIT uses to turn a timestamp into a block height (one row per
 // adjustment, [height, timestamp of that block]). The page also fetches newer
 // rows live, so a stale table only costs accuracy for the newest fortnights.
 import fs from 'node:fs';
-const OUT = new URL('../public/projects/js/modules/epochs.js', import.meta.url).pathname;
+const OUT = new URL('../public/projects/js/orbit/epochs.js', import.meta.url).pathname;
 const rows = await (await fetch('https://mempool.space/api/v1/mining/difficulty-adjustments')).json();
 const table = rows.map(([ts, h]) => [h, ts]).sort((a, b) => a[0] - b[0]);
 let gaps = 0;

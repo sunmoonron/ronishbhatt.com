@@ -305,11 +305,11 @@
 
 <script src="/vendor/nostr-tools-2.25.2.bundle.js"></script>
 <script type="module">
-import { anchorEventsFast, blockToDate, addRows, setTip, tipHeight, BLOCKS_PER_EPOCH } from '/projects/js/modules/anchor.js';
-import { computeMetrics, eraMeta }                            from '/projects/js/modules/analytics.js';
-import { drawOrbit, hitTest, drawTimeline, blockAngle }       from '/projects/js/modules/orbit.js';
-import { createTower }                                        from '/projects/js/modules/tower.js';
-import { getTipHeight, getDifficultyAdjustments }             from '/projects/js/modules/mempool.js';
+import { anchorEventsFast, blockToDate, addRows, setTip, tipHeight, BLOCKS_PER_EPOCH } from '/projects/js/orbit/anchor.js';
+import { computeMetrics, eraMeta }                            from '/projects/js/orbit/analytics.js';
+import { drawOrbit, hitTest, drawTimeline, blockAngle }       from '/projects/js/orbit/orbit.js';
+import { createTower }                                        from '/projects/js/orbit/tower.js';
+import { getTipHeight, getDifficultyAdjustments }             from '/projects/js/orbit/mempool.js';
 
 const $ = id => document.getElementById(id);
 const JACK = 'npub1sg6plzptd64u62a878hep2kev88swjh3tw00gjsfl8f237lmu63q0uf63m';
