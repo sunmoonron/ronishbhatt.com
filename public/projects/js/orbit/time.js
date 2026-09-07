@@ -42,15 +42,16 @@ export function line(ts, height) { const s = stamp(ts, height); return `${H(s.h)
 // the live "now": the tip, the current epoch's progress, the wall clock, unix seconds ticking
 export function nowStack() {
   const el = document.createElement('div'); el.className = 'tstack now';
-  const chain = document.createElement('span'), human = document.createElement('span'), raw = document.createElement('span');
-  chain.className = 'tr chain'; human.className = 'tr human'; raw.className = 'tr raw';
-  chain.title = 'the chain tip from mempool.space, the current difficulty epoch and how far into it we are'; human.title = 'your clock'; raw.title = 'unix seconds, ticking';
-  el.append(chain, human, raw);
+  const mk = (cls, glyph, title) => { const r = document.createElement('span'); r.className = 'tr ' + cls; r.title = title;
+    const g = document.createElement('b'); g.textContent = glyph; const t = document.createElement('span'); r.append(g, t); el.append(r); return t; };
+  const chain = mk('chain', '⛓', 'the chain tip from mempool.space, the current difficulty epoch and how far into it we are');
+  const human = mk('human', '📅', 'your clock');
+  const raw = mk('raw', 'τ', 'unix seconds, ticking');
   const tick = () => {
     const tip = tipHeight(), ts = Math.floor(Date.now() / 1000), left = BLOCKS_PER_EPOCH - tip % BLOCKS_PER_EPOCH;
-    chain.textContent = `⛓ ${H(tip)} · E${Math.floor(tip / BLOCKS_PER_EPOCH)} +${fmt(tip % BLOCKS_PER_EPOCH)} · ${fmt(left)} to go`;
-    human.textContent = `📅 ${clock(new Date(ts * 1000))}`;
-    raw.textContent = `τ ${ts}`;
+    chain.textContent = `${H(tip)} · E${Math.floor(tip / BLOCKS_PER_EPOCH)} +${fmt(tip % BLOCKS_PER_EPOCH)} · ${fmt(left)} to go`;
+    human.textContent = clock(new Date(ts * 1000));
+    raw.textContent = String(ts);
   };
   tick(); el.timer = setInterval(tick, 1000);
   return el;
