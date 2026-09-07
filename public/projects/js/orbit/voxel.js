@@ -45,6 +45,8 @@ export function createVoxels(canvas, anchored, opts = {}) {
   const cam = { yaw: 0.9, pitch: 0.55, t: { ...centre }, dist: 0 };
   let W = 0, H_ = 0, f = 0, dpr = 1, camPos = { x: 0, y: 0, z: 0 }, projected = [], hover = null, dirty = true, raf = 0;
   let armed = false, fly = null, play = null, slow = 0, autorotUntil = 0;
+  let head = null, rate = 2, headIdx = 0, lastHead = 0;  // playhead in block height, epochs per second, voxel cursor
+  const flash = new Map();                                 // voxel -> time it was crossed
 
   function resize() {
     W = canvas.clientWidth; H_ = canvas.clientHeight;
@@ -56,7 +58,7 @@ export function createVoxels(canvas, anchored, opts = {}) {
   }
   function fitDistance() {
     if (!W || !H_) return 200;
-    const wide = (RADIUS + SIDE) * 2 * 1.15 * f / W, tall = (top + 20) * 1.25 * f / H_;
+    const wide = (RADIUS + SIDE) * 2 * 1.45 * f / W, tall = (top + 20) * 1.35 * f / H_;
     return clamp(Math.max(wide, tall) + 10, 60, 1500);
   }
 
@@ -122,7 +124,8 @@ export function createVoxels(canvas, anchored, opts = {}) {
       const color = eraMeta(b.era).color, mining = b.epoch === curEpoch, mined = (tip % BLOCKS_PER_EPOCH) / DAY;
       const hot = hover === b;
       if (level === 'chain') {
-        const k = b.n ? 0.3 + 0.7 * Math.log(1 + b.n) / Math.log(1 + maxN) : 0;
+        const ahead = head != null && b.epoch * BLOCKS_PER_EPOCH > head;
+        const k = (b.n ? 0.3 + 0.7 * Math.log(1 + b.n) / Math.log(1 + maxN) : 0) * (ahead ? 0.25 : 1);
         items.push({ depth: p.depth, d: () => box(b.cx, cy, b.cz, 6, LAYERS / 2, 6, color, b.n ? k : 0, hot ? MINT : b.n ? tint(MINT, 1, 0.35) : 'rgba(125,211,168,.14)', mining), pick: { brick: b, sx: p.sx, sy: p.sy, r: f * 7 / p.depth + 4 } });
         if (mining) items.push({ depth: p.depth - 0.01, d: () => box(b.cx, b.y0 + mined / 2, b.cz, 6, mined / 2, 6, MINT, 0.2, null) });
       } else {
@@ -132,10 +135,11 @@ export function createVoxels(canvas, anchored, opts = {}) {
           if (items.length > budget) break;
           const q = project(v.x, v.y, v.z); if (!q) continue;
           if (q.sx < -10 || q.sx > W + 10 || q.sy < -10 || q.sy > H_ + 10) continue;
-          const dimmed = !v.on || (play && v.h > play.h);
+          const dimmed = !v.on || (head != null && v.h > head);
+          const fl = flash.get(v); const glow = fl != null && performance.now() - fl < 700;
           const fill = v.media ? AMBER : v.heat ? MINT : v.note ? color : eraMeta(v.era).color;
           const alpha = dimmed ? 0.12 : v.note || v.media ? 0.95 : 0.6;
-          items.push({ depth: q.depth, d: () => box(v.x, v.y, v.z, 0.5, 0.5, 0.5, fill, alpha, hover === v ? MINT : dimmed ? null : 'rgba(11,14,13,.55)'), pick: { voxel: v, sx: q.sx, sy: q.sy, r: f * 0.7 / q.depth + 3 } });
+          items.push({ depth: q.depth, d: () => { if (glow) box(v.x, v.y, v.z, 0.9, 0.9, 0.9, AMBER, 0.35 * (1 - (performance.now() - fl) / 700), null); box(v.x, v.y, v.z, 0.5, 0.5, 0.5, fill, alpha, hover === v || glow ? MINT : dimmed ? null : 'rgba(11,14,13,.55)'); }, pick: { voxel: v, sx: q.sx, sy: q.sy, r: f * 0.7 / q.depth + 3 } });
         }
       }
     }
@@ -150,10 +154,11 @@ export function createVoxels(canvas, anchored, opts = {}) {
     }
     const tb = brickOf(curEpoch); if (tb && (level === 'chain' || near(tb))) ring(tb.cx, tb.cz, yOf(tip), 9.5, MINT + 'aa', true, `now · ${H(tip)}`, labelYs);
     const first = voxels[0], fb = first && brickOf(first.epoch); if (fb && (level === 'chain' || near(fb))) ring(fb.cx, fb.cz, yOf(first.h), 9.5, '#8aa094aa', true, `${opts.truncated ? 'oldest fetched' : 'first'} · ${H(first.h)} · ${dayShort(blockToDate(first.h))}`, labelYs);
-    if (play) { const pb = brickOf(Math.floor(play.h / BLOCKS_PER_EPOCH)); if (pb) ring(pb.cx, pb.cz, yOf(play.h), 10.5, AMBER, false, `${H(play.h)} · ${dayShort(blockToDate(play.h))}`, labelYs); }
+    if (head != null) { const pb = brickOf(Math.floor(head / BLOCKS_PER_EPOCH)); if (pb && (level === 'chain' || near(pb))) { ring(pb.cx, pb.cz, yOf(head), 10.5, AMBER, false, `${play ? '▶ ' : ''}${H(head)} · ${dayShort(blockToDate(head))}`, labelYs); ring(pb.cx, pb.cz, yOf(head), 7, AMBER + '66', true, null, labelYs); } }
     // HUD
     ctx.fillStyle = '#8aa094'; ctx.font = '9px ui-monospace, Menlo, monospace';
-    ctx.fillText(`${level} level · ${inView} epoch${inView === 1 ? '' : 's'} in view · one turn of the coil is a year · every cube is a block, 12 × 12 a day, 14 days an epoch${potato ? ' · potato mode' : ''}`, 8, H_ - 8);
+    ctx.fillText(`${level} level · ${inView} epoch${inView === 1 ? '' : 's'} in view${potato ? ' · potato mode' : ''}`, 8, H_ - 8);
+    opts.onView?.({ level, inView, head, playing: !!play, epoch: bricks[nearest()].epoch });
     ctx.textAlign = 'right'; ctx.fillStyle = armed ? MINT : '#8aa094';
     ctx.fillText(armed ? 'scroll zooms · drag orbits · ↑↓ walk the coil · Esc releases' : 'click to take the controls', W - 8, 12); ctx.textAlign = 'left';
     const ms = performance.now() - t0;
@@ -164,17 +169,22 @@ export function createVoxels(canvas, anchored, opts = {}) {
     raf = 0;
     if (fly) { const k = clamp((now - fly.t0) / fly.ms, 0, 1), e = 1 - Math.pow(1 - k, 3); cam.t = { x: fly.a.x + (fly.b.x - fly.a.x) * e, y: fly.a.y + (fly.b.y - fly.a.y) * e, z: fly.a.z + (fly.b.z - fly.a.z) * e }; cam.dist = fly.d0 + (fly.d1 - fly.d0) * e; if (k >= 1) fly = null; dirty = true; }
     if (play) {
-      const k = clamp((now - play.t0) / play.ms, 0, 1), pos = k * (N - 1), c = coil(pos);
-      play.h = Math.round((epochMin + pos) * BLOCKS_PER_EPOCH); cam.t = { x: c.x, y: c.y + LAYERS / 2, z: c.z };
-      while (play.i < voxels.length && voxels[play.i].h <= play.h) { for (const e of voxels[play.i].events) play.onBlip?.(e); play.i++; }
-      if (k >= 1) { const done = play.onDone; play = null; done?.(); }
+      const dt = Math.min(0.1, (now - lastHead) / 1000); lastHead = now;
+      head = Math.min((epochMax + 1) * BLOCKS_PER_EPOCH, head + rate * dt * BLOCKS_PER_EPOCH);
+      if (play.follow) { const pos = clamp(head / BLOCKS_PER_EPOCH - epochMin, 0, N - 1), c = coil(pos); cam.t = { x: c.x, y: c.y + LAYERS / 2, z: c.z }; }
+      advance(now);
+      if (head >= (epochMax + 1) * BLOCKS_PER_EPOCH) { const done = play.onDone; play = null; done?.(); }
       dirty = true;
     } else if (now < autorotUntil && !reduced) { cam.yaw += 0.002; dirty = true; }
     if (dirty) { dirty = false; draw(); }
-    if (fly || play || now < autorotUntil) schedule();
+    if (fly || play || now < autorotUntil || (flash.size && [...flash.values()].some(t => now - t < 700))) schedule();
   }
   // frames come from rAF; while something animates, a timer stands in when a throttled tab withholds them
   let fallback = 0;
+  function advance(now) {
+    while (headIdx < voxels.length && voxels[headIdx].h <= head) { const v = voxels[headIdx]; flash.set(v, now); opts.onHead?.(v, !!play); headIdx++; }
+    while (headIdx > 0 && voxels[headIdx - 1].h > head) headIdx--;
+  }
   function schedule() {
     if (!raf) raf = requestAnimationFrame(frame);
     if ((fly || play) && !fallback) fallback = setTimeout(() => { fallback = 0; if (raf) { cancelAnimationFrame(raf); raf = 0; frame(performance.now()); } }, 90);
@@ -237,15 +247,18 @@ export function createVoxels(canvas, anchored, opts = {}) {
   const api = {
     resize, touch, render() { const t0 = performance.now(); updateCamPos(); draw(); return performance.now() - t0; },
     travel(frac) { const pos = frac * (N - 1), c = coil(pos); cam.t = { x: c.x, y: c.y + LAYERS / 2, z: c.z }; fly = null; if (cam.dist > 110) cam.dist = 48; touch(); },
+    setHead(h, follow) { if (h != null && !Number.isFinite(h)) return; head = h == null ? null : clamp(h, epochMin * BLOCKS_PER_EPOCH, (epochMax + 1) * BLOCKS_PER_EPOCH); if (head != null) { advance(performance.now()); if (follow && cam.dist <= 110) { const pos = clamp(head / BLOCKS_PER_EPOCH - epochMin, 0, N - 1), c = coil(pos); cam.t = { x: c.x, y: c.y + LAYERS / 2, z: c.z }; } } touch(); },
+    head: () => head, rate(r) { if (r) rate = r; return rate; },
+    setView(name) { cam.pitch = name === 'top' ? 1.35 : name === 'side' ? 0.12 : 0.55; touch(); },
     zoom(k) { cam.dist = clamp(cam.dist * k, 5, 1500); touch(); },
     reset() { cam.yaw = 0.9; cam.pitch = 0.55; flyTo(centre, fitDistance()); },
     flyTo(epoch) { const b = brickOf(epoch); if (b) flyTo(brickTarget(b), 48); },
     setGoggle(fn) { for (const v of voxels) v.on = !fn || v.events.some(fn); touch(); },
     engage(counts) { for (const v of voxels) { let s = 0; for (const e of v.events) s = Math.max(s, score(counts.get(e.id))); if (s) v.heat = s; } touch(); },
-    play(ms, onBlip, onDone) { if (play) return; fly = null; play = { t0: performance.now(), ms, h: epochMin * BLOCKS_PER_EPOCH, i: 0, onBlip, onDone }; if (cam.dist > 60) cam.dist = 60; schedule(); },
-    stop() { play = null; touch(); }, playing: () => !!play,
+    play(onDone) { if (play) return; fly = null; autorotUntil = 0; if (head == null || head >= (epochMax + 1) * BLOCKS_PER_EPOCH - 1) { head = epochMin * BLOCKS_PER_EPOCH; headIdx = 0; } lastHead = performance.now(); play = { follow: cam.dist <= 110, onDone }; schedule(); },
+    pause() { play = null; touch(); }, stop() { play = null; touch(); }, playing: () => !!play,
     tick(now = performance.now()) { if (raf) { cancelAnimationFrame(raf); raf = 0; } frame(now); },
-    state: () => ({ yaw: cam.yaw, pitch: cam.pitch, t: cam.t, dist: cam.dist, bricks: N, voxels: voxels.length, lit: voxels.filter(v => v.on).length, armed }),
+    state: () => ({ yaw: cam.yaw, pitch: cam.pitch, t: cam.t, dist: cam.dist, bricks: N, voxels: voxels.length, lit: voxels.filter(v => v.on).length, armed, head, rate, epochMin, epochMax }),
     destroy() { cancelAnimationFrame(raf); raf = 0; clearTimeout(fallback); fallback = 0; document.removeEventListener('keydown', keys); document.removeEventListener('pointerdown', outside); canvas.removeEventListener('wheel', wheel); const c = canvas.cloneNode(false); c.classList.remove('armed'); canvas.replaceWith(c); return c; },
   };
   resize();

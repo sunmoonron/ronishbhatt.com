@@ -179,6 +179,26 @@
     canvas#orbitCanvas { touch-action: none; }
     #orbitWrap.voxel canvas#orbitCanvas { aspect-ratio: 4 / 5; }
     canvas#orbitCanvas.armed { box-shadow: 0 0 0 2px var(--accent) inset; cursor: grab; }
+    .viewpanel { margin-bottom: 1.25rem; }
+    #orbitWrap { padding: 0.75rem 0.75rem 0.25rem; }
+    #orbitWrap canvas#orbitCanvas { width: 100%; aspect-ratio: 16 / 10; max-height: 78vh; display: block; }
+    #orbitWrap.voxel canvas#orbitCanvas { aspect-ratio: 16 / 9; }
+    #scrubRow { padding: 0 0.75rem; }
+    canvas#tlCanvas { width: 100%; height: 76px; display: block; cursor: pointer; }
+    .crumb { padding: 0.5rem 0.9rem 0; font: 0.62rem var(--mono); color: var(--muted); }
+    .crumb[hidden] { display: none; }
+    .crumb b { color: var(--accent); font-weight: 400; }
+    .crumb a { color: var(--text); cursor: pointer; text-decoration: underline dotted; }
+    .caption { display: grid; grid-template-columns: auto 1fr; gap: 0.9rem; align-items: center; margin: 0.45rem 0.75rem 0; padding: 0.55rem 0.8rem; background: var(--bg); border: 1px solid var(--border); border-left: 3px solid #e9c46a; border-radius: 0.5rem; font-size: 0.8rem; min-height: 3.2rem; }
+    .caption[hidden] { display: none; }
+    .caption .cwhen { font: 0.62rem/1.5 var(--mono); color: var(--accent); white-space: pre; }
+    .caption .ctext { color: var(--text); line-height: 1.45; max-height: 3.6em; overflow: hidden; word-break: break-word; }
+    .legend { display: flex; flex-wrap: wrap; gap: 0.4rem 0.9rem; padding: 0.55rem 0.9rem 0; font: 0.62rem var(--mono); color: var(--muted); }
+    .legend[hidden] { display: none; }
+    .legend .lk::before { content: ''; display: inline-block; width: 9px; height: 9px; border-radius: 2px; background: var(--k); margin-right: 5px; vertical-align: -1px; }
+    .legend .dimk::before { background: #1a3f2c; opacity: .6; }
+    .legend .mining::before { background: none; border: 1px dashed var(--mint); box-sizing: border-box; }
+    @media (max-width: 640px) { .caption { grid-template-columns: 1fr; gap: 0.3rem; } }
     .modes { display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap; }
     .mb { background: var(--bg); border: 1px solid var(--border); color: var(--muted); border-radius: 0.4rem; padding: 0.25rem 0.55rem; font: 0.62rem var(--mono); cursor: pointer; letter-spacing: 0.06em; text-transform: uppercase; }
     .mb.on { color: var(--accent); border-color: var(--accent); }
@@ -319,6 +339,7 @@
     <div class="sc"><div class="lbl">Block Streak</div><div class="val" id="sStreak" style="color:var(--green)">-</div><div class="sub">consecutive active</div></div>
     <div class="sc"><div class="lbl">Block Range</div><div class="val" id="sRange" style="color:var(--purple);font-size:1rem;padding-top:4px">-</div><div class="sub" id="sRangeSub">first → last</div></div>
     <div class="sc"><div class="lbl">OTS proofs</div><div class="val" id="sOts" style="color:var(--green)">-</div><div class="sub" id="sOtsSub">NIP-03 attestations</div></div>
+    <div class="sc"><div class="lbl">Halving eras</div><div class="val" id="sEras" style="color:var(--mint);font-size:0.9rem;padding-top:6px;line-height:1.5;white-space:pre-line">-</div><div class="sub">events per era</div></div>
   </div>
 
   <div class="panel" id="blocksPanel">
@@ -327,32 +348,14 @@
     <div class="hint-row">one cube per difficulty epoch you were active in · thickness = how much · newest sits beside the epoch still being mined · click a cube to open it · goggles light up a kind of note across every block</div>
   </div>
 
-  <div class="grid2">
-    <!-- Orbit canvas -->
-    <div class="panel">
-      <div class="ph"><h3 id="viewTitle">Orbital View</h3><div class="modes"><button class="mb on" id="modeOrbit">orbit</button><button class="mb" id="modeTower">voxels 3D</button><button class="mb" id="playBtn">▶ play</button><button class="mb" id="resetBtn" hidden>reset</button></div></div>
-      <div id="orbitWrap" style="padding:0.75rem"><canvas id="orbitCanvas"></canvas></div>
-      <div id="timeRow" hidden><span id="timeFirst"></span><input type="range" id="timeSlider" min="0" max="1000" value="500"><span id="timeLast"></span></div>
-      <div class="hint-row" id="viewHint">hover a dot · click for the note</div>
-    </div>
-
-    <!-- Right panel -->
-    <div class="panel" style="display:flex;flex-direction:column">
-      <div class="ph"><h3>Halving Era Activity</h3></div>
-      <div class="pb"><div class="era-list" id="eraList"></div></div>
-
-      <div class="ph" style="margin-top:auto"><h3>Event Breakdown</h3></div>
-      <div class="pb">
-        <div class="kind-grid">
-          <div class="ki"><div class="kv" id="kNotes"    style="color:var(--accent)">-</div><div class="kl">Notes</div></div>
-          <div class="ki"><div class="kv" id="kReact"    style="color:var(--green)">-</div><div class="kl">Reactions</div></div>
-          <div class="ki"><div class="kv" id="kRepost"   style="color:var(--blue)">-</div><div class="kl">Reposts</div></div>
-        </div>
-      </div>
-
-      <div class="ph"><h3>Epoch Timeline</h3><span>per 2016 blocks (~2 weeks)</span></div>
-      <div style="padding:0.5rem 0.75rem 0.75rem"><canvas id="tlCanvas"></canvas></div>
-    </div>
+  <div class="panel viewpanel">
+    <div class="ph"><h3 id="viewTitle">Orbital View</h3><div class="modes"><button class="mb on" id="modeOrbit">orbit</button><button class="mb" id="modeTower">voxels 3D</button><button class="mb" id="playBtn">▶ play</button><button class="mb" id="rateBtn" hidden title="playback speed">2 epochs/s</button><button class="mb" id="camBtn" hidden title="camera angle">top view</button><button class="mb" id="resetBtn" hidden>reset</button></div></div>
+    <div id="crumb" class="crumb" hidden></div>
+    <div id="orbitWrap"><canvas id="orbitCanvas"></canvas></div>
+    <div id="scrubRow"><canvas id="tlCanvas"></canvas></div>
+    <div id="caption" class="caption" hidden><div class="cwhen" id="capWhen"></div><div class="ctext" id="capText"></div></div>
+    <div class="legend" id="voxLegend" hidden><span class="lk" style="--k:#a4e9bf">note</span><span class="lk" style="--k:#e9c46a">media</span><span class="lk" style="--k:#b4f5d1">engaged</span><span class="lk" style="--k:#255a3f">reaction · repost</span><span class="lk dimk">dim = ahead of the playhead</span><span class="lk mining">dashed = the epoch being mined</span></div>
+    <div class="hint-row" id="viewHint">hover a dot · click for the note</div>
   </div>
 </div>
 
@@ -376,11 +379,11 @@
 <script type="module">
 import { anchorEventsFast, blockToDate, addRows, setTip, tipHeight, BLOCKS_PER_EPOCH } from '/projects/js/orbit/anchor.js';
 import { computeMetrics, eraMeta }                            from '/projects/js/orbit/analytics.js';
-import { drawOrbit, hitTest, drawTimeline, blockAngle }       from '/projects/js/orbit/orbit.js';
-import { createVoxels }                                       from '/projects/js/orbit/voxel.js';
+import { drawOrbit, hitTest, blockAngle }                     from '/projects/js/orbit/orbit.js';
+import { createVoxels }                                       from '/projects/js/orbit/voxel.js?v=2';
 import { getTipHeight, getDifficultyAdjustments }             from '/projects/js/orbit/mempool.js';
 import { createBlocks, GOGGLES, topTags, hasTag }             from '/projects/js/orbit/blocks.js?v=3';
-import { stack, nowStack, H }                                 from '/projects/js/orbit/time.js?v=2';
+import { stack, nowStack, H, clock, dayShort }                from '/projects/js/orbit/time.js?v=2';
 
 const $ = id => document.getElementById(id);
 const JACK = 'npub1sg6plzptd64u62a878hep2kev88swjh3tw00gjsfl8f237lmu63q0uf63m';
@@ -388,6 +391,7 @@ const RELAYS = ['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.primal.net
 const POTATO = (navigator.hardwareConcurrency || 4) <= 2 || (navigator.deviceMemory || 4) <= 2;
 const GREENS = ['#0b1a12','#10261a','#153223','#1a3f2c','#1f4c35','#255a3f','#2b6849','#327754','#3a865f','#43956b','#4ea477','#5ab384','#68c291','#79d09f','#8dddae','#a4e9bf'];
 const KINDS = { 1: 'note', 6: 'repost', 7: 'reaction' };
+const PARAMS = new URLSearchParams(location.search); // read once: the URL is rewritten after a run
 
 let anchored = [], metrics = null, dots = [], mode = 'orbit', vox = null, hover = null, sweep = 0, audio = null, npub = '', blocks = null;
 const chainChange = new Map(); // epoch start height -> difficulty change for that adjustment
@@ -465,13 +469,14 @@ async function run() {
   setStatus('connecting to 3 relays…');
 
   const counts = RELAYS.map(() => 0);
-  const batches = await Promise.all(RELAYS.map((r, i) => fetchHistory(r, hex, n => {
+  const src = PARAMS.get('src'); // a saved event file can stand in for the relays (same origin, used by the harness)
+  const batches = src && /^\/[\w./-]+\.json$/.test(src) ? [await fetch(src).then(r => r.json())] : await Promise.all(RELAYS.map((r, i) => fetchHistory(r, hex, n => {
     counts[i] = n; setStatus(`${counts.reduce((a, b) => a + b, 0).toLocaleString()} events so far from ${counts.filter(Boolean).length} relays…`);
   })));
   const seen = new Set();
   const all = batches.flat().filter(e => !seen.has(e.id) && seen.add(e.id));
   const ots = all.filter(e => e.kind === 1040);
-  const events = all.filter(e => e.kind !== 1040).map(decorate);
+  const events = all.filter(e => e.kind !== 1040).map(e => { delete e.anchor; return decorate(e); });
 
   if (!events.length) {
     setStatus('no events found, try a different npub or check relay connectivity');
@@ -487,7 +492,7 @@ async function run() {
   metrics.otsTotal = ots.length;
   metrics.truncated = batches.some(b => b.truncated);
   npub = raw;
-  history.replaceState(null, '', '?npub=' + raw);
+  history.replaceState(null, '', '?npub=' + raw + (PARAMS.get('view') === 'voxel' ? '&view=voxel' : ''));
 
   loader.classList.remove('on'); setStatus('');
   render(raw, hex);
@@ -513,30 +518,22 @@ function render(npub, hex) {
   $('sOts').textContent = fmt(m.ots);
   $('estNote').textContent = m.truncated ? `⛓ heights interpolated inside real difficulty epochs (±5 blocks) · newest ${(PAGES * 500).toLocaleString()} events per relay, older history not fetched` : '⛓ heights interpolated inside real difficulty epochs (±5 blocks)';
   $('sOtsSub').textContent = m.otsTotal ? `${fmt(m.otsTotal)} kind-1040 proofs published, ${fmt(m.ots)} on events here` : 'NIP-03 attestations, none published';
-  $('kNotes').textContent = fmt(m.notes); $('kReact').textContent = fmt(m.reactions); $('kRepost').textContent = fmt(m.reposts);
-
-  const eraList = $('eraList'); eraList.innerHTML = '';
-  const maxEra = Math.max(...m.eraMap.values());
-  for (const [era, ct] of [...m.eraMap.entries()].sort((a, b) => a[0] - b[0])) {
-    const meta = eraMeta(era), pct = (ct / maxEra) * 100;
-    eraList.insertAdjacentHTML('beforeend', `<div class="era-row"><div class="era-dot" style="background:${meta.color}"></div><span class="era-name">${meta.name}</span><div class="era-track"><div class="era-fill" style="width:${pct}%;background:${meta.color}"></div></div><span class="era-ct">${fmt(ct)}</span></div>`);
-  }
+  $('sEras').textContent = [...m.eraMap.entries()].sort((a, b) => a[0] - b[0]).map(([era, ct]) => `${eraMeta(era).name} · ${fmt(ct)}`).join('\n');
+  scrub = { e0: Math.min(...m.epochMap.keys()), e1: Math.floor(tipHeight() / BLOCKS_PER_EPOCH), head: null, hover: null };
 
   // the history as an icon: 64 cells across the active span, brighter = busier; it becomes this tab's favicon
   const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(orbitIcon());
   $('oicon').src = url; $('oiconDl').href = url; $('oiconDl').download = `orbit-${npub.slice(5, 13)}.svg`;
   document.querySelectorAll('link[rel="icon"]').forEach(l => { l.href = url; l.type = 'image/svg+xml'; });
 
-  $('timeFirst').textContent = `${fmt(m.firstBlock)} · ${monthYear(blockToDate(m.firstBlock))}`;
-  $('timeLast').textContent = `${fmt(m.lastBlock)} · ${monthYear(blockToDate(m.lastBlock))}`;
-  $('timeSlider').value = 500;
 
+  if (PARAMS.get('view') === 'voxel' && !vox) mode = 'voxel';
   dashboard.classList.add('on');
   // synchronous on purpose (a background tab never gets an animation frame), and each view on its own so one cannot sink the others
-  safe(showView); safe(() => drawTimeline(tlC, m)); safe(buildBlocks);
+  safe(showView); safe(drawScrub); safe(buildBlocks);
 }
 function safe(fn) { try { fn(); } catch (e) { console.warn('view skipped:', e.message); } }
-document.addEventListener('visibilitychange', () => { if (!document.hidden && metrics) { safe(showView); safe(() => drawTimeline(tlC, metrics)); } });
+document.addEventListener('visibilitychange', () => { if (!document.hidden && metrics) { safe(showView); safe(drawScrub); } });
 
 // the blocks panel: cubes per epoch, goggles, engagement fetched when a block opens
 function buildBlocks() {
@@ -581,13 +578,13 @@ function orbitIcon() {
 function showView() {
   wrap.classList.toggle('voxel', mode === 'voxel');
   if (mode === 'voxel') {
-    if (!vox) vox = createVoxels(orbitC, anchored, { potato: POTATO, truncated: metrics.truncated, onHover: showTip, onBlock: pickBlock, onEpoch: ep => blocks?.open(ep, true) });
-    $('timeRow').hidden = false; $('resetBtn').hidden = false;
+    if (!vox) vox = createVoxels(orbitC, anchored, { potato: POTATO, truncated: metrics.truncated, onHover: showTip, onBlock: pickBlock, onEpoch: ep => blocks?.open(ep, true), onHead: headCaption, onView: crumbs });
+    for (const id of ['resetBtn', 'rateBtn', 'camBtn', 'voxLegend', 'crumb']) $(id).hidden = false;
     $('viewTitle').textContent = 'Voxel Chain';
     $('viewHint').textContent = 'every cube is a Bitcoin block: 12 × 12 make a day, 14 days make an epoch, the lit ones hold your notes · click a brick to zoom in, a cube to open its block, double-click to back out · click once to take the controls, then scroll zooms and drag orbits';
   } else {
     if (vox) { orbitC = vox.destroy(); vox = null; }
-    $('timeRow').hidden = true; $('resetBtn').hidden = true;
+    for (const id of ['resetBtn', 'rateBtn', 'camBtn', 'voxLegend', 'crumb', 'caption']) $(id).hidden = true;
     $('viewTitle').textContent = 'Orbital View';
     $('viewHint').textContent = 'every halving era since genesis is a ring, 12 o\'clock is the halving · hover a dot · click for the note';
     if (orbitC.clientWidth) dots = drawOrbit(orbitC, anchored, metrics, { hover });
@@ -597,8 +594,57 @@ function showView() {
 }
 $('modeOrbit').addEventListener('click', () => { if (mode !== 'orbit') { stopPlay(); mode = 'orbit'; showView(); } });
 $('modeTower').addEventListener('click', () => { if (mode !== 'voxel') { stopPlay(); mode = 'voxel'; showView(); } });
-$('resetBtn').addEventListener('click', () => { vox?.reset(); $('timeSlider').value = 500; });
-$('timeSlider').addEventListener('input', e => vox?.travel(e.target.value / 1000));
+$('resetBtn').addEventListener('click', () => vox?.reset());
+const RATES = [1, 2, 5];
+$('rateBtn').addEventListener('click', () => { const r = RATES[(RATES.indexOf(vox?.rate() || 2) + 1) % RATES.length]; vox?.rate(r); $('rateBtn').textContent = `${r} epoch${r === 1 ? '' : 's'}/s`; });
+$('camBtn').addEventListener('click', () => { const top = $('camBtn').textContent === 'top view'; vox?.setView(top ? 'top' : 'iso'); $('camBtn').textContent = top ? 'angled view' : 'top view'; });
+
+// the scrubber under the canvas: one bar per epoch from your first to the one being mined, years and halvings marked, the playhead on top
+let scrub = null, scrubDrag = false;
+const ERA_BLOCKS = 210000;
+function drawScrub() {
+  if (!scrub || !metrics) return;
+  const c = tlC, dpr = Math.min(devicePixelRatio || 1, 2), W = c.clientWidth, Hh = c.clientHeight; if (!W || !Hh) return;
+  c.width = W * dpr; c.height = Hh * dpr; const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.fillStyle = '#0b0e0d'; g.fillRect(0, 0, W, Hh);
+  const { e0, e1 } = scrub, n = e1 - e0 + 1, bw = W / n, max = Math.max(1, ...metrics.epochMap.values()), base = Hh - 16, top = 14;
+  g.font = '9px ui-monospace, Menlo, monospace'; g.textBaseline = 'alphabetic';
+  let lastYear = null;
+  for (let k = e0; k <= e1; k++) {
+    const x = (k - e0) * bw, cnt = metrics.epochMap.get(k) || 0, era = Math.floor(k * BLOCKS_PER_EPOCH / ERA_BLOCKS), h = cnt ? Math.max(2, cnt / max * (base - top)) : 1;
+    const ahead = scrub.head != null && k * BLOCKS_PER_EPOCH > scrub.head;
+    g.fillStyle = eraMeta(era).color + (cnt ? (ahead ? '55' : 'cc') : '26'); g.fillRect(x, base - h, Math.max(1, bw - (bw > 3 ? 1 : 0)), h);
+    if (k === scrub.hover) { g.fillStyle = 'rgba(180,245,209,.14)'; g.fillRect(x, top - 4, Math.max(1, bw), base - top + 6); }
+    const y = blockToDate(k * BLOCKS_PER_EPOCH).getFullYear();
+    if (y !== lastYear) { g.fillStyle = '#8aa094'; g.fillRect(x, base, 1, 6); g.fillText(String(y), x + 3, Hh - 3); lastYear = y; }
+    if ((k * BLOCKS_PER_EPOCH) % ERA_BLOCKS < BLOCKS_PER_EPOCH && k > e0) { g.strokeStyle = '#b4f5d1'; g.setLineDash([2, 3]); g.beginPath(); g.moveTo(x, top - 2); g.lineTo(x, base); g.stroke(); g.setLineDash([]); g.fillStyle = '#b4f5d1'; g.fillText(eraMeta(era).name, x + 3, top + 6); }
+  }
+  if (scrub.hover != null) { const k = scrub.hover, h0 = k * BLOCKS_PER_EPOCH, cnt = metrics.epochMap.get(k) || 0; g.fillStyle = '#e6efe9'; const label = `E${k} · ${dayShort(blockToDate(h0))} → ${dayShort(blockToDate(h0 + BLOCKS_PER_EPOCH - 1))} · ${cnt} event${cnt === 1 ? '' : 's'}`; const tw = g.measureText(label).width, lx = Math.min(Math.max(2, (k - e0) * bw - tw / 2), W - tw - 2); g.fillText(label, lx, top - 4); }
+  if (scrub.head != null) { const x = (scrub.head / BLOCKS_PER_EPOCH - e0) * bw; g.strokeStyle = '#e9c46a'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x, top - 6); g.lineTo(x, base + 2); g.stroke(); g.fillStyle = '#e9c46a'; g.beginPath(); g.moveTo(x - 5, top - 10); g.lineTo(x + 5, top - 10); g.lineTo(x, top - 4); g.closePath(); g.fill(); }
+}
+function scrubHeight(ev) { const r = tlC.getBoundingClientRect(); if (!r.width) return null; const frac = Math.min(1, Math.max(0, (ev.clientX - r.left) / r.width)); return Math.round((scrub.e0 + frac * (scrub.e1 - scrub.e0 + 1)) * BLOCKS_PER_EPOCH); }
+tlC.addEventListener('pointermove', ev => { if (!scrub) return; const h = scrubHeight(ev); if (h == null) return; scrub.hover = Math.floor(h / BLOCKS_PER_EPOCH); if (scrubDrag) setHead(h); drawScrub(); });
+tlC.addEventListener('pointerleave', () => { if (scrub) { scrub.hover = null; drawScrub(); } });
+tlC.addEventListener('pointerdown', ev => { if (!scrub) return; scrubDrag = true; try { tlC.setPointerCapture(ev.pointerId); } catch {} setHead(scrubHeight(ev)); });
+tlC.addEventListener('pointerup', ev => { if (!scrub) return; scrubDrag = false; const h = scrubHeight(ev); if (h != null) blocks?.open(Math.floor(h / BLOCKS_PER_EPOCH), true); });
+tlC.addEventListener('dblclick', ev => { if (!scrub) return; const h = scrubHeight(ev); if (h != null && mode === 'voxel') vox?.flyTo(Math.floor(h / BLOCKS_PER_EPOCH)); });
+function setHead(h) { if (!Number.isFinite(h)) return; scrub.head = h; if (mode === 'voxel') vox?.setHead(h, true); drawScrub(); }
+
+// the caption under the canvas reads out whatever the playhead just crossed
+function headCaption(v, playing) {
+  const cap = $('caption'); cap.hidden = false;
+  const first = v.events.find(e => e.kind === 1) || v.events[0];
+  $('capWhen').textContent = `${H(v.h)} · E${v.epoch} day ${v.layer + 1}\n${clock(new Date(first.created_at * 1000))}`;
+  $('capText').textContent = v.events.map(e => e.kind === 1 ? (e.content || '').slice(0, 220) : e.kind === 6 ? '↻ repost' : `♥ ${(e.content || '+').slice(0, 4)}`).join('   ·   ');
+  if (scrub) { scrub.head = v.h; if (!headCaption.t) headCaption.t = setTimeout(() => { headCaption.t = 0; drawScrub(); }, 80); }
+  if (playing) for (const e of v.events) blip(e.kind, e.anchor.era);
+}
+function crumbs(st) {
+  const c = $('crumb'), text = `${st.level === 'chain' ? `chain · ${st.inView} epochs in view` : `${st.level} › E${st.epoch}`}${Number.isFinite(st.head) ? ` › playhead ${H(Math.round(st.head))}` : ''}`;
+  if (c.dataset.text !== text) { c.dataset.text = text; c.textContent = ''; const a = document.createElement('a'); a.textContent = 'chain'; a.addEventListener('click', () => vox?.reset()); const b = document.createElement('b'); b.textContent = text.startsWith('chain') ? text.slice(5) : ` › ${text.replace(/^\w+ › /, '')}`; c.append(a, b); }
+  if (st.head != null && scrub && scrub.head !== st.head) { scrub.head = st.head; if (!crumbs.t) crumbs.t = setTimeout(() => { crumbs.t = 0; drawScrub(); }, 120); }
+}
+document.addEventListener('keydown', e => { if (e.key === ' ' && mode === 'voxel' && vox?.state().armed && !e.target?.closest?.('input, textarea')) { e.preventDefault(); $('playBtn').click(); } });
 
 const local = ev => { const r = orbitC.getBoundingClientRect(); return [ev.clientX - r.left, ev.clientY - r.top]; };
 wrap.addEventListener('mousemove', ev => {
@@ -699,15 +745,16 @@ blip.next = 0;
 let sweepRaf = 0, sweepStart = 0;
 function stopPlay() {
   if (sweepRaf) { cancelAnimationFrame(sweepRaf); sweepRaf = 0; sweep = 0; if (mode === 'orbit' && metrics) dots = drawOrbit(orbitC, anchored, metrics, {}); }
-  vox?.stop();
+  vox?.pause();
   $('playBtn').textContent = '▶ play';
 }
 $('playBtn').addEventListener('click', () => {
   if (!metrics) return;
-  if (sweepRaf || vox?.playing()) { stopPlay(); return; }
+  if (sweepRaf) { stopPlay(); return; }
+  if (mode === 'voxel' && vox?.playing()) { vox.pause(); $('playBtn').textContent = '▶ play'; return; }
   try { audio ||= new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch {}
   $('playBtn').textContent = '■ stop';
-  if (mode === 'voxel') { vox.play(9000, e => blip(e.kind, e.anchor.era), () => { $('playBtn').textContent = '▶ play'; }); return; }
+  if (mode === 'voxel') { $('playBtn').textContent = '❚❚ pause'; vox.play(() => { $('playBtn').textContent = '▶ play'; }); return; }
   const passed = new Set(); sweepStart = performance.now();
   const step = now => {
     const k = Math.min(1, (now - sweepStart) / 8000), a = -Math.PI / 2 + k * Math.PI * 2;
@@ -720,7 +767,7 @@ $('playBtn').addEventListener('click', () => {
 });
 
 $('shareBtn').addEventListener('click', async () => {
-  const url = location.origin + location.pathname + '?npub=' + npub;
+  const url = location.origin + location.pathname + '?npub=' + npub + (mode === 'voxel' ? '&view=voxel' : '');
   try { await navigator.clipboard.writeText(url); $('shareBtn').textContent = 'copied'; setTimeout(() => { $('shareBtn').textContent = 'copy link'; }, 1500); }
   catch { prompt('copy this link', url); }
 });
@@ -731,13 +778,13 @@ window.addEventListener('resize', () => {
   rTimer = setTimeout(() => {
     if (!metrics) return;
     if (mode === 'voxel') vox?.resize(); else dots = drawOrbit(orbitC, anchored, metrics, { hover });
-    drawTimeline(tlC, metrics); blocks?.relayout();
+    drawScrub(); blocks?.relayout();
   }, 250);
 });
 window.orbit = { get anchored() { return anchored; }, get metrics() { return metrics; }, get vox() { return vox; }, get blocks() { return blocks; }, run, mode: m => { mode = m; showView(); } };
 
 // a shared link runs on arrival (last, so every binding above exists)
-const qs = new URLSearchParams(location.search).get('npub');
+const qs = PARAMS.get('npub');
 if (qs) { npubIn.value = qs; run(); }
 </script>
 </body>
