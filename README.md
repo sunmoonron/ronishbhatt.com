@@ -1,34 +1,32 @@
 # ronishbhatt.com
 
-The page is a 22-line HTML template; the content is signed Nostr events.
+A personal website whose pages are signed Nostr events. The HTML shell is 22 lines; everything else (layout, stylesheet, every block of content) is a kind 30078 event signed by the site key, served from a self-hosted [strfry](https://github.com/hoytech/strfry) relay with public relays as backups, verified in the browser, and assembled on the fly. The content is veiled with NIP-44 using a key that is literally the favicon: the 8 × 8 mosaic encodes 32 bytes, one shade of green per hex digit.
 
-- `public/index.html`: the template. `tools/bake.mjs` fills it: pre-rendered body, the stylesheet (itself an event), an index of the baked event ids, an import map with integrity hashes, CSP and SRI hashes.
-- `public/js/boot.js`: the only script a visitor runs (no libraries). Asks the relays for the site key's events; anything the bake did not know about, a chat message, an unlock or a paper preview hands off to the full app.
-- `public/js/app.js` + `store.js`, `ui.js`, `chat.js`, `owner.js`, `pow-worker.js`: the full app, loaded on demand. `ui.js` renders both in the browser and in Node (the bake).
-- `public/vendor/`: pinned upstream builds under content-hashed names (immutable; never edit in place, add a file and repoint `tools/bake.mjs`). See `VERSIONS.txt`.
-- `public/drafts.json`: the seed content, permanent. A block with no live signed version (never published, deleted, or recalled) renders its draft; to retire a seeded block for good, remove it here and deploy.
-- `public/site.json`: bake output the app fetches on demand: signed events from the relay plus the drafts still unpublished.
-- everything else in `public/`: the archive of one-page experiments that survived the 2026-09 cut.
+Also in this repo: **NOSTR ORBIT**, a timechain view of any Nostr profile (`public/projects/`).
 
-Events, all by the site key (the key the personal relay admits and the console trusts):
+![the voxel chain](docs/orbit-voxel-chain.png)
 
-| kind | what |
-|------|------|
-| 0 | header: name, about, picture |
-| 30078 `d=ronishbhatt.com` | layout: section order, footer links, chat on/off |
-| 30078 `d=ronishbhatt.com/css` | the stylesheet |
-| 30023 `t=ronishbhatt.com` + `t=section|project|writing` | the blocks, Markdown (HTML allowed) |
-| 1 | notes (optional section) |
-| 5 | deletions |
-| 1059 | chat: NIP-17 gift wraps to the site key (16-bit PoW), owner replies (20-bit) |
+## What is here
 
-## Work on it
+- `public/index.html`: the shell. Import map, integrity hashes, a snapshot of event ids, one module script.
+- `public/js/`: `boot.js` (the only script a visitor runs until they interact), `store.js` (relay pool, verification, unveiling, the NIP-13 miner), `ui.js`, `chat.js` (NIP-17 gift-wrapped chat gated by proof of work), `garden.js` and the mural (small experiments on top of the relay), `owner.js` (the editor; the owner signs in their own client, keys never touch the server), `wild.js` (the optional visual mode).
+- `public/projects/html.html` and `public/projects/js/orbit/`: NOSTR ORBIT. Timestamps become block heights through the real difficulty schedule (`epochs.js`, refreshed by `tools/epochs.mjs`, merged live from mempool.space, about five blocks either way). Every halving era is a ring. Every Bitcoin block is a voxel: 12 × 12 make a day, 14 days make an epoch, epochs coil upward 26 to a turn so one turn is a year. Epochs are also mempool-style blocks whose contents are your notes laid out as a treemap, coloured by the replies, reactions and zaps the relays report. There is a playhead you can scrub and replay. No graphics library; the 3D is a software projection on a 2D canvas that only draws on input.
+- `tools/bake.mjs`: fetches and verifies the site events, pre-renders the HTML, hashes the modules, writes the import map and the content security policy.
+- `tools/dev.sh`: two in-memory relays with the production write policy, a bake, and a static server, all against a throwaway key.
+- `public/.well-known/nostr.json`: NIP-05.
 
-```bash
-tools/dev.sh          # two local relays with the real write policy + bake + static server on :8788, throwaway site key in .dev/key.json
-tools/local.sh        # the real page from this machine against the real relays (no Cloudflare in the code path)
-./deploy.sh           # bake from the live relay, rsync public/ to the box
-tools/build-plant.sh  # rebuild the Plant a Thought demo from its template
+![your blocks](docs/orbit-blocks.png)
+
+## Run it
+
+```
+npm install
+tools/dev.sh          # http://localhost:8788, relays on :7777 and :7778
+./deploy.sh           # bake, then rsync public/ to the host
 ```
 
-The nginx side (real 404s, cache headers) and the relay write policy live in `../dell-nix` (`modules/website.nix`, `modules/strfry-node.nix`, `modules/relays.nix`).
+The relay write policy (proof-of-work tiers per event kind, gift-wrap limits, the word door) lives with the host configuration; a standalone copy is being extracted into [doorway](https://github.com/sunmoonron/doorway).
+
+## License
+
+MIT. The vendored libraries in `public/vendor/` keep their own licenses (preact, htm, marked, DOMPurify, nostr-tools).
