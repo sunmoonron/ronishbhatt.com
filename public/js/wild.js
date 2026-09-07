@@ -89,7 +89,8 @@ async function orbit() {
   const c = document.createElement('canvas'); c.width = 240; c.height = 150; box.append(c); const g = c.getContext('2d');
   const svg = await fetch(document.querySelector('link[rel="icon"][type="image/svg+xml"]')?.getAttribute('href') || '/favicon.svg').then(r => r.text()).catch(() => '');
   const cells = [...svg.matchAll(/fill="(#[0-9a-f]{6})"/gi)].map(m => m[1]).filter(f => P.includes(f.toLowerCase()));
-  const relays = [...document.querySelectorAll('footer [data-relay]')].map(el => ({ el, name: el.dataset.relay.replace(/^wss?:\/\//, '').replace(/\..*/, '') }));
+  const primary = document.querySelector('meta[name="site-relay"]')?.content;
+  const relays = [...document.querySelectorAll('footer [data-relay]')].map(el => { const parts = el.dataset.relay.replace(/^wss?:\/\//, '').replace(/\/.*$/, '').split('.'); return { el, name: el.dataset.relay === primary ? 'mine' : parts.length > 1 ? parts[parts.length - 2] : parts[0] }; });
   let t0 = performance.now();
   const draw = now => { requestAnimationFrame(draw); const t = (now - t0) / 1000; g.clearRect(0, 0, 240, 150);
     const cx = 120, cy = 75; cells.forEach((f, i) => { g.fillStyle = f; g.fillRect(cx - 12 + (i % 8) * 3, cy - 12 + Math.floor(i / 8) * 3, 2.5, 2.5); });
