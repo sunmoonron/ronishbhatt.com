@@ -135,11 +135,12 @@ const CORES = () => Math.min(navigator.hardwareConcurrency || 2, 8);
 export function mine(event, bits) {
   if (!bits) return Promise.resolve(event);
   return new Promise((resolve, reject) => {
-    const n = CORES(), workers = []; let done = false;
-    const finish = (err, ev) => { if (done) return; done = true; workers.forEach(w => w.terminate()); err ? reject(err) : resolve(ev); };
+    const n = CORES(), workers = []; let done = false, hashes = 0, best = 0;
+    const tell = extra => { try { document.dispatchEvent(new CustomEvent('pow', { detail: { hashes, best, bits, ...extra } })); } catch {} };
+    const finish = (err, ev) => { if (done) return; done = true; workers.forEach(w => w.terminate()); tell({ done: true }); err ? reject(err) : resolve(ev); };
     for (let i = 0; i < n; i++) {
       const w = new Worker(new URL('./pow-worker.js', import.meta.url)); workers.push(w);
-      w.onmessage = ({ data }) => data.error ? finish(new Error(data.error)) : finish(null, data.event);
+      w.onmessage = ({ data }) => { if (data.progress) { hashes += data.progress; if (data.best > best) best = data.best; } if (data.error) return finish(new Error(data.error)); if (data.event) return finish(null, data.event); tell({}); };
       w.onerror = e => finish(new Error(e.message || 'worker failed'));
       w.postMessage({ event: structuredClone(event), bits, start: i + 1, step: n });
     }

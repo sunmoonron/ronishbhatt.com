@@ -1,7 +1,26 @@
 {
  "site": "0bfcddd3f832913d00075f9246f2f45c362d5467546e593ec8e2f1d87a9e5a3d",
- "baked_at": 1788796805,
+ "baked_at": 1788799615,
  "events": [
+  {
+   "content": "how",
+   "created_at": 1788797262,
+   "id": "000031f6642caa6cb0fe45f40a65f05189bf48aa959ce3501742fae03c436c17",
+   "kind": 1,
+   "pubkey": "0bfcddd3f832913d00075f9246f2f45c362d5467546e593ec8e2f1d87a9e5a3d",
+   "sig": "6bd14f25cbd55cd8ad3bcc64922b279d85d1f698b25641525f0043e6a7b0b9c948381f57baf9b224db048c2e558eb4e1ce262e5097b460af93720ee856925ab1",
+   "tags": [
+    [
+     "t",
+     "plant"
+    ],
+    [
+     "nonce",
+     "14823",
+     "18"
+    ]
+   ]
+  },
   {
    "content": "Yo",
    "created_at": 1788611763,

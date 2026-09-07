@@ -8,11 +8,14 @@ self.onmessage = ({ data: { event, bits, start = 1, step = 1 } }) => {
     const { getEventHash, nip13 } = NostrTools;
     const tag = ['nonce', '0', String(bits)];
     event.tags = (event.tags || []).filter(t => t[0] !== 'nonce').concat([tag]);
+    let best = 0, tried = 0;
     for (let n = start; ; n += step) {
       tag[1] = String(n);
       event.id = getEventHash(event);
-      if (nip13.getPow(event.id) >= bits) break;
+      const b = nip13.getPow(event.id); if (b > best) best = b;
+      if (b >= bits) break;
+      if (++tried % 2048 === 0) self.postMessage({ progress: 2048, best });
     }
-    self.postMessage({ event });
+    self.postMessage({ event, progress: tried % 2048 });
   } catch (e) { self.postMessage({ error: String(e && e.message || e) }); }
 };

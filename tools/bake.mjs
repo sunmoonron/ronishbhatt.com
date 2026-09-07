@@ -50,7 +50,7 @@ const body = render(html`<${Page} Chat=${Chat} chatProps=${{ live: false }} Gard
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 // First-party modules get content-hashed copies (imports rewritten to match): the
 // HTML, never cached, always names the exact bytes it was baked with.
-const ORDER = ['pow-worker', 'store', 'ui', 'chat', 'garden', 'owner', 'app', 'boot'];
+const ORDER = ['pow-worker', 'store', 'ui', 'chat', 'garden', 'owner', 'app', 'wild', 'boot'];
 const hashed = {}, keep = new Set();
 for (const name of ORDER) {
   let code = fs.readFileSync(PUB + `js/${name}.js`, 'utf8');
@@ -61,7 +61,7 @@ for (const name of ORDER) {
 }
 for (const f of fs.readdirSync(PUB + 'js')) if (/^[a-z-]+\.[0-9a-f]{8}\.js$/.test(f) && !keep.has(f)) fs.unlinkSync(PUB + 'js/' + f);
 const VENDOR = { preact: '/vendor/preact-10.29.8.c30e721e.mjs', 'preact/hooks': '/vendor/preact-hooks-10.29.8.a6ee626f.mjs', htm: '/vendor/htm-3.1.1.mjs', marked: '/vendor/marked-18.0.11.05e41134.mjs' };
-const MODULES = [...Object.values(VENDOR), ...['app', 'store', 'ui', 'chat', 'garden', 'owner'].map(n => '/js/' + hashed[n])];
+const MODULES = [...Object.values(VENDOR), ...['app', 'store', 'ui', 'chat', 'garden', 'owner', 'wild'].map(n => '/js/' + hashed[n])];
 const LAZY = ['/vendor/nostr-tools-2.25.2.bundle.js', '/vendor/dompurify-3.4.14.min.c2f26ea4.js', ASSETS.engine];
 const importmap = JSON.stringify({ imports: VENDOR, integrity: Object.fromEntries(MODULES.map(f => [f, sri(f)])) });
 const index = JSON.stringify({ baked_at, ids: events.map(e => e.id) });
