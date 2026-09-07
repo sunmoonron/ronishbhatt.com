@@ -370,7 +370,7 @@ const tlC = $('tlCanvas'), tip = $('tip'), npubIn = $('npubIn'), analyzeBtn = $(
 // chain facts: the tip and the newest difficulty rows, awaited briefly before anchoring
 const chain = Promise.allSettled([
   getTipHeight().then(h => { setTip(h); $('tipH').textContent = Number(h).toLocaleString(); }),
-  getDifficultyAdjustments().then(rows => { addRows(rows.map(([ts, h]) => [h, ts])); for (const [, h, , change] of rows) chainChange.set(h, change - 1); // the API gives a ratio, 0.92 = minus 8% }),
+  getDifficultyAdjustments().then(rows => { addRows(rows.map(([ts, h]) => [h, ts])); for (const [, h, , change] of rows) chainChange.set(h, change - 1); /* the API gives a ratio, 0.92 = minus 8% */ }),
 ]);
 
 $('demoA').addEventListener('click', () => { npubIn.value = JACK; run(); });
