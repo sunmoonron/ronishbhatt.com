@@ -42,6 +42,7 @@ for (const ev of ['focusin', 'pointerdown', 'keydown']) chat?.addEventListener(e
 chat?.querySelector('form')?.addEventListener('submit', e => { e.preventDefault(); upgrade({ focus: 'chat', send: true }); });
 chat?.querySelector('.keys')?.addEventListener('click', e => { if (e.target.tagName === 'BUTTON') upgrade({ focus: 'chat' }); });
 for (const b of document.querySelectorAll('.pills button.lnk, footer button.lnk')) b.addEventListener('click', () => upgrade({ unlock: true }));
+for (const ev of ['focusin', 'pointerdown']) $('#garden')?.addEventListener(ev, () => upgrade({ reason: 'garden' }), { once: true });
 
 // papers: the thumbnail opens the PDF right there; without this script it is a plain link
 document.addEventListener('click', e => {

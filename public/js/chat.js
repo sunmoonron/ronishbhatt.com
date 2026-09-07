@@ -68,6 +68,7 @@ export function chatConfigure(ownerMode) {
   }
   load(); subscribe(); notify();
 }
+export function ensureVisitorKey() { if (chat.mode === 'owner') return owner.sk; ensureKey(); return chat.sk; }
 function ensureKey() { if (chat.sk) return; chat.sk = env.NT.generateSecretKey(); chat.me = env.NT.getPublicKey(chat.sk); localStorage.setItem(VISITOR_KEY, env.NT.nip19.nsecEncode(chat.sk)); subscribe(); }
 
 export function setNick(n) { chat.nick = String(n || '').trim().slice(0, 40); localStorage.setItem(NICK, chat.nick); }

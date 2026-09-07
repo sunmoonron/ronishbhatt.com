@@ -24,6 +24,11 @@ function policy(ev) {
     if ((nonce ? +nonce[2] : 0) < need || getPow(ev.id) < need) return [false, `pow: gift wraps need ${need} bits here`];
     return [true, ''];
   }
+  if (ev.kind === 1 && ev.tags.length === 2 && ev.tags.some(t => t[0] === 't' && t[1] === 'plant') && ev.tags.some(t => t[0] === 'nonce')) {
+    if (!/^[\p{L}\p{N}'-]{1,24}$/u.test(ev.content)) return [false, 'blocked: one word, 24 characters at most'];
+    if (getPow(ev.id) < 18) return [false, 'pow: planting a word needs 18 bits'];
+    return [true, ''];
+  }
   return [false, "restricted: this relay only accepts the owner's events"];
 }
 

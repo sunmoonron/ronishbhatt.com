@@ -5,7 +5,7 @@ import { h } from 'preact';
 import { useState } from 'preact/hooks';
 import htm from 'htm';
 import { marked } from 'marked';
-import { store, env, sel, meta, text, dTag, seenOn } from './store.js';
+import { store, env, sel, meta, text, dTag, seenOn, PALETTE } from './store.js';
 export const html = htm.bind(h);
 
 marked.use({ gfm: true, renderer: { link({ href, title, tokens }) {
@@ -70,13 +70,26 @@ const Notes = ({ notes, edit, compose }) => html`<section class="c" id="notes">
   ${notes.length ? notes.map(n => html`<div class="note" key=${n.id}><time>${fmtDate(n.created_at)}</time><${Markdown} src=${text(n)} /><div class="meta">${edit ? edit(n) : null}<${EvLink} ev=${n} /></div></div>`) : html`<p class="empty">no notes yet</p>`}
 </section>`;
 
-export function Page({ Chat, chatProps, edit, onUnlock, ownerOn, children }) {
+// The mural: one tile per message ever accepted at the door, from ids alone.
+export function Mural() {
+  const tiles = [...store.wraps.values()].sort((a, b) => a.created_at - b.created_at);
+  if (!tiles.length) return html`<p class="empty" style="padding:.25rem 1rem 1rem">no messages yet; the first tile lands when someone writes to me.</p>`;
+  const cols = 24, cell = 10, rows = Math.ceil(tiles.length / cols), oldest = tiles[0].created_at, newest = tiles[tiles.length - 1].created_at;
+  return html`<div class="mural"><svg viewBox=${`0 0 ${cols * cell} ${rows * cell}`} role="img" aria-label=${`${tiles.length} messages, one tile each`}>
+    ${tiles.map((t, i) => { const s = 5 + Math.min(4, Math.max(0, t.bits - 16)), o = 0.45 + 0.55 * ((t.created_at - oldest) / Math.max(1, newest - oldest));
+      return html`<rect key=${t.id} x=${((i % cols) * cell + (cell - s) / 2).toFixed(1)} y=${(Math.floor(i / cols) * cell + (cell - s) / 2).toFixed(1)} width=${s} height=${s} rx="1.5" fill=${PALETTE[parseInt(t.id[7], 16) || 0]} opacity=${o.toFixed(2)}><title>${`${t.bits} bits of work, ${fmtDate(t.created_at)}`}</title></rect>`; })}
+  </svg><p class="legend">${tiles.length} messages accepted at the door. Bigger squares cost more work, brighter ones are newer; nothing is decrypted and nobody is named.</p></div>`;
+}
+
+export function Page({ Chat, chatProps, Garden, gardenProps, edit, onUnlock, ownerOn, children }) {
   const cfg = sel.config(), p = sel.profileData(), profile = sel.profile();
   const blocks = cfg.sections.map(id => {
     if (id === 'projects' || id === 'writing') { const type = id === 'projects' ? 'project' : 'writing';
       return html`<${Items} key=${id} id=${id} items=${sel.articles(type)} edit=${edit && (e => edit('block', e))} add=${edit && (() => edit('block', null, { type }))} />`; }
     if (id === 'notes') return html`<${Notes} key="notes" notes=${sel.notes()} edit=${edit && (e => edit(1, e))} compose=${edit && (() => edit(1, null))} />`;
     if (id === 'chat') return cfg.chat === false && !ownerOn ? null : html`<section class=${ownerOn ? 'c owner' : 'c'} id="chat" key="chat"><${Label} text=${ownerOn ? 'inbox' : 'say hi'} /><${Chat} ...${chatProps} /></section>`;
+    if (id === 'mural') return html`<details class="fold" id="mural" key="mural"><summary>the proof-of-work mural<span class="tiny">experimental</span></summary><${Mural} /></details>`;
+    if (id === 'garden') return Garden ? html`<details class="fold" id="garden" key="garden"><summary>Bip reads the room<span class="tiny">experimental</span></summary><${Garden} ...${gardenProps} /></details>` : null;
     const ev = sel.section(id);
     if (!ev) return ownerOn ? html`<section class="c" key=${id}><${Label} text=${id}>${edit('block', null, { slug: id, type: 'section', title: id })}</${Label}><p class="empty">no ${id} block on the relay yet</p></section>` : null;
     const m = meta(ev);
@@ -84,7 +97,7 @@ export function Page({ Chat, chatProps, edit, onUnlock, ownerOn, children }) {
     return html`<section class="c" id=${id} key=${id}><${Label} text=${m.title || id} ev=${ev}>${edit ? edit('block', ev) : null}</${Label}><${Markdown} src=${m.body} /></section>`;
   });
   return html`${children}
-    <header class="me"><img src="/favicon.svg?k=0bfcddd3" alt="" width="56" height="56" /><div class="who"><h1>${p.name || 'Ronish Bhatt'}</h1><p class="line">${p.about || ''}<${Draft} ev=${profile} /></p>
+    <header class="me"><img src=${env.ICON} alt="" width="56" height="56" /><div class="who"><h1>${p.name || 'Ronish Bhatt'}</h1><p class="line">${p.about || ''}<${Draft} ev=${profile} /></p>
       <div class="pills">${(cfg.links || []).map(l => html`<a key=${l.url} class="pill" href=${l.url} target=${/^https?:/.test(l.url) ? '_blank' : null} rel="noopener">${l.label}</a>`)}<a class="pill" href=${'https://njump.me/' + npub(env.SITE)} target="_blank" rel="noopener" title="the key that signs this page">${npub(env.SITE).slice(0, 13)}…</a>${ownerOn ? null : html`<button class="pill lnk" onClick=${onUnlock}>unlock</button>`}</div></div>${edit ? edit('block', profile, { slug: 'profile' }) : null}</header>
     ${blocks}
     <footer>

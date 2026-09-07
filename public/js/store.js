@@ -4,8 +4,16 @@
 // anyone holding the page can read it. Kind 1 notes and kind 5 deletions
 // stay plain. DOM-free, so tools/bake.mjs renders the same page in Node.
 export const K = { profile: 0, note: 1, del: 5, wrap: 1059, block: 30078 };
-export const env = { NT: null, SITE: '', PRIMARY: '', BACKUPS: [], VEIL: null, get RELAYS() { return [this.PRIMARY, ...this.BACKUPS]; } };
-export const init = ({ site, relay, backups, veil, NT }) => { env.SITE = site.toLowerCase(); env.PRIMARY = relay; env.BACKUPS = backups; if (NT) env.NT = NT; if (veil && /^[0-9a-f]{64}$/i.test(veil)) env.VEIL = Uint8Array.from(veil.match(/../g).map(x => parseInt(x, 16))); };
+// The icon is the key: its 64 squares, read row by row in 16 greens, are the
+// 32 bytes that unveil the relay. Nothing else on the page knows the secret.
+export const PALETTE = ['#0b1a12', '#10261a', '#153223', '#1a3f2c', '#1f4c35', '#255a3f', '#2b6849', '#327754', '#3a865f', '#43956b', '#4ea477', '#5ab384', '#68c291', '#79d09f', '#8dddae', '#a4e9bf'];
+export const decodeIcon = svg => { const n = [...svg.matchAll(/fill="(#[0-9a-f]{6})"/gi)].map(m => PALETTE.indexOf(m[1].toLowerCase())).filter(i => i >= 0); if (n.length !== 64) throw new Error('the icon is not a key'); return n.map(i => i.toString(16)).join(''); };
+export const env = { NT: null, SITE: '', PRIMARY: '', BACKUPS: [], VEIL: null, ICON: '/favicon.svg', ASSETS: {}, SRI: {}, get RELAYS() { return [this.PRIMARY, ...this.BACKUPS]; } };
+export const init = ({ site, relay, backups, veil, NT, icon, assets, sri }) => {
+  if (site) env.SITE = site.toLowerCase(); if (relay) env.PRIMARY = relay; if (backups) env.BACKUPS = backups; if (NT) env.NT = NT;
+  if (icon) env.ICON = icon; if (assets) env.ASSETS = assets; if (sri) env.SRI = sri;
+  if (veil && /^[0-9a-f]{64}$/i.test(veil)) env.VEIL = Uint8Array.from(veil.match(/../g).map(x => parseInt(x, 16)));
+};
 export const DEFAULT_CFG = { title: 'Ronish Bhatt', chat: true, sections: ['courses', 'projects', 'writing', 'chat', 'archive', 'colophon'],
   links: [{ label: 'GitHub', url: 'https://github.com/sunmoonron' }, { label: 'résumé', url: '/resume/' }] };
 
@@ -23,7 +31,13 @@ const unveil = text => env.NT.nip44.v2.decrypt(text, env.VEIL);
 export const text = ev => ev.plain ?? ev.content;
 export const meta = ev => { if (ev.meta === undefined) { try { ev.meta = JSON.parse(text(ev)); } catch { ev.meta = null; } } return ev.meta; };
 
-export const store = { events: new Map(), dels: [], ready: false, status: new Map(), drafts: [] };
+export const store = { events: new Map(), dels: [], ready: false, status: new Map(), drafts: [], wraps: new Map(), words: new Map() };
+// Experiments. The mural needs only ids: leading zero bits and a time, nothing decrypted, nobody named.
+export const powBits = id => { let b = 0; for (const ch of id) { const n = parseInt(ch, 16); if (Number.isNaN(n)) return b; if (n === 0) { b += 4; continue; } return b + Math.clz32(n) - 28; } return b; };
+export function applyWrap(ev) { if (ev?.kind !== K.wrap || store.wraps.has(ev.id)) return false; store.wraps.set(ev.id, { id: ev.id, created_at: ev.created_at, bits: powBits(ev.id) }); notify(); return true; }
+export const WORD = /^[\p{L}\p{N}'-]{1,24}$/u; // the garden's word door, mirrored by the relay policy
+export function applyWord(ev) { if (ev?.kind !== K.note || store.words.has(ev.id) || !WORD.test(ev.content || '') || !(ev.tags || []).some(t => t[0] === 't' && t[1] === 'plant')) return false; store.words.set(ev.id, { id: ev.id, word: ev.content, created_at: ev.created_at, pubkey: ev.pubkey }); notify(); return true; }
+export const recentWords = (n = 40) => [...store.words.values()].sort((a, b) => b.created_at - a.created_at).slice(0, n);
 const listeners = new Set(); let queued = false;
 export const onChange = fn => { listeners.add(fn); return () => listeners.delete(fn); };
 export const notify = () => { if (queued) return; queued = true; queueMicrotask(() => { queued = false; listeners.forEach(f => { try { f(); } catch (e) { console.error(e); } }); }); };
@@ -102,6 +116,9 @@ export function connect() {
     { label: 'site', onevent: ev => apply(ev, { verified: true }), oneose: () => { store.ready = true; notify(); } });
   pollStatus(); setInterval(pollStatus, 3000);
 }
+let wrapsSub = false, wordsSub = false;
+export function subscribeWraps() { if (wrapsSub || !pool) return; wrapsSub = true; pool.subscribe([env.PRIMARY], { kinds: [K.wrap], '#p': [env.SITE], limit: 300 }, { label: 'mural', onevent: applyWrap }); }
+export function subscribeWords() { if (wordsSub || !pool) return; wordsSub = true; pool.subscribe([env.PRIMARY], { kinds: [K.note], '#t': ['plant'], limit: 60 }, { label: 'garden', onevent: applyWord }); }
 export async function publish(ev, relays = env.RELAYS) {
   const results = await Promise.allSettled(pool.publish(relays, ev, { maxWait: 8000 }));
   return relays.map((url, i) => ({ url, ok: results[i].status === 'fulfilled',
