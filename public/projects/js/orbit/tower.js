@@ -38,10 +38,10 @@ export function createTower(canvas, anchored, opts = {}) {
     dpr = Math.min(window.devicePixelRatio || 1, potato ? 1 : 2);
     canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
     f = 0.95 * Math.min(W, H);
-    if (!cam.dist) cam.dist = fitDistance();
+    if (!cam.dist || !isFinite(cam.dist) || cam.fitted === false) { cam.dist = fitDistance(); cam.fitted = !!(W && H); }
     dirty = true; schedule();
   }
-  function fitDistance() { return clamp(Math.max(span * 1.25 * f / H, 2.4 * R * f / W) + 4, 10, 600); }
+  function fitDistance() { if (!W || !H) return 40; return clamp(Math.max(span * 1.25 * f / H, 2.4 * R * f / W) + 4, 10, 600); }
 
   function project(x, y, z) {
     const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw), cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
