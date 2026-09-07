@@ -43,7 +43,7 @@ export async function start(opts = {}) {
   try { init({ veil: decodeIcon(svg) }); } catch (e) { console.warn('icon is not a key:', e.message); }
   loadSnapshot(snap); loadCache(); keepCache(); bindNotify(notify);
   script('/vendor/dompurify-3.4.14.min.c2f26ea4.js').then(notify).catch(() => {});
-  connect(); chatConfigure(false); if (sel.config().sections.includes('mural')) subscribeWraps();
+  connect(); chatConfigure(false); if (sel.sections().includes('mural')) subscribeWraps();
   if (seedNick) setNick(seedNick);
   chat.seed = opts.send ? '' : seedText;
   if (opts.unlock || storedKey()) { Owner = await import('./owner.js'); if (storedKey()) { try { restore(); } catch {} } else initial.unlockOpen = true; }

@@ -14,7 +14,7 @@ export const init = ({ site, relay, backups, veil, NT, icon, assets, sri }) => {
   if (icon) env.ICON = icon; if (assets) env.ASSETS = assets; if (sri) env.SRI = sri;
   if (veil && /^[0-9a-f]{64}$/i.test(veil)) env.VEIL = Uint8Array.from(veil.match(/../g).map(x => parseInt(x, 16)));
 };
-export const DEFAULT_CFG = { title: 'Ronish Bhatt', chat: true, sections: ['courses', 'projects', 'writing', 'chat', 'archive', 'colophon'],
+export const DEFAULT_CFG = { title: 'Ronish Bhatt', chat: true, experiments: ['mural', 'garden'], sections: ['courses', 'projects', 'writing', 'chat', 'archive', 'colophon'],
   links: [{ label: 'GitHub', url: 'https://github.com/sunmoonron' }, { label: 'résumé', url: '/resume/' }] };
 
 export const now = () => Math.floor(Date.now() / 1000);
@@ -79,6 +79,10 @@ export const sel = {
   notes: () => [...store.events.values()].filter(e => e.kind === K.note).sort((a, b) => b.created_at - a.created_at),
   drafts: () => [...store.events.values()].filter(e => e.draft),
   signed: () => [...store.events.values()].filter(e => !e.draft).length,
+  // The section list actually rendered: the layout's order, plus the experiments the
+  // layout has not turned off, slotted in before the archive fold (or at the end).
+  sections: () => { const cfg = sel.config(), list = [...(cfg.sections || [])], exp = Array.isArray(cfg.experiments) ? cfg.experiments : DEFAULT_CFG.experiments;
+    for (const x of exp) if (!list.includes(x)) { const at = list.indexOf('archive'); at >= 0 ? list.splice(at, 0, x) : list.push(x); } return list; },
 };
 
 // ---- snapshot: signed events from the relay plus the seed drafts ----------------

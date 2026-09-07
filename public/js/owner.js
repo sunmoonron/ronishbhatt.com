@@ -29,7 +29,7 @@ export async function publishTemplate(tmpl, relays = targets()) {
 
 const SCHEMAS = {
   profile: [['name', 'Name'], ['about', 'About, one line'], ['picture', 'Picture URL (other clients only; the header uses the site mark)']],
-  layout: [['title', 'Site title'], ['sections', 'Sections in order, comma separated (chat, projects, writing, notes, or any block slug)'], ['links', 'Header pills, one per line: label | url'], ['chat', 'Chat enabled (yes / no)']],
+  layout: [['title', 'Site title'], ['sections', 'Sections in order, comma separated (chat, projects, writing, notes, or any block slug)'], ['links', 'Header pills, one per line: label | url'], ['chat', 'Chat enabled (yes / no)'], ['experiments', 'Experiments shown even when not listed above: mural, garden (empty = none)']],
   css: [['content', 'Stylesheet, the whole page\'s CSS']],
   block: [['slug', 'Slug, fixed once published'], ['type', 'Type: section / project / writing'], ['display', 'Display: normal, or details (folded; the summary is the visible line)'], ['title', 'Title'], ['summary', 'One-line summary'], ['r', 'Link'], ['image', 'Image URL'], ['order', 'Order, lower first'], ['body', 'Body, Markdown']],
   1: [['content', 'Note, Markdown']],
@@ -42,7 +42,7 @@ const slugOf = ev => ev ? (dTag(ev) === h('layout') ? 'layout' : dTag(ev) === h(
 function toFields(kind, ev, preset = {}) {
   const f = formOf(kind, ev, preset);
   if (f === 'profile') { const m = ev ? meta(ev) || {} : {}; return { name: m.name || '', about: m.about || '', picture: m.picture || '' }; }
-  if (f === 'layout') { const c = sel.config(); return { title: c.title, sections: (c.sections || []).join(', '), links: (c.links || []).map(l => `${l.label} | ${l.url}`).join('\n'), chat: c.chat === false ? 'no' : 'yes' }; }
+  if (f === 'layout') { const c = sel.config(); return { title: c.title, sections: (c.sections || []).join(', '), links: (c.links || []).map(l => `${l.label} | ${l.url}`).join('\n'), chat: c.chat === false ? 'no' : 'yes', experiments: (Array.isArray(c.experiments) ? c.experiments : DEFAULT_CFG.experiments).join(', ') }; }
   if (f === 'css') return { content: ev ? text(ev) : '' };
   if (f === 'block') { const m = ev ? meta(ev) || {} : {}; return { slug: m.slug || preset.slug || '', type: m.type || preset.type || 'section', display: m.display || '', title: m.title || preset.title || '', summary: m.summary || '', r: m.r || '', image: m.image || '', order: m.order || '', body: m.body || '' }; }
   return { content: ev ? text(ev) : '' };
@@ -52,7 +52,7 @@ const veiled = (slug, plain) => ({ kind: K.block, tags: [['d', h(slug)]], conten
 function toTemplate(kind, f, ev, preset = {}) {
   const form = formOf(kind, ev, preset);
   if (form === 'profile') { const o = {}; for (const k of ['name', 'about', 'picture']) if (f[k]?.trim()) o[k] = f[k].trim(); return veiled('profile', JSON.stringify(o)); }
-  if (form === 'layout') return veiled('layout', JSON.stringify({ title: f.title?.trim() || DEFAULT_CFG.title, sections: f.sections.split(',').map(s => s.trim().toLowerCase()).filter(Boolean), chat: !/^n/i.test(f.chat || 'yes'),
+  if (form === 'layout') return veiled('layout', JSON.stringify({ title: f.title?.trim() || DEFAULT_CFG.title, sections: f.sections.split(',').map(s => s.trim().toLowerCase()).filter(Boolean), chat: !/^n/i.test(f.chat || 'yes'), experiments: (f.experiments || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean),
     links: f.links.split('\n').map(l => l.split('|').map(s => s.trim())).filter(p => p[0] && p[1]).map(([label, url]) => ({ label, url })) }));
   if (form === 'css') return veiled('css', f.content || '');
   if (form === 'block') {

@@ -83,7 +83,7 @@ export function Mural() {
 
 export function Page({ Chat, chatProps, Garden, gardenProps, edit, onUnlock, ownerOn, children }) {
   const cfg = sel.config(), p = sel.profileData(), profile = sel.profile();
-  const blocks = cfg.sections.map(id => {
+  const blocks = sel.sections().map(id => {
     if (id === 'projects' || id === 'writing') { const type = id === 'projects' ? 'project' : 'writing';
       return html`<${Items} key=${id} id=${id} items=${sel.articles(type)} edit=${edit && (e => edit('block', e))} add=${edit && (() => edit('block', null, { type }))} />`; }
     if (id === 'notes') return html`<${Notes} key="notes" notes=${sel.notes()} edit=${edit && (e => edit(1, e))} compose=${edit && (() => edit(1, null))} />`;
