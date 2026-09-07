@@ -12,7 +12,7 @@ html.wild h1,html.wild .label,html.wild details.fold>summary{font-family:var(--m
 html.wild section.c{padding:1rem;border:1px solid rgba(125,211,168,.35);border-radius:14px}html.wild section.c,html.wild details.fold,html.wild .chat,html.wild .item{background:rgba(8,14,10,.8);border-color:rgba(125,211,168,.35);box-shadow:0 0 24px rgba(125,211,168,.12)}
 html.wild .item{transform:perspective(900px) rotateX(2deg)}html.wild .item:hover{transform:perspective(900px) rotateX(0) translateY(-4px) scale(1.01)}html.wild .courses li,html.wild .word{font-family:var(--mono)}
 html.wild body::after{content:"";position:fixed;inset:0;z-index:2;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.14) 0 2px,transparent 2px 4px)}
-html.wild .veil{color:#43956b!important;text-shadow:none!important}
+html.wild .veil{color:#43956b!important;text-shadow:none!important}html.wild #wildpill{font-size:0}html.wild #wildpill::before{content:"calm";font-size:.74rem}
 .term{position:fixed;inset:0;z-index:60;background:rgba(3,6,4,.95);color:#a4e9bf;font:13px/1.55 var(--mono);padding:2rem;overflow:hidden;transition:inset .6s ease,padding .6s ease,font-size .6s ease;cursor:pointer}
 .term.min{inset:auto 1rem 1rem auto;width:min(27rem,92vw);max-height:8.5rem;padding:.55rem .8rem;background:rgba(3,6,4,.88);border:1px solid rgba(125,211,168,.35);border-radius:10px;overflow:auto;font-size:11px;cursor:default}
 .term .l{white-space:pre-wrap;word-break:break-all}.term .ok{color:#7dd3a8}.term .dim{color:#43956b}.term .cur{display:inline-block;width:.6em;height:1em;background:#a4e9bf;vertical-align:-2px;animation:blink 1s steps(2) infinite}@keyframes blink{50%{opacity:0}}
@@ -28,7 +28,6 @@ const blip = f => { if (!soundOn || !ctx) return; const o = ctx.createOscillator
 export async function start() {
   const html = document.documentElement; html.classList.add('wild');
   const style = document.createElement('style'); style.textContent = CSS; document.head.append(style);
-  const pill = $('#wildpill'); if (pill) pill.textContent = 'calm';
   const snap = await fetch('/site.json', { cache: 'no-cache' }).then(r => r.json()).catch(() => null);
   events = (snap?.events || []).filter(e => e.kind === 30078);
   cipher = events.map(e => e.content).join('') || 'QWxs';
@@ -58,16 +57,20 @@ async function terminal() {
   const snd = document.createElement('button'); snd.textContent = 'sound'; snd.onclick = e => { e.stopPropagation(); soundOn = !soundOn; if (soundOn && !ctx) ctx = new (window.AudioContext || window.webkitAudioContext)(); snd.textContent = soundOn ? 'mute' : 'sound'; blip(660); };
   const calm = document.createElement('button'); calm.textContent = 'calm'; calm.onclick = e => { e.stopPropagation(); localStorage.removeItem('rb.wild'); location.href = location.pathname; };
   bar.append(snd, calm); t.append(bar);
-  let skip = false; t.addEventListener('click', () => { skip = true; }, { once: true });
-  const line = async (text, cls = '') => { const l = document.createElement('div'); l.className = 'l ' + cls; out.append(l); const cur = document.createElement('span'); cur.className = 'cur';
-    if (skip) { l.textContent = text; return; } l.append(cur); for (let i = 0; i < text.length; i += 3) { l.firstChild ? l.insertBefore(document.createTextNode(text.slice(i, i + 3)), cur) : l.append(text.slice(i, i + 3)); await sleep(skip ? 0 : 9); } cur.remove(); if (t.scrollHeight > t.clientHeight) t.scrollTop = t.scrollHeight; };
+  let skip = false; const started = performance.now(); t.addEventListener('click', () => { skip = true; }, { once: true });
+  // typewriter with a hard budget: whatever the timers do, the boot never takes more than ~3 s
+  const line = async (text, cls = '') => { const l = document.createElement('div'); l.className = 'l ' + cls; out.append(l);
+    if (skip || performance.now() - started > 3000) { l.textContent = text; return; }
+    const cur = document.createElement('span'); cur.className = 'cur'; l.append(cur);
+    for (let i = 0; i < text.length && !skip && performance.now() - started < 3000; i += 4) { l.insertBefore(document.createTextNode(text.slice(i, i + 4)), cur); await sleep(8); }
+    l.textContent = text; if (t.scrollHeight > t.clientHeight) t.scrollTop = t.scrollHeight; };
   const relay = document.querySelector('meta[name="site-relay"]')?.content || 'wss://relay', site = document.querySelector('meta[name="site-pubkey"]')?.content || '';
   await line(`> ${relay} … open`, 'ok'); await line(`> REQ authors=${site.slice(0, 12)}… kinds=30078`); 
   for (const e of events) { await line(`> ← EVENT ${e.id.slice(0, 12)}… ${e.content.length} B, veiled`, 'dim'); blip(220 + parseInt(e.id.slice(8, 10), 16) * 3); }
   await line(`> schnorr verify ×${events.length} … ok`, 'ok');
   await line(`> key: reading favicon.svg … 64 squares, 32 bytes`, 'ok');
   await line(`> unveil ×${events.length} … ok`, 'ok'); await line('> render', 'ok'); blip(880);
-  await sleep(skip ? 0 : 400); t.classList.add('min'); t.style.cursor = 'default';
+  await sleep(skip ? 0 : 350); t.classList.add('min'); t.style.cursor = 'default';
 }
 
 // ---- descramble: from the relay's bytes to the words ----
