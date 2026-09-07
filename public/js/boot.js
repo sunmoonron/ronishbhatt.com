@@ -44,7 +44,7 @@ chat?.querySelector('.keys')?.addEventListener('click', e => { if (e.target.tagN
 for (const b of document.querySelectorAll('.pills button.lnk, footer button.lnk')) b.addEventListener('click', () => upgrade({ unlock: true }));
 // wild mode is the default; "calm" is a per-browser preference (rb.wild=0) or ?calm for one load
 const wild = /[?&]wild/.test(location.search) || (localStorage.getItem('rb.wild') !== '0' && !/[?&]calm/.test(location.search));
-$('#wildpill')?.addEventListener('click', () => { localStorage.setItem('rb.wild', wild ? '0' : '1'); location.href = location.pathname; });
+document.addEventListener('click', e => { if (e.target.closest?.('#wildpill')) { localStorage.setItem('rb.wild', wild ? '0' : '1'); location.href = location.pathname; } }); // delegated: survives the app re-rendering the header
 if (wild) import('./wild.js').then(m => m.start()).catch(e => console.error('wild failed', e));
 for (const ev of ['focusin', 'pointerdown']) $('#garden')?.addEventListener(ev, () => upgrade({ reason: 'garden' }), { once: true });
 
