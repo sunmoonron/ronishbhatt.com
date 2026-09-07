@@ -120,8 +120,9 @@ export function createBlocks(root, anchored, opts = {}) {
     }
   }
 
-  async function open(epoch) {
+  async function open(epoch, quiet) {
     const cb = cubes.get(epoch); if (!cb) return;
+    opts.onOpen?.(epoch, !!quiet);
     for (const [, o] of cubes) o.c.classList.remove('open');
     cb.c.classList.add('open'); openEpoch = epoch;
     const events = cb.events, h0 = epoch * BLOCKS_PER_EPOCH, h1 = h0 + BLOCKS_PER_EPOCH - 1, era = cb.era;
@@ -143,10 +144,10 @@ export function createBlocks(root, anchored, opts = {}) {
     const map = el('bm'); panel.append(head, strip(events, h0, h1, era), map);
     if (!events.length) { map.append(el('bempty', 'nothing from you in this epoch yet')); return; }
     layout(map, events, era, engagement.get(epoch));
-    panel.scrollIntoView({ block: 'nearest', behavior: reduced ? 'auto' : 'smooth' });
+    if (!quiet) panel.scrollIntoView({ block: 'nearest', behavior: reduced ? 'auto' : 'smooth' });
     if (!engagement.has(epoch) && opts.engage) {
       const ids = events.filter(e => e.kind === 1).map(e => e.id);
-      if (ids.length) { const counts = await opts.engage(ids); engagement.set(epoch, counts); if (openEpoch === epoch) recolor(counts); }
+      if (ids.length) { const counts = await opts.engage(ids); engagement.set(epoch, counts); opts.onEngage?.(epoch, counts); if (openEpoch === epoch) recolor(counts); }
     }
   }
 
@@ -215,6 +216,7 @@ export function createBlocks(root, anchored, opts = {}) {
       paintFaces();
       for (const { t, e } of tiles) t.classList.toggle('dim', !goggle(e));
     },
+    highlight(events) { const set = new Set(events); for (const { t, e } of tiles) t.classList.toggle('hi', set.has(e)); for (const bar of panel.querySelectorAll('.bev')) bar.classList.toggle('hi', set.has(bar.ev)); const first = tiles.find(x => set.has(x.e)); first?.t.scrollIntoView?.({ block: 'nearest' }); },
     open, close() { panel.hidden = true; for (const [, o] of cubes) o.c.classList.remove('open'); openEpoch = null; tiles = []; },
     relayout() { if (openEpoch == null) return; const cb = cubes.get(openEpoch); layout(panel.querySelector('.bm'), cb.events, cb.era, engagement.get(openEpoch)); },
     epochs: () => past.length,

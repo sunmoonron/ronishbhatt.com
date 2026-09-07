@@ -177,6 +177,8 @@
     #tipMedia:not(:empty) { margin-top: 6px; }
     #tipMedia img { height: 72px; max-width: 136px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border); }
     canvas#orbitCanvas { touch-action: none; }
+    #orbitWrap.voxel canvas#orbitCanvas { aspect-ratio: 4 / 5; }
+    canvas#orbitCanvas.armed { box-shadow: 0 0 0 2px var(--accent) inset; cursor: grab; }
     .modes { display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap; }
     .mb { background: var(--bg); border: 1px solid var(--border); color: var(--muted); border-radius: 0.4rem; padding: 0.25rem 0.55rem; font: 0.62rem var(--mono); cursor: pointer; letter-spacing: 0.06em; text-transform: uppercase; }
     .mb.on { color: var(--accent); border-color: var(--accent); }
@@ -286,7 +288,7 @@
 
 <section class="hero">
   <h2>Your social footprint<br>on the <em>timechain</em>.</h2>
-  <p>Anchor your Nostr history to Bitcoin block heights, see which halving era you joined in, then walk it as a tower. Timestamps are claims; NIP-03 proofs are counted on their own.</p>
+  <p>Anchor your Nostr history to Bitcoin block heights, see which halving era you joined in, then walk it block by block. Timestamps are claims; NIP-03 proofs are counted on their own.</p>
   <div class="input-row">
     <input id="npubIn" type="text" placeholder="npub1..." autocomplete="off" spellcheck="false">
     <button class="btn" id="analyzeBtn">ANALYZE</button>
@@ -328,7 +330,7 @@
   <div class="grid2">
     <!-- Orbit canvas -->
     <div class="panel">
-      <div class="ph"><h3 id="viewTitle">Orbital View</h3><div class="modes"><button class="mb on" id="modeOrbit">orbit</button><button class="mb" id="modeTower">tower 3D</button><button class="mb" id="playBtn">▶ play</button><button class="mb" id="resetBtn" hidden>reset</button></div></div>
+      <div class="ph"><h3 id="viewTitle">Orbital View</h3><div class="modes"><button class="mb on" id="modeOrbit">orbit</button><button class="mb" id="modeTower">voxels 3D</button><button class="mb" id="playBtn">▶ play</button><button class="mb" id="resetBtn" hidden>reset</button></div></div>
       <div id="orbitWrap" style="padding:0.75rem"><canvas id="orbitCanvas"></canvas></div>
       <div id="timeRow" hidden><span id="timeFirst"></span><input type="range" id="timeSlider" min="0" max="1000" value="500"><span id="timeLast"></span></div>
       <div class="hint-row" id="viewHint">hover a dot · click for the note</div>
@@ -375,9 +377,9 @@
 import { anchorEventsFast, blockToDate, addRows, setTip, tipHeight, BLOCKS_PER_EPOCH } from '/projects/js/orbit/anchor.js';
 import { computeMetrics, eraMeta }                            from '/projects/js/orbit/analytics.js';
 import { drawOrbit, hitTest, drawTimeline, blockAngle }       from '/projects/js/orbit/orbit.js';
-import { createTower }                                        from '/projects/js/orbit/tower.js?v=2';
+import { createVoxels }                                       from '/projects/js/orbit/voxel.js';
 import { getTipHeight, getDifficultyAdjustments }             from '/projects/js/orbit/mempool.js';
-import { createBlocks, GOGGLES, topTags, hasTag }             from '/projects/js/orbit/blocks.js?v=2';
+import { createBlocks, GOGGLES, topTags, hasTag }             from '/projects/js/orbit/blocks.js?v=3';
 import { stack, nowStack, H }                                 from '/projects/js/orbit/time.js?v=2';
 
 const $ = id => document.getElementById(id);
@@ -387,9 +389,10 @@ const POTATO = (navigator.hardwareConcurrency || 4) <= 2 || (navigator.deviceMem
 const GREENS = ['#0b1a12','#10261a','#153223','#1a3f2c','#1f4c35','#255a3f','#2b6849','#327754','#3a865f','#43956b','#4ea477','#5ab384','#68c291','#79d09f','#8dddae','#a4e9bf'];
 const KINDS = { 1: 'note', 6: 'repost', 7: 'reaction' };
 
-let anchored = [], metrics = null, dots = [], mode = 'orbit', tower = null, hover = null, sweep = 0, audio = null, npub = '', blocks = null;
+let anchored = [], metrics = null, dots = [], mode = 'orbit', vox = null, hover = null, sweep = 0, audio = null, npub = '', blocks = null;
 const chainChange = new Map(); // epoch start height -> difficulty change for that adjustment
 let orbitC = $('orbitCanvas');
+const wrap = $('orbitWrap'); // 2D interaction lives on the wrapper because the canvas element is swapped between views
 const tlC = $('tlCanvas'), tip = $('tip'), npubIn = $('npubIn'), analyzeBtn = $('analyzeBtn'), loader = $('loader'), dashboard = $('dashboard');
 
 // chain facts: the tip and the newest difficulty rows, awaited briefly before anchoring
@@ -458,7 +461,7 @@ async function run() {
 
   analyzeBtn.disabled = true;
   dashboard.classList.remove('on'); loader.classList.add('on'); closeFocus(); stopPlay();
-  if (tower) { orbitC = tower.destroy(); tower = null; }
+  if (vox) { orbitC = vox.destroy(); vox = null; }
   setStatus('connecting to 3 relays…');
 
   const counts = RELAYS.map(() => 0);
@@ -537,12 +540,12 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && me
 
 // the blocks panel: cubes per epoch, goggles, engagement fetched when a block opens
 function buildBlocks() {
-  blocks = createBlocks($('blocks'), anchored, { tip: showTip, pick, engage: engagement, change: h => chainChange.get(h) });
+  blocks = createBlocks($('blocks'), anchored, { tip: showTip, pick, engage: engagement, change: h => chainChange.get(h), onOpen: (ep, quiet) => { if (!quiet && mode === 'voxel') vox?.flyTo(ep); }, onEngage: (ep, counts) => vox?.engage(counts) });
   const g = $('goggles'); g.textContent = '';
   const chips = [...Object.keys(GOGGLES).map(k => [k, GOGGLES[k]]), ...topTags(anchored).map(([t]) => ['#' + t, hasTag(t)])];
   for (const [name, fn] of chips) {
     const b = document.createElement('button'); b.className = 'mb' + (name === 'all' ? ' on' : ''); b.textContent = name;
-    b.addEventListener('click', () => { for (const o of g.children) o.classList.toggle('on', o === b); blocks.setGoggle(fn); });
+    b.addEventListener('click', () => { for (const o of g.children) o.classList.toggle('on', o === b); blocks.setGoggle(fn); vox?.setGoggle(name === 'all' ? null : fn); });
     g.append(b);
   }
 }
@@ -576,28 +579,27 @@ function orbitIcon() {
 
 // views
 function showView() {
-  if (mode === 'tower') {
-    if (!tower) tower = createTower(orbitC, anchored, { potato: POTATO, truncated: metrics.truncated, onHover: showTip, onPick: pick });
+  wrap.classList.toggle('voxel', mode === 'voxel');
+  if (mode === 'voxel') {
+    if (!vox) vox = createVoxels(orbitC, anchored, { potato: POTATO, truncated: metrics.truncated, onHover: showTip, onBlock: pickBlock, onEpoch: ep => blocks?.open(ep, true) });
     $('timeRow').hidden = false; $('resetBtn').hidden = false;
-    $('viewTitle').textContent = 'Timechain Tower';
-    $('viewHint').textContent = 'one turn = one difficulty epoch (2016 blocks) · drag to orbit · wheel or pinch to zoom · slider or two fingers to time-travel · click a bead';
+    $('viewTitle').textContent = 'Voxel Chain';
+    $('viewHint').textContent = 'every cube is a Bitcoin block: 12 × 12 make a day, 14 days make an epoch, the lit ones hold your notes · click a brick to zoom in, a cube to open its block, double-click to back out · click once to take the controls, then scroll zooms and drag orbits';
   } else {
-    if (tower) { orbitC = tower.destroy(); tower = null; }
+    if (vox) { orbitC = vox.destroy(); vox = null; }
     $('timeRow').hidden = true; $('resetBtn').hidden = true;
     $('viewTitle').textContent = 'Orbital View';
     $('viewHint').textContent = 'every halving era since genesis is a ring, 12 o\'clock is the halving · hover a dot · click for the note';
-    dots = drawOrbit(orbitC, anchored, metrics, { hover });
+    if (orbitC.clientWidth) dots = drawOrbit(orbitC, anchored, metrics, { hover });
   }
   $('modeOrbit').classList.toggle('on', mode === 'orbit');
-  $('modeTower').classList.toggle('on', mode === 'tower');
+  $('modeTower').classList.toggle('on', mode === 'voxel');
 }
 $('modeOrbit').addEventListener('click', () => { if (mode !== 'orbit') { stopPlay(); mode = 'orbit'; showView(); } });
-$('modeTower').addEventListener('click', () => { if (mode !== 'tower') { stopPlay(); mode = 'tower'; showView(); } });
-$('resetBtn').addEventListener('click', () => { tower?.reset(); $('timeSlider').value = 500; });
-$('timeSlider').addEventListener('input', e => tower?.travel(e.target.value / 1000));
+$('modeTower').addEventListener('click', () => { if (mode !== 'voxel') { stopPlay(); mode = 'voxel'; showView(); } });
+$('resetBtn').addEventListener('click', () => { vox?.reset(); $('timeSlider').value = 500; });
+$('timeSlider').addEventListener('input', e => vox?.travel(e.target.value / 1000));
 
-// 2D interaction lives on the wrapper because the canvas element is swapped between views
-const wrap = $('orbitWrap');
 const local = ev => { const r = orbitC.getBoundingClientRect(); return [ev.clientX - r.left, ev.clientY - r.top]; };
 wrap.addEventListener('mousemove', ev => {
   if (mode !== 'orbit' || !dots.length) return;
@@ -616,7 +618,19 @@ wrap.addEventListener('click', ev => {
 function showTip(e, ev) {
   if (!e) { tip.classList.remove('on'); return; }
   const media = $('tipMedia'); media.textContent = ''; const when = $('tipWhen'); when.textContent = '';
-  if (e.cluster) {
+  if (e.block) {
+    const v = e.block, first = v.events.find(x => x.kind === 1) || v.events[0];
+    $('tipBlock').textContent = `block ${H(v.h)} · ${v.n} event${v.n === 1 ? '' : 's'} · day ${v.layer + 1} of E${v.epoch}`;
+    $('tipDate').textContent = '';
+    when.append(stack(first.created_at, v.h));
+    $('tipText').textContent = v.events.map(x => x.kind === 1 ? (x.content || '').slice(0, 90) : x.kind === 6 ? '↻ repost' : `♥ ${(x.content || '+').slice(0, 4)}`).join('  ·  ').slice(0, 220);
+    for (const u of v.events.flatMap(x => x.media || []).slice(0, 2)) { const img = new Image(); img.src = u; img.loading = 'lazy'; img.decoding = 'async'; img.referrerPolicy = 'no-referrer'; media.append(img); }
+  } else if (e.brick) {
+    const b = e.brick, h0 = b.epoch * BLOCKS_PER_EPOCH;
+    $('tipBlock').textContent = `E${b.epoch} · ${H(h0)} → ${H(h0 + BLOCKS_PER_EPOCH - 1)} · ${b.n} event${b.n === 1 ? '' : 's'}${b.media ? ` · ${b.media} with media` : ''}`;
+    $('tipDate').textContent = `${blockToDate(h0).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} → ${blockToDate(h0 + BLOCKS_PER_EPOCH - 1).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })} · click to zoom in`;
+    $('tipText').textContent = '';
+  } else if (e.cluster) {
     const c = e.cluster;
     $('tipBlock').textContent = `epoch ${Math.floor(c.u)} · ${c.n} events${c.media ? ` · ${c.media} with media` : ''}`;
     $('tipDate').textContent = monthYear(blockToDate(c.u * BLOCKS_PER_EPOCH)) + ' · click to zoom in';
@@ -639,7 +653,7 @@ function showTip(e, ev) {
 // the focus card: the whole note, its media, and a way out to njump
 const URLRX = /https?:\/\/[^\s<>"']+/g;
 function pick(e) {
-  if (e.cluster) { tower?.focus(e.cluster.u); return; }
+  if (e.cluster) { vox?.focus(e.cluster.u); return; }
   const f = $('focus'), meta = eraMeta(e.anchor.era);
   $('fKind').textContent = `${KINDS[e.kind] || 'kind ' + e.kind} · id ${e.id.slice(0, 12)}…`;
   const fd = $('fDate'); fd.textContent = ''; fd.append(stack(e.created_at, e.anchor.height));
@@ -662,6 +676,10 @@ function pick(e) {
   for (const v of e.videos || []) { const a = document.createElement('a'); a.href = v; a.textContent = 'video ↗'; a.target = '_blank'; a.rel = 'noopener noreferrer'; fl.append(a); }
   f.hidden = false;
 }
+function pickBlock(v) {
+  blocks?.open(v.epoch, true); blocks?.highlight(v.events);
+  if (v.events.length === 1) pick(v.events[0]);
+}
 function closeFocus() { $('focus').hidden = true; }
 $('fClose').addEventListener('click', closeFocus);
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFocus(); });
@@ -681,15 +699,15 @@ blip.next = 0;
 let sweepRaf = 0, sweepStart = 0;
 function stopPlay() {
   if (sweepRaf) { cancelAnimationFrame(sweepRaf); sweepRaf = 0; sweep = 0; if (mode === 'orbit' && metrics) dots = drawOrbit(orbitC, anchored, metrics, {}); }
-  tower?.stop();
+  vox?.stop();
   $('playBtn').textContent = '▶ play';
 }
 $('playBtn').addEventListener('click', () => {
   if (!metrics) return;
-  if (sweepRaf || tower?.playing()) { stopPlay(); return; }
+  if (sweepRaf || vox?.playing()) { stopPlay(); return; }
   try { audio ||= new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch {}
   $('playBtn').textContent = '■ stop';
-  if (mode === 'tower') { tower.play(9000, e => blip(e.kind, e.anchor.era), () => { $('playBtn').textContent = '▶ play'; }); return; }
+  if (mode === 'voxel') { vox.play(9000, e => blip(e.kind, e.anchor.era), () => { $('playBtn').textContent = '▶ play'; }); return; }
   const passed = new Set(); sweepStart = performance.now();
   const step = now => {
     const k = Math.min(1, (now - sweepStart) / 8000), a = -Math.PI / 2 + k * Math.PI * 2;
@@ -712,11 +730,11 @@ window.addEventListener('resize', () => {
   clearTimeout(rTimer);
   rTimer = setTimeout(() => {
     if (!metrics) return;
-    if (mode === 'tower') tower?.resize(); else dots = drawOrbit(orbitC, anchored, metrics, { hover });
+    if (mode === 'voxel') vox?.resize(); else dots = drawOrbit(orbitC, anchored, metrics, { hover });
     drawTimeline(tlC, metrics); blocks?.relayout();
   }, 250);
 });
-window.orbit = { get anchored() { return anchored; }, get metrics() { return metrics; }, get tower() { return tower; }, get blocks() { return blocks; }, run, mode: m => { mode = m; showView(); } };
+window.orbit = { get anchored() { return anchored; }, get metrics() { return metrics; }, get vox() { return vox; }, get blocks() { return blocks; }, run, mode: m => { mode = m; showView(); } };
 
 // a shared link runs on arrival (last, so every binding above exists)
 const qs = new URLSearchParams(location.search).get('npub');
