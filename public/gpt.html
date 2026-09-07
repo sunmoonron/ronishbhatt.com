@@ -415,7 +415,7 @@
 
         .prob-bar {
             height: 30px;
-            background: #e0e0e0;
+            background: var(--soft);
             border-radius: 15px;
             overflow: hidden;
         }
@@ -525,7 +525,7 @@
             margin-top: 20px;
             width: 300px;
             height: 8px;
-            background: #e0e0e0;
+            background: var(--soft);
             border-radius: 4px;
             overflow: hidden;
         }
@@ -637,8 +637,13 @@
             z-index: 100;
         }
     </style>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/theme.css">
+<style id="rb-theme">:root{--color-bg:var(--bg);--color-card:var(--card);--color-text:var(--fg);--color-text-muted:var(--mute);--color-primary:var(--accent);--color-success:var(--mint);--color-danger:var(--err);--color-info:var(--deep)}.card h2 .step-number{color:var(--accent-ink)}.token{background:var(--soft);color:var(--fg)}.sidebar{background:var(--card);color:var(--fg);border-right:1px solid var(--line)}.sidebar h2{color:var(--fg)}.glossary-term{background:var(--soft)}.glossary-term:hover{background:var(--line)}.glossary-term p,.control-group label{color:var(--mute)}.controls-section{border-top-color:var(--line)}.control-group input[type="range"]{background:var(--line)}.card{border:1px solid var(--line)}.loading-overlay{background:rgba(11,14,13,.95)}.loading-spinner{border-color:var(--line);border-top-color:var(--accent)}.loading-progress-bar{background:linear-gradient(90deg,var(--deep),var(--mint))}.chart-container,.explanation-panel{background:var(--soft)}.status-box.success{background:rgba(125,211,168,.12)}.status-box.failure{background:rgba(229,72,77,.12)}.status-box.success h3,.status-box.success p{color:var(--mint)}.status-box.failure h3,.status-box.failure p{color:#f08a8e}.conclusion{background:var(--card);border:1px solid var(--line);color:var(--fg)}.conclusion h2{color:var(--accent)}.token.noise{background:var(--line);color:var(--mute)}.prob-bar-fill.correct{background:linear-gradient(90deg,var(--deep),var(--accent))}#distraction-slider{background:linear-gradient(90deg,var(--deep) 0%,var(--err) 100%)}</style>
 </head>
-<body>
+<body class="rb">
+<nav class="rb-bar"><a href="/"><img src="/favicon.svg" alt="">ronishbhatt.com</a><span class="sep">/</span><span>context dilution</span><span class="grow"></span><span class="tag">archive</span></nav>
+
     <!-- Loading Overlay -->
     <div id="loading-overlay" class="loading-overlay">
         <div class="loading-spinner"></div>
@@ -809,7 +814,7 @@
                             </div>
                         </div>
 
-                        <div style="margin-top: 20px; padding: 15px; background: #f0f0f0; border-radius: 8px;">
+                        <div style="margin-top: 20px; padding: 15px; background: var(--card); border-radius: 8px;">
                             <strong>Other Top Predictions:</strong>
                             <div id="top-predictions" style="margin-top: 10px; font-family: monospace; font-size: 0.9rem;"></div>
                         </div>
@@ -1214,7 +1219,7 @@
 
             // Show what the model actually generated
             topPredictions.innerHTML = `
-                <div>Model generated: <code style="background: #e0e0e0; padding: 2px 6px; border-radius: 4px;">${generatedText.substring(0, 30)}${generatedText.length > 30 ? '...' : ''}</code></div>
+                <div>Model generated: <code style="background: var(--soft); padding: 2px 6px; border-radius: 4px;">${generatedText.substring(0, 30)}${generatedText.length > 30 ? '...' : ''}</code></div>
             `;
         }
 
@@ -1252,7 +1257,7 @@
             topPredEl.innerHTML = '<strong>Top 5 next tokens, straight from GPT-2\u2019s logits:</strong><br>' +
                 topPredictions.map((p, i) => 
                     `<span style="margin-right: 15px;">
-                        ${i + 1}. <code style="background:#e0e0e0;padding:2px 6px;border-radius:4px;">
+                        ${i + 1}. <code style="background:var(--soft);padding:2px 6px;border-radius:4px;">
                         ${p.token.replace(/\n/g, '↵').replace(/ /g, '·') || '(space)'}
                         </code> 
                         <span style="color:#666;">${(p.prob * 100).toFixed(2)}%</span>

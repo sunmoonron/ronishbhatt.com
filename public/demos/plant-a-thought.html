@@ -1,26 +1,28 @@
 <meta charset="utf-8">
 <title>Plant a Thought</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/theme.css">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap">
 <style>
 :root{
-  --ground:#eef3ff; --surface:#ffffff; --card:#f7f9ff; --line:#d5dcf5; --ink:#23264a; --muted:#6b70a0;
-  --robot:#5b5bd6; --robot-soft:#e3e3ff; --star:#ffb703; --star-soft:#fff1c9; --mem:#ff5d8f; --mem-soft:#ffe1ea; --ok:#2ec27e;
-  --shadow:0 2px 0 rgba(35,38,74,.08), 0 14px 30px -16px rgba(35,38,74,.35);
+  --ground:#0b0e0d; --surface:#111814; --card:#172119; --line:#1f2b25; --ink:#e6efe9; --muted:#8aa094;
+  --robot:#7dd3a8; --robot-soft:#1a3f2c; --star:#ffd76a; --star-soft:#3d3312; --mem:#e9c46a; --mem-soft:#3a2f14; --ok:#3aa876;
+  --shadow:0 2px 0 rgba(0,0,0,.35), 0 14px 30px -16px rgba(0,0,0,.8);
   --display:"Fredoka","Nunito","Arial Rounded MT Bold","Helvetica Neue",Arial,sans-serif;
   --body:"Nunito","Helvetica Neue",Arial,sans-serif;
-  color-scheme:light;
+  color-scheme:dark;
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
-    --ground:#141633; --surface:#1e2149; --card:#262a5c; --line:#3a3f7a; --ink:#eef0ff; --muted:#a9aed6;
-    --robot:#8c8cff; --robot-soft:#2c2f6b; --star:#ffc53d; --star-soft:#4a3a0f; --mem:#ff7aa5; --mem-soft:#4d2236; --ok:#4fd69a;
+    --ground:#0b0e0d; --surface:#111814; --card:#172119; --line:#1f2b25; --ink:#e6efe9; --muted:#8aa094;
+    --robot:#7dd3a8; --robot-soft:#1a3f2c; --star:#ffd76a; --star-soft:#3d3312; --mem:#e9c46a; --mem-soft:#3a2f14; --ok:#3aa876;
     --shadow:0 2px 0 rgba(0,0,0,.35), 0 14px 30px -16px rgba(0,0,0,.8);
     color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
-  --ground:#141633; --surface:#1e2149; --card:#262a5c; --line:#3a3f7a; --ink:#eef0ff; --muted:#a9aed6;
-  --robot:#8c8cff; --robot-soft:#2c2f6b; --star:#ffc53d; --star-soft:#4a3a0f; --mem:#ff7aa5; --mem-soft:#4d2236; --ok:#4fd69a;
+  --ground:#0b0e0d; --surface:#111814; --card:#172119; --line:#1f2b25; --ink:#e6efe9; --muted:#8aa094;
+  --robot:#7dd3a8; --robot-soft:#1a3f2c; --star:#ffd76a; --star-soft:#3d3312; --mem:#e9c46a; --mem-soft:#3a2f14; --ok:#3aa876;
   --shadow:0 2px 0 rgba(0,0,0,.35), 0 14px 30px -16px rgba(0,0,0,.8);
   color-scheme:dark;
 }
@@ -108,8 +110,10 @@ h1 small{font-size:14px;color:var(--muted);font-weight:600;margin-left:6px}
 @keyframes fall{to{transform:translateY(105vh) rotate(720deg);opacity:.2}}
 @media (prefers-reduced-motion:reduce){.thought,.result.show,.cardbtn.pulse{animation:none}.bubble .cur{animation:none}.confetti i{animation:none;display:none}}
 @media (max-width:520px){h1{font-size:24px}.secret{font-size:19px}.cardbtn{font-size:16px;padding:10px 4px}.bubble{font-size:17px}.hand{gap:8px}}
+.rb-bar{font-family:var(--mono)}body{font-family:var(--body)}
 </style>
 
+<nav class="rb-bar"><a href="/"><img src="/favicon.svg" alt="">ronishbhatt.com</a><span class="sep">/</span><span>plant a thought</span><span class="grow"></span><span class="tag">demo</span></nav>
 <div class="app">
   <div class="top">
     <h1>Plant a Thought <small>2.0</small></h1>

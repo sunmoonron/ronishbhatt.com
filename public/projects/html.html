@@ -173,8 +173,13 @@
     #tip .tip-date  { color: var(--muted); margin-bottom: 5px; font-size: 0.65rem; }
     #tip .tip-text  { color: var(--text); word-break: break-word; }
   </style>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/theme.css">
+<style id="rb-theme">body{font-family:var(--mono)}:root{--bg:#0b0e0d;--card:#111814;--border:#1f2b25;--accent:#7dd3a8;--green:#8dddae;--blue:#4ea477;--purple:#a4e9bf;--text:#e6efe9;--muted:#8aa094}</style>
 </head>
-<body>
+<body class="rb">
+<nav class="rb-bar"><a href="/"><img src="/favicon.svg" alt="">ronishbhatt.com</a><span class="sep">/</span><span>nostr orbit</span><span class="grow"></span><span class="tag">project</span></nav>
+
 
 <header>
   <div class="logo">
@@ -278,7 +283,7 @@ getTipHeight().then(h => { $('tipH').textContent = Number(h).toLocaleString(); }
 
 // ── Demo ───────────────────────────────────────────────────────────────
 $('demoA').addEventListener('click', () => {
-  npubIn.value = 'npub1sg6plzptd64u62a878hep2kev88swjh3tw00gjsfl8f237lmu63q0yrx2f';
+  npubIn.value = 'npub1sg6plzptd64u62a878hep2kev88swjh3tw00gjsfl8f237lmu63q0uf63m';
   run();
 });
 
@@ -289,7 +294,7 @@ npubIn.addEventListener('keydown', e => e.key === 'Enter' && run());
 function setStatus(msg) { $('status').textContent = msg; }
 
 // ── Relay fetch ────────────────────────────────────────────────────────
-function fetchRelay(url, filters, timeoutMs = 9000) {
+function fetchRelay(url, filters, timeoutMs = 6000) {
   return new Promise(resolve => {
     const events = [], sub = 'orb_' + Math.random().toString(36).slice(2);
     let ws, timer;
@@ -330,7 +335,7 @@ async function run() {
   loader.classList.add('on');
   setStatus('connecting to 3 relays simultaneously…');
 
-  const RELAYS  = ['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.nostr.band'];
+  const RELAYS  = ['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.primal.net']; // nostr.band went dark; it used to eat the whole timeout
   const FILTERS = [{ authors: [hex], kinds: [1, 6, 7], limit: 500 }];
 
   const batches = await Promise.all(RELAYS.map(r => fetchRelay(r, FILTERS)));

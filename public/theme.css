@@ -1,0 +1,20 @@
+/* theme.css: the main page's palette for the standalone pages in the archive.
+   The home page itself gets its stylesheet from the relay; this file only
+   exists so the older experiments stop looking like five different websites. */
+:root{--bg:#0b0e0d;--fg:#e6efe9;--mute:#8aa094;--line:#1f2b25;--card:#111814;--soft:#172119;--accent:#7dd3a8;--mint:#b4f5d1;--deep:#3aa876;--accent-ink:#08150e;--err:#e5484d;color-scheme:dark;
+  --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Inter,sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+html{background:var(--bg)}body{background:var(--bg);color:var(--fg);font-family:var(--sans)}
+a{color:var(--accent)}a:hover{color:var(--mint)}
+::selection{background:color-mix(in srgb,var(--accent) 35%,transparent)}
+/* the way home, same on every page */
+.rb-bar{position:sticky;top:0;z-index:1000;display:flex;align-items:center;gap:.6rem;padding:.45rem .9rem;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(6px);border-bottom:1px solid var(--line);font:.78rem/1.2 var(--mono);color:var(--mute)}
+.rb-bar.fixed{position:fixed;left:0;right:0}.rb-bar img{width:20px;height:20px;border-radius:6px}.rb-bar a{display:inline-flex;align-items:center;gap:.45rem;color:var(--fg);text-decoration:none}.rb-bar a:hover{color:var(--accent)}.rb-bar .sep{opacity:.5}.rb-bar .grow{flex:1}
+.rb-bar .tag{font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);border:1px solid color-mix(in srgb,var(--accent) 40%,transparent);border-radius:999px;padding:.1rem .45rem}
+/* common controls */
+.rb button,.rb input,.rb select,.rb textarea{font-family:inherit}
+.rb input:not([class]),.rb textarea:not([class]),.rb select:not([class]){background:var(--soft);color:var(--fg);border:1px solid var(--line);border-radius:8px}
+.rb input:not([class]):focus,.rb textarea:not([class]):focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)}
+.rb button:not([class]){background:var(--soft);color:var(--fg);border:1px solid var(--line);border-radius:8px;cursor:pointer}.rb button:not([class]):hover{border-color:var(--accent)}
+.rb button.primary,.rb .btn-primary,.rb button[type=submit]{background:var(--accent);color:var(--accent-ink);border-color:transparent;font-weight:600}
+.rb hr{border:0;border-top:1px solid var(--line)}
+.rb ::-webkit-scrollbar{width:10px;height:10px}.rb ::-webkit-scrollbar-thumb{background:var(--line);border-radius:5px}

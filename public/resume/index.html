@@ -287,8 +287,13 @@
     }
 
   </style>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/theme.css">
+<style id="rb-theme">.card{background:var(--card);border:1px solid var(--line)}input[type="password"],input[type="file"]{border-color:var(--line);background:var(--soft);color:var(--fg)}#downloadLink,#openLink{border-color:var(--line);background:var(--soft);color:var(--fg)}#iframeContainer,#encryptSection{border-color:var(--line)}#sourceCodeBox{background:var(--soft);color:var(--fg);border-color:var(--line)}#pdfToolbar{background:var(--card);border-bottom-color:var(--line)}#pdfToolbar button:active,#pdfToolbar a:active{background:var(--soft)}#unlockBtn{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}#showFullSiteBtn{border-color:var(--line);color:var(--mute)}#showFullSiteBtn:hover{background:var(--soft);color:var(--fg)}body.viewing-pdf .rb-bar{display:none}</style>
 </head>
-<body>
+<body class="rb">
+<nav class="rb-bar fixed"><a href="/"><img src="/favicon.svg" alt="">ronishbhatt.com</a><span class="sep">/</span><span>résumé</span><span class="grow"></span><span class="tag">resume</span></nav>
+
   <div id="pdfToolbar">
     <button id="toolbarCloseBtn" type="button">Exit</button>
     <a id="toolbarOpenLink" href="#" target="_blank">Open in New Tab</a>
