@@ -2,8 +2,8 @@
 // (the real veiled bytes, as a relay sees them), a boot terminal that types
 // the actual protocol exchange, every block descrambling from its own
 // ciphertext, hover to re-veil, the relays orbiting the key, and a HUD that
-// counts hashes while a message mines. Per-browser toggle, off by default,
-// nothing published: the "wild" pill turns it on, "calm" turns it off.
+// counts hashes while a message mines. On by default; "calm" is a per-browser
+// preference (nothing is published either way).
 const P = ['#0b1a12', '#10261a', '#153223', '#1a3f2c', '#1f4c35', '#255a3f', '#2b6849', '#327754', '#3a865f', '#43956b', '#4ea477', '#5ab384', '#68c291', '#79d09f', '#8dddae', '#a4e9bf'];
 const CSS = `html.wild body{background:#050806;color:#d8f3e3}html.wild #rain{position:fixed;inset:0;z-index:0;opacity:.5;pointer-events:none}
 html.wild main{position:relative;z-index:1}html.wild header.me{background:linear-gradient(135deg,rgba(11,26,18,.88),rgba(5,8,6,.92));border-color:#3a865f;box-shadow:0 0 40px rgba(125,211,168,.25),inset 0 0 60px rgba(125,211,168,.06)}
@@ -55,9 +55,12 @@ async function terminal() {
   const out = document.createElement('div'); t.append(out);
   const bar = document.createElement('div'); bar.className = 'bar';
   const snd = document.createElement('button'); snd.textContent = 'sound'; snd.onclick = e => { e.stopPropagation(); soundOn = !soundOn; if (soundOn && !ctx) ctx = new (window.AudioContext || window.webkitAudioContext)(); snd.textContent = soundOn ? 'mute' : 'sound'; blip(660); };
-  const calm = document.createElement('button'); calm.textContent = 'calm'; calm.onclick = e => { e.stopPropagation(); localStorage.removeItem('rb.wild'); location.href = location.pathname; };
+  const calm = document.createElement('button'); calm.textContent = 'calm'; calm.onclick = e => { e.stopPropagation(); localStorage.setItem('rb.wild', '0'); location.href = location.pathname; };
   bar.append(snd, calm); t.append(bar);
-  let skip = false; const started = performance.now(); t.addEventListener('click', () => { skip = true; }, { once: true });
+  // the full boot plays once per browser session; later loads start minimised
+  let skip = !!sessionStorage.getItem('rb.booted'); try { sessionStorage.setItem('rb.booted', '1'); } catch {}
+  const started = performance.now(); t.addEventListener('click', () => { skip = true; }, { once: true });
+  if (skip) t.classList.add('min');
   // typewriter with a hard budget: whatever the timers do, the boot never takes more than ~3 s
   const line = async (text, cls = '') => { const l = document.createElement('div'); l.className = 'l ' + cls; out.append(l);
     if (skip || performance.now() - started > 3000) { l.textContent = text; return; }

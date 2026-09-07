@@ -42,9 +42,9 @@ for (const ev of ['focusin', 'pointerdown', 'keydown']) chat?.addEventListener(e
 chat?.querySelector('form')?.addEventListener('submit', e => { e.preventDefault(); upgrade({ focus: 'chat', send: true }); });
 chat?.querySelector('.keys')?.addEventListener('click', e => { if (e.target.tagName === 'BUTTON') upgrade({ focus: 'chat' }); });
 for (const b of document.querySelectorAll('.pills button.lnk, footer button.lnk')) b.addEventListener('click', () => upgrade({ unlock: true }));
-// wild mode: per-browser, off by default, nothing published
-const wild = localStorage.getItem('rb.wild') === '1' || /[?&]wild/.test(location.search);
-$('#wildpill')?.addEventListener('click', () => { if (wild) { localStorage.removeItem('rb.wild'); location.href = location.pathname; } else { localStorage.setItem('rb.wild', '1'); location.reload(); } });
+// wild mode is the default; "calm" is a per-browser preference (rb.wild=0) or ?calm for one load
+const wild = /[?&]wild/.test(location.search) || (localStorage.getItem('rb.wild') !== '0' && !/[?&]calm/.test(location.search));
+$('#wildpill')?.addEventListener('click', () => { localStorage.setItem('rb.wild', wild ? '0' : '1'); location.href = location.pathname; });
 if (wild) import('./wild.js').then(m => m.start()).catch(e => console.error('wild failed', e));
 for (const ev of ['focusin', 'pointerdown']) $('#garden')?.addEventListener(ev, () => upgrade({ reason: 'garden' }), { once: true });
 
