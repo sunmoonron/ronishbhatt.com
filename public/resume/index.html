@@ -4,18 +4,19 @@
 <meta charset="utf-8">
 <title>Ronish Bhatt · résumé</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Ronish Bhatt, software engineer. Nostr and Bitcoin infrastructure, full-stack web, interpretability research.">
+<meta name="description" content="Ronish Bhatt, software engineer. Nostr and Bitcoin infrastructure, full-stack web, security research, interpretability.">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/theme.css">
 <style>
-main{max-width:52rem;margin:0 auto;padding:2.2rem 1.4rem 4rem;font-size:15px;line-height:1.55}
-h1{font-size:1.7rem;margin:0 0 .2rem}h2{font:600 .72rem/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:1.9rem 0 .7rem;padding-bottom:.4rem;border-bottom:1px solid var(--line)}
-.sub{color:var(--mute);margin:0 0 .6rem}.links{font:.78rem var(--mono);color:var(--mute)}.links a{color:var(--accent);text-decoration:none;margin-right:1rem}
-.row{display:flex;justify-content:space-between;gap:1rem;align-items:baseline;flex-wrap:wrap}.row b{font-weight:600}.row .when{font:.72rem var(--mono);color:var(--mute);white-space:nowrap}
-.where{color:var(--mute);font-size:.9rem;margin:.05rem 0 .3rem}ul{margin:.2rem 0 1rem 1.1rem;padding:0}li{margin:.22rem 0}
-.skills{display:grid;grid-template-columns:9rem 1fr;gap:.35rem .8rem}.skills span:nth-child(odd){font:.72rem var(--mono);color:var(--mute);padding-top:.15rem}
+main{max-width:50rem;margin:0 auto;padding:2rem 1.4rem 4rem;font-size:14.5px;line-height:1.45}
+h1{font-size:1.6rem;margin:0 0 .15rem}h2{font:600 .68rem/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:1.3rem 0 .5rem;padding-bottom:.3rem;border-bottom:1px solid var(--line)}
+.sub{color:var(--mute);margin:0 0 .4rem}.links{font:.76rem var(--mono);color:var(--mute)}.links a{color:var(--accent);text-decoration:none;margin-right:.9rem}
+.row{display:flex;justify-content:space-between;gap:1rem;align-items:baseline;flex-wrap:wrap;margin-top:.55rem}.row b{font-weight:600}.row .when{font:.7rem var(--mono);color:var(--mute);white-space:nowrap}
+.where{color:var(--mute);font-size:.86rem;margin:0 0 .15rem}ul{margin:.1rem 0 .3rem 1.05rem;padding:0}li{margin:.14rem 0}
+.skills{display:grid;grid-template-columns:8rem 1fr;gap:.25rem .7rem}.skills span:nth-child(odd){font:.7rem var(--mono);color:var(--mute);padding-top:.12rem}
 .pdf{float:right;font:.72rem var(--mono);border:1px solid var(--line);border-radius:999px;padding:.25rem .7rem;color:var(--accent);text-decoration:none}
-@media print{.rb-bar,.pdf{display:none}body{background:#fff;color:#111}main{padding:0;max-width:none;font-size:11pt}h2{color:#1a6d47;border-color:#ccc}.sub,.where,.links,.row .when,.skills span:nth-child(odd){color:#555}.links a{color:#1a6d47}a{color:#1a6d47}}
+@page{margin:11mm 13mm}
+@media print{.rb-bar,.pdf{display:none}body{background:#fff;color:#111}main{padding:0;max-width:none;font-size:9.6pt;line-height:1.35}h1{font-size:15pt}h2{color:#1a6d47;border-color:#ccc;margin:.65rem 0 .3rem;font-size:7.4pt}.row{margin-top:.35rem}li{margin:.06rem 0}.sub,.where,.links,.row .when,.skills span:nth-child(odd){color:#555}.links a,a{color:#1a6d47}.skills{gap:.12rem .6rem}}
 </style>
 </head>
 <body class="rb">
@@ -27,65 +28,56 @@ h1{font-size:1.7rem;margin:0 0 .2rem}h2{font:600 .72rem/1 var(--mono);letter-spa
 <p class="links"><a href="https://ronishbhatt.com">ronishbhatt.com</a><a href="https://github.com/sunmoonron">github.com/sunmoonron</a><a href="https://njump.me/ronish@ronishbhatt.com">nostr: ronish@ronishbhatt.com</a></p>
 
 <h2>Summary</h2>
-<p>Honours BSc in Computer Science (software engineering co-op specialist, University of Toronto, 2025). I build full-stack products and run the infrastructure under them. This year: a website whose pages are signed Nostr events served from my own relay, a proof-of-work-gated community layer that needs no accounts, a Bitcoin timechain analytics tool with a from-scratch 3D renderer, a 7-million-parameter language model that runs in the browser, and independent interpretability research on small transformers.</p>
+<p>Honours BSc in Computer Science (software engineering co-op, University of Toronto, 2025). I build full-stack products and run the infrastructure under them, and I find bugs in other people's systems. This year: a website whose pages are signed Nostr events served from my own relay, a proof-of-work community layer that needs no accounts, a Bitcoin timechain analytics tool with a from-scratch 3D renderer, and disclosures to Anthropic and OpenAI.</p>
 
 <h2>Skills</h2>
 <div class="skills">
 <span>languages</span><span>TypeScript, JavaScript, Python, Java, SQL, Nix</span>
-<span>web</span><span>Node, Preact and React, NestJS, Django, Canvas 2D, Web Workers, WebAudio, service and static hosting behind Cloudflare</span>
+<span>web</span><span>Node, Preact and React, NestJS, Django, Canvas 2D, Web Workers, static and edge hosting behind Cloudflare</span>
 <span>infrastructure</span><span>NixOS, Linux, nginx, Docker, systemd, Cloudflare Tunnel, AWS, Azure DevOps; declarative, reproducible hosts</span>
-<span>bitcoin and nostr</span><span>Bitcoin Core and strfry relay operations, relay write-policy plugins, NIPs 01, 05, 09, 13, 17, 44, 59, 96 and 98 implemented by hand, difficulty-epoch timechain math</span>
-<span>ml and data</span><span>PyTorch, transformers, mechanistic interpretability (weight dictionaries, superweight patching), pandas, scikit-learn, Power BI</span>
-<span>security</span><span>responsible disclosure, API and protocol testing, Charles Proxy, threat modelling for hosted services</span>
+<span>bitcoin, nostr</span><span>Bitcoin Core and strfry relay operations, relay write-policy plugins, NIPs 01, 05, 09, 13, 17, 44, 59, 96 and 98 by hand, difficulty-epoch timechain math</span>
+<span>security, ml</span><span>responsible disclosure, API and protocol testing, Charles Proxy, threat modelling; PyTorch, transformers, mechanistic interpretability, pandas, scikit-learn</span>
 </div>
 
 <h2>Selected work, 2026</h2>
-<div class="row"><b>ronishbhatt.com: a website made of signed events</b><span class="when">2026</span></div>
+<div class="row"><b>ronishbhatt.com, a website made of signed events</b><span class="when">2026</span></div>
 <ul>
-<li>A 22-line HTML shell; layout, stylesheet and every content block are kind 30078 events signed by the site key, fetched from a personal strfry relay with public relays as backups, verified and assembled in the browser. Subresource integrity and import-map integrity end to end.</li>
-<li>Content veiled with NIP-44 under a key that is the favicon itself: an 8 × 8 mosaic encoding 32 bytes. Server-side pre-render for first paint, a 3 KB vanilla boot script, hashed module names to survive CDN caching.</li>
-<li>NIP-17 gift-wrapped chat and small experiments (a mural of visitors' wraps, a word garden) all gated by NIP-13 proof of work instead of accounts, enforced by tiered relay write policy.</li>
+<li>A 22-line HTML shell; layout, stylesheet and every content block are signed Nostr events fetched from a personal strfry relay with public relays as backups, verified and assembled in the browser, with subresource and import-map integrity end to end. Content veiled with NIP-44 under a key that is the favicon itself (an 8 × 8 mosaic encoding 32 bytes).</li>
+<li>NIP-17 gift-wrapped chat and small experiments gated by NIP-13 proof of work instead of accounts, enforced by tiered relay write policy. Runs on a hardened NixOS host with Bitcoin Core and the relay behind Cloudflare Tunnel, operated through a zero-SSH dashboard.</li>
 </ul>
-<div class="row"><b>NOSTR ORBIT: a Nostr history on the timechain</b><span class="when">2026</span></div>
+<div class="row"><b>NOSTR ORBIT, a Nostr history on the timechain</b><span class="when">2026</span></div>
 <ul>
-<li>Maps any profile's events to Bitcoin block heights using the real difficulty schedule (about five blocks of error instead of tens of thousands from a naive average), with halving-era rings, NIP-03 attestation counts and OpenTimestamps awareness.</li>
-<li>A voxel chain where every Bitcoin block is a cube (12 × 12 a day, 14 days an epoch, a coil turn a year), mempool-style epoch blocks whose contents are the notes as a treemap coloured by relay-reported engagement, a scrubbable replay with captions. Software 3D on a 2D canvas, no libraries, frames only on input.</li>
+<li>Maps any profile's events to Bitcoin block heights using the real difficulty schedule (about five blocks of error instead of tens of thousands from a naive average), with halving-era rings and NIP-03 attestation counts.</li>
+<li>A voxel chain where every Bitcoin block is a cube (12 × 12 a day, 14 days an epoch, a coil turn a year), mempool-style epoch blocks whose contents are the notes as a treemap coloured by relay-reported engagement, and a scrubbable replay. Software 3D on a 2D canvas, no libraries.</li>
 </ul>
-<div class="row"><b>Toronto Skating</b><span class="when">2025 to 2026</span></div>
-<ul><li>Live outdoor and indoor rink schedules with a Nostr community layer: chat, comments and votes without sign-ups, spam-resisted by proof of work; the relay policy plugin is being extracted as an open-source project.</li></ul>
-<div class="row"><b>Plant a Thought</b><span class="when">2026</span></div>
-<ul><li>A 7 M-parameter language model and a tiny inference engine running entirely in the browser, teaching it a memory during the session; built from a research codebase on context banks.</li></ul>
-<div class="row"><b>Interpretability research (independent)</b><span class="when">2026</span></div>
-<ul><li>Papers on weight dictionaries and superweight circuit patching in small transformers; a public demo of context-dilution attacks on GPT-2 with real logits computed in the browser.</li></ul>
-<div class="row"><b>Infrastructure</b><span class="when">2025 to 2026</span></div>
-<ul><li>A hardened NixOS host running Bitcoin Core, a strfry relay and the site behind Cloudflare Tunnel: declarative configuration, linted nginx, a zero-SSH operations dashboard, write policy as the security boundary.</li></ul>
+<div class="row"><b>Doorway and Toronto Skating</b><span class="when">2025 to 2026</span></div>
+<ul><li>Live rink schedules for a city with a Nostr community layer (chat, comments, votes) that needs no sign-ups; the proof-of-work relay policy behind it is now its own open-source project, github.com/sunmoonron/doorway.</li></ul>
+<div class="row"><b>Plant a Thought, and interpretability research</b><span class="when">2026</span></div>
+<ul><li>A 7 M-parameter language model and a tiny inference engine running entirely in the browser, taught a memory during the session. Independent papers on weight dictionaries and superweight circuit patching in small transformers; a public context-dilution demo on GPT-2 with real logits in the browser.</li></ul>
+
+<h2>Security research (independent)</h2>
+<div class="row"><b>Responsible disclosure</b><span class="when">2018 to present</span></div>
+<ul>
+<li>Reported a distillation and unmetered-compute issue in an Anthropic API endpoint through their security program; triaged as informative.</li>
+<li>Reported sandbox infrastructure and credential exposure in OpenAI systems through their security program; triaged as informative.</li>
+<li>Disclosed a double-spend-class race condition at a major crypto platform (under NDA), a promotional-credit accrual loophole in a large e-commerce mini-app, and a pack-opening exploit in a Web3 card game; vendors patched.</li>
+</ul>
 
 <h2>Open source</h2>
-<ul>
-<li><b>pandas</b> (2023): implemented <code>escape="latex-math"</code> for LaTeX table rendering so math mode survives while unsafe characters are still escaped (issue #50040), with unit tests across edge cases; co-authored the test plan for the <code>merge(..., combine=...)</code> enhancement (#16070).</li>
-</ul>
+<ul><li><b>pandas</b> (2023): implemented <code>escape="latex-math"</code> for LaTeX table rendering so math mode survives while unsafe characters are escaped (issue #50040), with tests across edge cases; co-authored the test plan for <code>merge(..., combine=...)</code> (#16070).</li></ul>
 
 <h2>Experience</h2>
 <div class="row"><b>Financial Technology Risk Analyst (co-op)</b><span class="when">May to Aug 2021</span></div>
 <p class="where">Office of the Superintendent of Financial Institutions, Toronto</p>
 <ul>
-<li>Built the Power BI and Excel dashboard for 320+ cyber incidents across regulated institutions; cut redundant categories by a fifth.</li>
-<li>Built an NLP pipeline (sentiment and topic modelling) that surfaced emerging risks and led to three new controls.</li>
+<li>Built the Power BI and Excel dashboard for 320+ cyber incidents across regulated institutions, cutting redundant categories by a fifth; an NLP pipeline (sentiment and topic modelling) surfaced emerging risks and led to three new controls.</li>
 <li>Automated MISP deployment on Ubuntu, taking setup from three days to three hours.</li>
 </ul>
 <div class="row"><b>Web Developer (co-op)</b><span class="when">Jan to Apr 2022</span></div>
 <p class="where">Media Matters, Toronto</p>
 <ul>
-<li>Shipped six responsive React pages that lifted average session duration by about 15 percent.</li>
-<li>Automated the HubSpot hand-off, cutting lead-routing time by a quarter; scraped 1,000+ dealership sites to feed a market-analysis dashboard.</li>
+<li>Shipped six responsive React pages that lifted average session duration by about 15 percent; automated the HubSpot hand-off, cutting lead-routing time by a quarter; scraped 1,000+ dealership sites to feed a market-analysis dashboard.</li>
 </ul>
-<div class="row"><b>Security testing (independent)</b><span class="when">2018 to present</span></div>
-<ul>
-<li>Responsibly disclosed a double-spend-class race condition at a major crypto platform (under NDA), a promotional-credit accrual loophole in a large e-commerce mini-app, and a pack-opening exploit in a Web3 card game; vendors patched.</li>
-</ul>
-<div class="row"><b>Administrative Assistant</b><span class="when">Apr to Aug 2025</span></div>
-<p class="where">Non-Residential Nepali Association, Toronto</p>
-<ul><li>Supported AGM financial statements, election logistics and payroll for a national organization.</li></ul>
 
 <h2>Education</h2>
 <div class="row"><b>Honours Bachelor of Science, Computer Science</b><span class="when">2019 to 2025</span></div>
