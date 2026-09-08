@@ -202,6 +202,8 @@
     .modes { display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap; }
     .mb { background: var(--bg); border: 1px solid var(--border); color: var(--muted); border-radius: 0.4rem; padding: 0.25rem 0.55rem; font: 0.62rem var(--mono); cursor: pointer; letter-spacing: 0.06em; text-transform: uppercase; }
     .mb.on { color: var(--accent); border-color: var(--accent); }
+    #playBtn { background: var(--deep); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
+    #playBtn:hover { background: var(--accent); color: var(--accent-ink); }
     .mb:hover { color: var(--text); }
     .mb[hidden] { display: none; }
     #timeRow { display: flex; align-items: center; gap: 0.6rem; padding: 0 0.9rem 0.6rem; font: 0.6rem var(--mono); color: var(--muted); }
@@ -380,7 +382,7 @@
 import { anchorEventsFast, blockToDate, addRows, setTip, tipHeight, BLOCKS_PER_EPOCH } from '/projects/js/orbit/anchor.js';
 import { computeMetrics, eraMeta }                            from '/projects/js/orbit/analytics.js';
 import { drawOrbit, hitTest, blockAngle }                     from '/projects/js/orbit/orbit.js';
-import { createVoxels }                                       from '/projects/js/orbit/voxel.js?v=2';
+import { createVoxels }                                       from '/projects/js/orbit/voxel.js?v=3';
 import { getTipHeight, getDifficultyAdjustments }             from '/projects/js/orbit/mempool.js';
 import { createBlocks, GOGGLES, topTags, hasTag }             from '/projects/js/orbit/blocks.js?v=3';
 import { stack, nowStack, H, clock, dayShort }                from '/projects/js/orbit/time.js?v=2';

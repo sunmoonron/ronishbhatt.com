@@ -171,7 +171,8 @@ export function createVoxels(canvas, anchored, opts = {}) {
     if (play) {
       const dt = Math.min(0.1, (now - lastHead) / 1000); lastHead = now;
       head = Math.min((epochMax + 1) * BLOCKS_PER_EPOCH, head + rate * dt * BLOCKS_PER_EPOCH);
-      if (play.follow) { const pos = clamp(head / BLOCKS_PER_EPOCH - epochMin, 0, N - 1), c = coil(pos); cam.t = { x: c.x, y: c.y + LAYERS / 2, z: c.z }; }
+      const pos = clamp(head / BLOCKS_PER_EPOCH - epochMin, 0, N - 1), c = coil(pos), at = { x: c.x, y: c.y + LAYERS / 2, z: c.z };
+      if (fly) fly.b = at; else if (play.follow) cam.t = at;
       advance(now);
       if (head >= (epochMax + 1) * BLOCKS_PER_EPOCH) { const done = play.onDone; play = null; done?.(); }
       dirty = true;
@@ -255,7 +256,14 @@ export function createVoxels(canvas, anchored, opts = {}) {
     flyTo(epoch) { const b = brickOf(epoch); if (b) flyTo(brickTarget(b), 48); },
     setGoggle(fn) { for (const v of voxels) v.on = !fn || v.events.some(fn); touch(); },
     engage(counts) { for (const v of voxels) { let s = 0; for (const e of v.events) s = Math.max(s, score(counts.get(e.id))); if (s) v.heat = s; } touch(); },
-    play(onDone) { if (play) return; fly = null; autorotUntil = 0; if (head == null || head >= (epochMax + 1) * BLOCKS_PER_EPOCH - 1) { head = epochMin * BLOCKS_PER_EPOCH; headIdx = 0; } lastHead = performance.now(); play = { follow: cam.dist <= 110, onDone }; schedule(); },
+    play(onDone) {
+      if (play) return; fly = null; autorotUntil = 0;
+      if (head == null || head >= (epochMax + 1) * BLOCKS_PER_EPOCH - 1) { head = epochMin * BLOCKS_PER_EPOCH; headIdx = 0; }
+      lastHead = performance.now(); play = { follow: true, onDone };
+      const pos = clamp(head / BLOCKS_PER_EPOCH - epochMin, 0, N - 1), c = coil(pos);
+      if (cam.dist > 60) { if (cam.pitch > 0.9) cam.pitch = 0.55; flyTo({ x: c.x, y: c.y + LAYERS / 2, z: c.z }, 42, reduced ? 0 : 900); } // dive to brick level so the voxels inside are in view
+      schedule();
+    },
     pause() { play = null; touch(); }, stop() { play = null; touch(); }, playing: () => !!play,
     tick(now = performance.now()) { if (raf) { cancelAnimationFrame(raf); raf = 0; } frame(now); },
     state: () => ({ yaw: cam.yaw, pitch: cam.pitch, t: cam.t, dist: cam.dist, bricks: N, voxels: voxels.length, lit: voxels.filter(v => v.on).length, armed, head, rate, epochMin, epochMax }),
