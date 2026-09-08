@@ -32,13 +32,13 @@ const S = {
   relays: store.get('relays', DEFAULT_RELAYS), langs: store.get('langs', [(navigator.language || 'en').slice(0, 2)]), auto: store.get('auto', false), showReplies: store.get('showReplies', false),
   events: new Map(), profiles: new Map(), counts: new Map(), mine: new Map(), bookmarks: new Set(store.get('bookmarks', [])), muted: new Set(store.get('muted', [])),
   feed: 'world', feedArg: null, feedSub: null, items: [], nodes: new Map(), pendingNew: [], searchIds: new Set(), older: false, exhausted: false,
-  seenMentions: store.get('seenMentions', now()), mentions: 0, quoteWaiters: new Map(), lastAt: new Map(),
+  seenMentions: store.get('seenMentions', now()), mentions: 0, quoteWaiters: new Map(), lastAt: new Map(), authorN: new Map(), firstSeen: new Map(),
 };
 const isFollow = pk => S.follows.includes(pk);
 const isMe = pk => !!(S.me && S.me.pk === pk);
 
 // ---- the worker: sockets, signatures, store -------------------------------------------------------
-const W = new Worker('./worker.js?v=1'); const H = {}; W.onmessage = ({ data }) => H[data.type]?.(data); const send = m => W.postMessage(m);
+const W = new Worker('./worker.js?v=2'); const H = {}; W.onmessage = ({ data }) => H[data.type]?.(data); const send = m => W.postMessage(m);
 let subN = 0; const subscribe = (filters, o = {}) => { const id = o.id || 's' + (++subN); send({ type: 'sub', id, filters, live: !!o.live, relays: o.relays || null, timeout: o.timeout }); return id; }; const unsubscribe = id => send({ type: 'unsub', id });
 const profileQueue = new Set(); let profileTimer = 0;
 function needProfile(pk) { if (!pk || !HEX.test(pk) || S.profiles.has(pk) || profileQueue.has(pk)) return; profileQueue.add(pk); clearTimeout(profileTimer); profileTimer = setTimeout(() => { const pks = [...profileQueue]; profileQueue.clear(); for (const c of chunks(pks, 250)) send({ type: 'profiles', pks: c }); }, 120); }
@@ -48,7 +48,8 @@ const initial = pk => (name(pk).replace(/^@/, '')[0] || '?').toUpperCase();
 function avatarHTML(pk, cls = 'av') { const p = prof(pk); return p.pic && !THIN ? `<span class="${cls}" data-pk="${pk}"><img src="${esc(p.pic)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()"></span>` : `<span class="${cls}" data-pk="${pk}" style="color:hsl(${hue(pk)} 60% 70%)">${esc(initial(pk))}</span>`; }
 
 H.cached = ({ events, profiles }) => { for (const p of profiles) S.profiles.set(p.pubkey, p); let n = 0; for (const ev of events) if (ingest(ev)) n++; rebuildItems(); if (n) $('feedNote').textContent = `${n} notes from this device's cache · the relays are loading`; };
-H.profile = ({ profile }) => { const old = S.profiles.get(profile.pubkey); if (old && old.t > profile.t) return; S.profiles.set(profile.pubkey, profile); refreshName(profile.pubkey); };
+const nameQueue = new Set(); let nameTimer = 0;
+H.profile = ({ profile }) => { const old = S.profiles.get(profile.pubkey); if (old && old.t > profile.t) return; S.profiles.set(profile.pubkey, profile); nameQueue.add(profile.pubkey); clearTimeout(nameTimer); nameTimer = setTimeout(refreshNames, 120); };
 H.events = ({ sub, events }) => {
   const feedSub = sub === S.feedSub, older = sub === 'older';
   for (const ev of events) {
@@ -65,7 +66,6 @@ H.events = ({ sub, events }) => {
 H.eose = ({ sub }) => { if (sub === 'older') { S.older = false; if (!S.olderGot) { S.exhausted = true; $('feedNote').textContent = S.items.length ? 'that is everything the relays gave' : 'nothing here yet'; } } if (sub === S.feedSub) { S.filling = false; if (L.b < S.items.length) appendMore(20); $('feedNote').textContent = S.items.length ? '' : emptyNote(); } };
 H.ok = ({ id, ok, url }) => { const r = S.oks?.get(id); if (r) { if (ok) r.ok++; else r.fail++; } };
 H.sent = ({ id, relays }) => { S.oks = S.oks || new Map(); S.oks.set(id, { ok: 0, fail: 0 }); setTimeout(() => { const r = S.oks.get(id); if (r) toast(r.ok ? `sent · ${r.ok} relay${r.ok === 1 ? '' : 's'} accepted` : relays ? 'sent · no relay confirmed' : 'no relay connected'); S.oks.delete(id); }, 1800); };
-H.relay = ({ url, open }) => { S.relayState = S.relayState || {}; S.relayState[url] = open; };
 H.wiped = () => { location.reload(); };
 
 // ---- ingest and counts ----------------------------------------------------------------------------
@@ -73,7 +73,7 @@ function ingest(ev) {
   if (!ev || S.events.has(ev.id)) return false; ev.tags = Array.isArray(ev.tags) ? ev.tags : [];
   if (ev.kind === 3) { if (isMe(ev.pubkey) && ev.created_at > S.contactsAt) applyContacts(ev); return false; }
   if (ev.kind === 7 || ev.kind === 9735 || ev.kind === 6 || (ev.kind === 1 && ev.tags.some(t => t[0] === 'e'))) countInteraction(ev);
-  if (ev.kind === 1 || ev.kind === 6) { S.events.set(ev.id, ev); S.lastAt.set(ev.pubkey, Math.max(S.lastAt.get(ev.pubkey) || 0, ev.created_at)); needProfile(ev.pubkey); if (S.events.size > 9000) trimEvents(); return true; }
+  if (ev.kind === 1 || ev.kind === 6) { S.events.set(ev.id, ev); S.lastAt.set(ev.pubkey, Math.max(S.lastAt.get(ev.pubkey) || 0, ev.created_at)); S.authorN.set(ev.pubkey, (S.authorN.get(ev.pubkey) || 0) + 1); needProfile(ev.pubkey); if (S.events.size > 9000) trimEvents(); return true; }
   if (ev.kind === 7 || ev.kind === 9735) { S.events.set(ev.id, { id: ev.id, kind: ev.kind }); return false; }
   return false;
 }
@@ -87,7 +87,9 @@ function countInteraction(ev) {
   updateCounts(id);
 }
 function mark(id, what) { const m = S.mine.get(id) || {}; m[what] = true; S.mine.set(id, m); }
-function updateCounts(id) { const el = S.nodes.get(id) || document.querySelector(`.note[data-id="${id}"]`); if (!el) return; const c = S.counts.get(id); if (!c) return; const m = S.mine.get(id) || {}; const set = (k, v) => { const s = el.querySelector('.cnt-' + k); if (s) s.textContent = v ? String(v) : ''; }; set('replies', c.replies); set('reposts', c.reposts); set('likes', c.likes); set('sats', c.sats ? (c.sats >= 1000 ? (c.sats / 1000).toFixed(1).replace(/\.0$/, '') + 'k' : c.sats) : c.zaps || ''); el.querySelector('[data-act="like"]')?.classList.toggle('on', !!m.liked); el.querySelector('[data-act="repost"]')?.classList.toggle('on', !!m.reposted); }
+const countQueue = new Set(); let countTimer = 0;
+function updateCounts(id) { countQueue.add(id); if (!countTimer) countTimer = setTimeout(() => { countTimer = 0; const q = [...countQueue]; countQueue.clear(); for (const i of q) paintCounts(i); }, 80); }
+function paintCounts(id) { const el = S.nodes.get(id); if (!el) return; const c = S.counts.get(id); if (!c) return; const m = S.mine.get(id) || {}; const set = (k, v) => { const s = el.querySelector('.cnt-' + k); if (s) s.textContent = v ? String(v) : ''; }; set('replies', c.replies); set('reposts', c.reposts); set('likes', c.likes); set('sats', c.sats ? (c.sats >= 1000 ? (c.sats / 1000).toFixed(1).replace(/\.0$/, '') + 'k' : c.sats) : c.zaps || ''); el.querySelector('[data-act="like"]')?.classList.toggle('on', !!m.liked); el.querySelector('[data-act="repost"]')?.classList.toggle('on', !!m.reposted); }
 let countsTimer = 0; function refreshCounts() { clearTimeout(countsTimer); countsTimer = setTimeout(() => { const ids = [...S.nodes.keys()].slice(-150); if (!ids.length) return; subscribe([{ kinds: [1, 6, 7, 9735], '#e': ids, limit: 800 }], { id: 'counts', live: true }); }, 900); }
 
 // ---- the list: a window of notes over a sorted array ------------------------------------------------
@@ -116,7 +118,7 @@ function place(ev, live) {
   if (i > L.b) return; if (i === L.b && L.b < L.a + 40) { $('list').append(noteEl(ev)); L.b++; return; } if (i === L.b) return;
   const next = S.nodes.get(S.items[i + 1]?.id); const el = noteEl(ev); if (next) next.before(el); else $('list').append(el); L.b++; if (live) pruneBelow();
 }
-let pendingTimer = 0; function flushPending() { if (!S.pendingNew.length) return; if (scrollY < 80) { const list = S.pendingNew; S.pendingNew = []; for (const ev of list) place(ev, false); $('newPill').hidden = true; syncCubes(); } else { $('newPill').textContent = `${S.pendingNew.length} new · tap to see`; $('newPill').hidden = false; } }
+let pendingTimer = 0; function flushPending() { if (!S.pendingNew.length) return; if (scrollY < 80) { const list = S.pendingNew; S.pendingNew = []; for (const ev of list) place(ev, false); $('newPill').hidden = true; pruneBelow(); syncCubes(); } else { $('newPill').textContent = `${S.pendingNew.length} new · tap to see`; $('newPill').hidden = false; } }
 $('newPill').addEventListener('click', () => { scrollTo({ top: 0 }); const list = S.pendingNew.sort((a, b) => b.created_at - a.created_at); S.pendingNew = []; for (const ev of list) { const i = sortedIndex(ev); S.items.splice(i, 0, ev); } resetList(); });
 function appendMore(n) { const frag = document.createDocumentFragment(); const end = Math.min(S.items.length, L.b + n); for (let i = L.b; i < end; i++) frag.append(noteEl(S.items[i])); $('list').append(frag); L.b = end; if (L.b >= S.items.length && !S.exhausted) requestOlder(); refreshCounts(); }
 function prependMore(n) { const start = Math.max(0, L.a - n); if (start === L.a) return; const frag = document.createDocumentFragment(); for (let i = start; i < L.a; i++) frag.append(noteEl(S.items[i])); $('list').prepend(frag); let h = 0; for (let i = start; i < L.a; i++) { const el = S.nodes.get(S.items[i].id); if (el) h += el.offsetHeight; } L.a = start; L.topH = Math.max(0, L.topH - h); $('spacerTop').style.height = L.topH + 'px'; }
@@ -147,7 +149,7 @@ function setFeed(feed, arg = null) {
 }
 document.querySelectorAll('[data-feed]').forEach(b => b.addEventListener('click', () => setFeed(b.dataset.feed)));
 function noteMention(ev) { if (!S.me || isMe(ev.pubkey) || ev.created_at <= S.seenMentions) return; S.mentions++; bell(); }
-function bell() { const b = $('bell'); b.hidden = !S.mentions; b.textContent = S.mentions > 99 ? '99+' : String(S.mentions); }
+function bell() { const b = $('bell'); b.hidden = !S.mentions; b.textContent = S.mentions > 99 ? '99+' : String(S.mentions); renderMe(); }
 
 // ---- a note ---------------------------------------------------------------------------------------
 const TOK = /(https?:\/\/[^\s<>"']+|nostr:[a-z0-9]+|#[\p{L}\p{N}_]{1,50}|\n)/giu;
@@ -192,7 +194,7 @@ function noteEl(ev) {
   if (lang === 'und' && plain.length > 12) detectAsync(plain).then(l => { if (!l || l === 'und') return; art.dataset.lang = l; const f = !S.langs.includes(l); const tag = art.querySelector('.lang'); tag.textContent = l; tag.hidden = !f; const b = art.querySelector('[data-act="translate"]'); b.hidden = false; b.textContent = f ? 'translate' : 'tr'; if (f && S.auto && art.dataset.seen) translateNote(art); });
   return art;
 }
-function refreshName(pk) { document.querySelectorAll(`.nm[data-pk="${pk}"], .mn[data-pk="${pk}"]`).forEach(el => { el.textContent = (el.classList.contains('mn') ? '@' : '') + name(pk); }); document.querySelectorAll(`.av[data-pk="${pk}"]`).forEach(el => { const p = prof(pk); if (p.pic && !THIN && !el.querySelector('img')) el.outerHTML = avatarHTML(pk); }); for (const c of C.spawned.values()) if (c.pk === pk) paintCube(c.el.firstElementChild, pk); document.querySelectorAll(`#cluster .cube[data-pk="${pk}"]`).forEach(el => paintCube(el, pk)); }
+function refreshNames() { const set = nameQueue; if (!set.size) return; nameQueue.clear(); for (const el of document.querySelectorAll('[data-pk]')) { const pk = el.dataset.pk; if (!set.has(pk)) continue; if (el.classList.contains('nm')) el.textContent = name(pk); else if (el.classList.contains('mn')) el.textContent = '@' + name(pk); else if (el.classList.contains('av')) { const p = prof(pk); if (p.pic && !THIN && !el.querySelector('img')) el.outerHTML = avatarHTML(pk); } else if (el.classList.contains('cube')) paintCube(el, pk, el.dataset.note ? S.events.get(el.dataset.note) : null); } }
 const mediaIO = new IntersectionObserver(entries => { for (const en of entries) { if (!en.isIntersecting) continue; const el = en.target; mediaIO.unobserve(el); const src = el.dataset.src; if (!src) continue; delete el.dataset.src; if (el.tagName === 'IMG') { el.onload = () => el.classList.add('ok'); el.src = src; } else if (el.tagName === 'VIDEO') { el.onloadeddata = () => el.classList.add('ok'); el.preload = 'metadata'; el.src = src; } else if (el.tagName === 'AUDIO') el.src = src; } }, { rootMargin: '1400px 0px' });
 const noteIO = new IntersectionObserver(entries => { for (const en of entries) { if (!en.isIntersecting) continue; const art = en.target; art.dataset.seen = '1'; if (S.auto) { const l = art.dataset.lang; if (l && l !== 'und' && !S.langs.includes(l)) translateNote(art); } } }, { rootMargin: '400px 0px' });
 function mediaOff(el) { el.querySelectorAll('[data-src]').forEach(m => mediaIO.unobserve(m)); noteIO.unobserve(el); el.querySelectorAll('video').forEach(v => { try { v.pause(); v.removeAttribute('src'); v.load(); } catch {} }); }
@@ -245,8 +247,8 @@ async function translateNote(art) {
 // ---- interactions and publishing --------------------------------------------------------------------
 async function sign(t) { const me = S.me; if (!me?.pk || me.mode === 'read') { toast('you are looking around without a key: make one in settings to post'); return null; } const ev = { kind: t.kind, created_at: now(), tags: t.tags || [], content: t.content || '', pubkey: me.pk }; try { if (me.mode === 'nip07') return await window.nostr.signEvent(ev); return NT.finalizeEvent(ev, bytesOf(me.sk)); } catch (e) { toast('signing failed: ' + (e?.message || e)); return null; } }
 async function publish(t) { const ev = await sign(t); if (!ev) return null; send({ type: 'publish', event: ev }); const fresh = ingest(ev); if (fresh && inFeed(ev)) place(ev, false); return ev; }
-async function like(ev) { if (S.mine.get(ev.id)?.liked) return; const r = await publish({ kind: 7, content: '+', tags: [['e', ev.id], ['p', ev.pubkey], ['k', String(ev.kind)]] }); if (r) { pulse(ev.pubkey); toast('liked'); } }
-async function repost(ev) { if (S.mine.get(ev.id)?.reposted) return; const r = await publish({ kind: 6, content: JSON.stringify(ev), tags: [['e', ev.id], ['p', ev.pubkey]] }); if (r) { pulse(ev.pubkey); toast('reposted'); } }
+async function like(ev) { if (S.mine.get(ev.id)?.liked) return; const r = await publish({ kind: 7, content: '+', tags: [['e', ev.id], ['p', ev.pubkey], ['k', String(ev.kind)]] }); if (r) { pulse(ev.pubkey, 'like'); toast('liked'); } }
+async function repost(ev) { if (S.mine.get(ev.id)?.reposted) return; const r = await publish({ kind: 6, content: JSON.stringify(ev), tags: [['e', ev.id], ['p', ev.pubkey]] }); if (r) { pulse(ev.pubkey, 'repost'); toast('reposted'); } }
 function applyContacts(ev) { S.contactsAt = ev.created_at; S.contactsContent = ev.content || ''; S.follows = [...new Set(ev.tags.filter(t => t[0] === 'p' && HEX.test(t[1] || '')).map(t => t[1]))]; store.set('follows', S.follows); store.set('contactsAt', S.contactsAt); renderCluster(); if (S.feed === 'follows') setFeed('follows'); }
 async function follow(pk, on) {
   if (on === isFollow(pk)) return; S.follows = on ? [pk, ...S.follows] : S.follows.filter(p => p !== pk); store.set('follows', S.follows);
@@ -298,7 +300,7 @@ function openCompose(replyTo = null) {
   box.querySelector('#cpaste').addEventListener('click', () => { const u = prompt('image or video url'); if (u) ta.value = (ta.value + '\n' + u).trim(); });
   box.querySelector('#csend').addEventListener('click', async () => { const text = ta.value.trim(); if (!text) return; const tags = []; for (const m of text.matchAll(/(^|\s)#([\p{L}\p{N}_]{1,50})/gu)) tags.push(['t', m[2].toLowerCase()]); for (const m of text.matchAll(/nostr:(npub1[0-9a-z]+|nprofile1[0-9a-z]+)/g)) { try { const d = NT.nip19.decode(m[1]); tags.push(['p', d.type === 'npub' ? d.data : d.data.pubkey]); } catch {} }
     if (replyTo) { const root = rootOf(replyTo); if (root && root !== replyTo.id) { tags.push(['e', root, '', 'root']); tags.push(['e', replyTo.id, '', 'reply']); } else tags.push(['e', replyTo.id, '', 'root']); const ps = new Set([replyTo.pubkey, ...replyTo.tags.filter(t => t[0] === 'p' && HEX.test(t[1] || '')).map(t => t[1])]); for (const p of ps) if (!isMe(p) && !tags.some(t => t[0] === 'p' && t[1] === p)) tags.push(['p', p]); }
-    const ev = await publish({ kind: 1, content: text, tags }); if (ev) { closePanel(); toast(replyTo ? 'reply sent' : 'posted'); if (replyTo) pulse(replyTo.pubkey); } });
+    const ev = await publish({ kind: 1, content: text, tags }); if (ev) { closePanel(); toast(replyTo ? 'reply sent' : 'posted'); if (replyTo) pulse(replyTo.pubkey, 'reply'); } });
   openPanel(replyTo ? 'reply' : 'post', box); setTimeout(() => ta.focus(), 50);
 }
 $('composeBtn').addEventListener('click', () => openCompose()); $('composeBtn2').addEventListener('click', () => openCompose());
@@ -329,10 +331,26 @@ $('searchBtn').addEventListener('click', () => { const box = document.createElem
 
 // ---- the cube that is you, and the cubes that are them ----------------------------------------------
 const FACES = ['front', 'right', 'back', 'left', 'top', 'bottom'];
-function cubeEl(pk, cls) { const el = document.createElement('div'); el.className = 'cube mini ' + cls; el.dataset.pk = pk; el.innerHTML = FACES.map(f => `<div class="face ${f}"></div>`).join(''); paintCube(el, pk); el.addEventListener('click', () => openProfile(pk)); el.title = name(pk); return el; }
-function paintCube(el, pk) { const p = isMe(pk) ? { pic: S.me.pic, name: S.me.name } : prof(pk); const pic = p.pic && !THIN ? `url("${p.pic.replace(/"/g, '')}")` : 'none'; el.style.setProperty('--pic', pic); el.style.setProperty('--c', isMe(pk) ? 'var(--accent)' : `hsl(${hue(pk)} 60% 60%)`); const letter = pic === 'none' ? ((p.name || name(pk)).replace(/^@/, '')[0] || '?').toUpperCase() : ''; el.querySelectorAll('.face').forEach(f => { f.textContent = letter; }); el.title = isMe(pk) ? 'you' : name(pk); }
+function cubeEl(pk, cls, note) { const el = document.createElement('div'); el.className = 'cube mini ' + cls; el.dataset.pk = pk; if (note) el.dataset.note = note.id; el.innerHTML = FACES.map(f => `<div class="face ${f}"></div>`).join(''); paintCube(el, pk, note); el.addEventListener('click', e => { e.stopPropagation(); if (isMe(pk) || pk === 'me') { if (S.me?.pk) openProfile(S.me.pk); else openSettings(); } else openProfile(pk); }); return el; }
+// six faces: who (front), when (top), which language or proof (right), what it earned (back), how much of them is here (left), what they are to you (bottom)
+function faces(pk, note) {
+  if (isMe(pk) || pk === 'me') { const rel = Object.values(S.relayState || {}).filter(Boolean).length; return { top: S.mentions ? `@${S.mentions}` : 'you', right: S.follows.length ? `${S.follows.length}→` : '0→', back: rel ? `${rel} rly` : 'off', left: (S.langs[0] || 'en'), bottom: S.me?.pk ? (S.me.mode === 'read' ? 'look' : 'key') : 'look' }; }
+  const p = prof(pk), c = note && S.counts.get(note.id), n = S.authorN.get(pk) || 0;
+  const earned = c ? (c.sats ? `⚡${c.sats >= 1000 ? Math.round(c.sats / 1000) + 'k' : c.sats}` : c.likes ? `♥${c.likes}` : c.replies ? `↩${c.replies}` : c.reposts ? `↻${c.reposts}` : '·') : '·';
+  const lang = note ? (S.nodes.get(note.id)?.dataset.lang || detectLang(parse(note).plain)) : 'und';
+  return { top: note ? ago(note.created_at) : S.lastAt.get(pk) ? ago(S.lastAt.get(pk)) : '?', right: p.nip05 ? '✓' + (lang !== 'und' ? lang : '') : lang !== 'und' ? lang : '?', back: earned, left: n > 1 ? `×${n}` : '×1', bottom: isFollow(pk) ? '★' : S.firstSeen.get(pk) ? 'seen' : 'new' };
+}
+function paintCube(el, pk, note) {
+  const p = isMe(pk) || pk === 'me' ? { pic: S.me?.pic, name: S.me?.name } : prof(pk); const pic = p.pic && !THIN ? `url("${p.pic.replace(/"/g, '')}")` : 'none';
+  el.style.setProperty('--pic', pic); el.style.setProperty('--c', isMe(pk) || pk === 'me' ? 'var(--accent)' : `hsl(${hue(pk)} 60% 60%)`);
+  const f = faces(pk, note), letter = pic === 'none' ? ((p.name || name(pk)).replace(/^@/, '')[0] || '?').toUpperCase() : '';
+  for (const face of el.children) { const k = face.className.replace('face ', ''); face.textContent = k === 'front' ? letter : f[k] || ''; }
+  if (note) el.dataset.note = note.id; if (!S.firstSeen.has(pk) && !isMe(pk)) S.firstSeen.set(pk, now());
+  el.title = isMe(pk) || pk === 'me' ? `you · ${f.top} · ${f.right} following · ${f.back}` : `${name(pk)} · ${f.top} · ${f.right} · ${f.back} · ${f.left} · ${f.bottom}`;
+}
 function renderMe() { const el = $('meCube'); if (!el.children.length) el.innerHTML = FACES.map(f => `<div class="face ${f}"></div>`).join(''); const pk = S.me?.pk || 'me'; el.dataset.pk = pk; paintCube(el, pk); }
 $('meCube').addEventListener('click', () => { if (S.me?.pk) openProfile(S.me.pk); else openSettings(); });
+H.relay = ({ url, open }) => { S.relayState = S.relayState || {}; S.relayState[url] = open; renderMe(); };
 function renderCluster() {
   const box = $('cluster'); box.textContent = ''; const N = PHONE() ? 4 : 8; const order = [...S.follows].sort((a, b) => (S.lastAt.get(b) || 0) - (S.lastAt.get(a) || 0)); const show = order.slice(0, N);
   for (const pk of show) { needProfile(pk); const el = cubeEl(pk, 'small'); box.append(el); }
@@ -340,21 +358,29 @@ function renderCluster() {
 }
 const C = { spawned: new Map(), paths: new Map() };
 function syncCubes() {
-  if (!$('onboard').hidden) return; const H_ = innerHeight, want = [], seen = new Set();
-  for (const n of $('list').children) { const r = n.getBoundingClientRect(); if (r.top > H_) break; if (r.bottom < 56) continue; const pk = n.dataset.pk; if (!pk || seen.has(pk) || isFollow(pk) || isMe(pk)) continue; seen.add(pk); want.push({ pk, note: n }); if (want.length >= 5) break; }
+  if (!$('onboard').hidden) return; const H_ = innerHeight, want = [], seen = new Map(), mid = H_ / 2;
+  for (const n of $('list').children) { const r = n.getBoundingClientRect(); if (r.top > H_) break; if (r.bottom < 56) continue; const pk = n.dataset.pk; if (!pk || isFollow(pk) || isMe(pk)) continue; const d = Math.abs((r.top + r.bottom) / 2 - mid); const w = seen.get(pk); if (w) { if (d < w.d) { w.d = d; w.note = n; } continue; } if (want.length >= 5) continue; const item = { pk, note: n, d, av: null }; seen.set(pk, item); want.push(item); }
+  for (const w of want) w.av = w.note.querySelector('.av').getBoundingClientRect(); // all reads before any write
   for (const [pk, c] of C.spawned) if (!want.some(w => w.pk === pk)) { c.el.classList.remove('in'); c.el.classList.add('out'); c.note.classList.remove('cubed'); C.spawned.delete(pk); C.paths.delete(pk); setTimeout(() => c.el.remove(), 350); }
   const me = $('meCube').getBoundingClientRect(), mx = me.left + me.width / 2, my = me.top + me.height / 2; const d = [];
-  for (const w of want) { let c = C.spawned.get(w.pk); if (!c) { const el = document.createElement('div'); el.className = 'spawn'; el.append(cubeEl(w.pk, '')); $('cubes').append(el); c = { el, note: w.note, pk: w.pk }; C.spawned.set(w.pk, c); setTimeout(() => el.classList.add('in'), 20); } else if (c.note !== w.note) { c.note.classList.remove('cubed'); c.note = w.note; }
-    w.note.classList.add('cubed'); const g = w.note.querySelector('.av').getBoundingClientRect(); const size = c.el.offsetWidth || 40; const x = g.left + (g.width - size) / 2, y = g.top + (g.height - size) / 2; c.el.style.transform = `translate(${x}px, ${y}px)`; const cx = x + size / 2, cy = y + size / 2; const path = `M${cx} ${cy} C${cx} ${cy - 60} ${mx + 40} ${my + 30} ${mx} ${my}`; C.paths.set(w.pk, path); d.push(path); }
+  for (const w of want) { const ev = S.events.get(w.note.dataset.inner); let c = C.spawned.get(w.pk); if (!c) { const el = document.createElement('div'); el.className = 'spawn'; el.append(cubeEl(w.pk, '', ev)); $('cubes').append(el); c = { el, note: w.note, pk: w.pk }; C.spawned.set(w.pk, c); setTimeout(() => el.classList.add('in'), 20); } else if (c.note !== w.note) { c.note.classList.remove('cubed'); c.note = w.note; const cube = c.el.firstElementChild; paintCube(cube, w.pk, ev); cube.classList.remove('nod'); void cube.offsetWidth; cube.classList.add('nod'); }
+    w.note.classList.add('cubed'); const g = w.av; const size = 40; const x = g.left + (g.width - size) / 2, y = g.top + (g.height - size) / 2; c.el.style.transform = `translate(${x}px, ${y}px)`; const cx = x + size / 2, cy = y + size / 2; const path = `M${cx} ${cy} C${cx} ${cy - 60} ${mx + 40} ${my + 30} ${mx} ${my}`; C.paths.set(w.pk, path); d.push(path); }
   const svg = $('links'); if (svg.getAttribute('width') !== String(innerWidth)) { svg.setAttribute('width', innerWidth); svg.setAttribute('height', innerHeight); svg.setAttribute('viewBox', `0 0 ${innerWidth} ${innerHeight}`); } svg.innerHTML = d.map(p => `<path d="${p}"/>`).join('');
 }
-function pulse(pk) { const path = C.paths.get(pk); const meEl = $('meCube'); const hit = () => { meEl.classList.add('hit'); setTimeout(() => meEl.classList.remove('hit'), 450); }; if (!path || REDUCED) { hit(); return; } const dot = document.createElement('i'); dot.className = 'dot'; dot.style.offsetPath = `path("${path}")`; $('cubes').append(dot); const a = dot.animate([{ offsetDistance: '0%' }, { offsetDistance: '100%' }], { duration: 650, easing: 'ease-in' }); a.onfinish = () => { dot.remove(); hit(); }; }
-function flyToCluster(pk) { const c = C.spawned.get(pk); renderCluster(); const target = $('cluster').querySelector(`.cube[data-pk="${pk}"]`); if (!c) return; if (target && !REDUCED) { target.style.visibility = 'hidden'; const r = target.getBoundingClientRect(); c.el.style.transform = `translate(${r.left}px, ${r.top}px) scale(${r.width / (c.el.offsetWidth || 40)})`; c.el.style.opacity = '1'; c.note.classList.remove('cubed'); C.spawned.delete(pk); C.paths.delete(pk); setTimeout(() => { c.el.remove(); target.style.visibility = ''; }, 720); } else { c.el.remove(); c.note.classList.remove('cubed'); C.spawned.delete(pk); C.paths.delete(pk); } }
+function pulse(pk, kind = 'like') {
+  const path = C.paths.get(pk), meEl = $('meCube'); const flash = cls => { meEl.classList.remove(cls); void meEl.offsetWidth; meEl.classList.add(cls); setTimeout(() => meEl.classList.remove(cls), 700); };
+  if (!path || REDUCED) { flash(kind === 'repost' ? 'echo' : 'hit'); return; }
+  const travel = (cls, from, to, delay, dur, done) => { const dot = document.createElement('i'); dot.className = 'dot ' + cls; dot.style.offsetPath = `path("${path}")`; dot.style.offsetDistance = from; $('cubes').append(dot); const a = dot.animate([{ offsetDistance: from }, { offsetDistance: to }], { duration: dur, delay, easing: 'ease-in-out', fill: 'forwards' }); let fired = false; const end = () => { if (fired) return; fired = true; dot.remove(); done?.(); }; a.onfinish = end; setTimeout(end, dur + delay + 300); };
+  if (kind === 'reply') { for (let i = 0; i < 3; i++) travel('reply', '0%', '100%', i * 140, 620, i === 2 ? () => flash('hit') : null); }
+  else if (kind === 'repost') { travel('repost', '0%', '100%', 0, 600, () => { flash('echo'); travel('repost', '100%', '0%', 80, 600, () => { const c = C.spawned.get(pk); const cube = c?.el.firstElementChild; if (cube) { cube.classList.remove('nod'); void cube.offsetWidth; cube.classList.add('nod'); } }); }); }
+  else travel('', '0%', '100%', 0, 650, () => flash('hit'));
+}
+function flyToCluster(pk) { const c = C.spawned.get(pk); renderCluster(); const target = $('cluster').querySelector(`.cube[data-pk="${pk}"]`); if (!c) return; if (target && !REDUCED) { target.style.visibility = 'hidden'; const r = target.getBoundingClientRect(); c.el.style.transform = `translate(${r.left}px, ${r.top}px) scale(${r.width / 40})`; c.el.style.opacity = '1'; c.note.classList.remove('cubed'); C.spawned.delete(pk); C.paths.delete(pk); setTimeout(() => { c.el.remove(); target.style.visibility = ''; }, 720); } else { c.el.remove(); c.note.classList.remove('cubed'); C.spawned.delete(pk); C.paths.delete(pk); } }
 addEventListener('resize', () => { renderCluster(); syncCubes(); });
 
 // ---- first time: the big cube -----------------------------------------------------------------------
 const ob = { key: null };
-function faceTo(n) { $('bigcube').style.transform = ['', 'rotateY(-90deg)', 'rotateY(-180deg)', 'rotateY(-270deg)', 'rotateX(-90deg)'][n] || ''; setTimeout(() => { const inp = $('bigcube').querySelectorAll('.face')[n]?.querySelector('input:not([hidden])'); if (inp && !PHONE()) inp.focus(); }, 500); if (n === 4) $('obSummary').textContent = `${$('obName').value.trim() || 'someone'} · ${ob.key === 'new' ? 'a new key, made here' : ob.key === 'nip07' ? 'signed by your extension' : ob.key === 'paste' ? 'your own key' : 'no key, just looking'}`; }
+function faceTo(n) { $('bigcube').style.transform = ['', 'rotateY(-90deg)', 'rotateY(-180deg)', 'rotateY(-270deg)', 'rotateX(90deg)'][n] || ''; setTimeout(() => { const inp = $('bigcube').querySelectorAll('.face')[n === 4 ? 5 : n]?.querySelector('input:not([hidden])'); if (inp && !PHONE()) inp.focus(); }, 500); if (n === 4) $('obSummary').textContent = `${$('obName').value.trim() || 'someone'} · ${ob.key === 'new' ? 'a new key, made here' : ob.key === 'nip07' ? 'signed by your extension' : ob.key === 'paste' ? 'your own key' : 'no key, just looking'}`; }
 function startOnboarding() {
   $('onboard').hidden = false; faceTo(0); if (window.nostr) $('obNip07').hidden = false;
   $('onboard').querySelectorAll('[data-next]').forEach(b => b.addEventListener('click', () => { const n = Number(b.dataset.next); if (n === 1 && !$('obName').value.trim()) { $('obName').focus(); return; } faceTo(n); }));
@@ -370,8 +396,8 @@ async function finishOnboarding() {
   else if (ob.key === 'nip07') { try { me.pk = await window.nostr.getPublicKey(); me.mode = 'nip07'; } catch { toast('the extension said no; continuing without a key'); } }
   S.me = me; store.set('me', me); renderMe();
   if (me.pk && me.mode !== 'read' && ob.key !== 'paste') publish({ kind: 0, content: JSON.stringify({ name: me.name, display_name: me.name, about: me.about, picture: me.pic }) });
-  const big = $('bigcube'), slot = $('meSlot').getBoundingClientRect(), r = big.getBoundingClientRect(); const s = slot.width / r.width;
-  big.style.transition = 'transform 1s cubic-bezier(.5,0,.2,1)'; big.style.transform = `translate(${slot.left + slot.width / 2 - (r.left + r.width / 2)}px, ${slot.top + slot.height / 2 - (r.top + r.height / 2)}px) rotateX(-22deg) scale(${s})`; $('onboard').classList.add('settling');
+  const scene = $('scene'), slot = $('meSlot').getBoundingClientRect(), r = scene.getBoundingClientRect(); const s = slot.width / r.width;
+  scene.style.transform = `translate(${slot.left + slot.width / 2 - (r.left + r.width / 2)}px, ${slot.top + slot.height / 2 - (r.top + r.height / 2)}px) scale(${s})`; $('onboard').classList.add('settling');
   setTimeout(() => { $('onboard').hidden = true; bootMe(); toast(`hello, ${me.name}`); syncCubes(); }, REDUCED ? 50 : 1000);
 }
 
@@ -384,5 +410,5 @@ function boot() {
   setInterval(() => { for (const el of $('list').querySelectorAll('time')) { const ev = S.events.get(el.closest('.note')?.dataset.inner); if (ev) el.textContent = ago(ev.created_at); } }, 30000);
   setInterval(flushPending, 1500); setInterval(syncCubes, 2500);
 }
-window.cube = { S, L, C, setFeed, openProfile, openThread, translateNote, translate, follow, syncCubes, pulse, openCompose, openSettings, onScroll };
+window.cube = { S, L, C, setFeed, openProfile, openThread, translateNote, translate, follow, syncCubes, pulse, openCompose, openSettings, onScroll, faces, renderMe };
 boot(); if (!S.me) startOnboarding();
