@@ -533,6 +533,7 @@ function render(npub, hex) {
   dashboard.classList.add('on');
   // synchronous on purpose (a background tab never gets an animation frame), and each view on its own so one cannot sink the others
   safe(showView); safe(drawScrub); safe(buildBlocks);
+  if (PARAMS.get('npub') && PARAMS.get('play') !== '0' && mode === 'voxel' && !matchMedia('(prefers-reduced-motion: reduce)').matches) setTimeout(() => { if (vox && !vox.playing()) startReplay(true); }, 1600);
 }
 function safe(fn) { try { fn(); } catch (e) { console.warn('view skipped:', e.message); } }
 document.addEventListener('visibilitychange', () => { if (!document.hidden && metrics) { safe(showView); safe(drawScrub); } });
@@ -756,7 +757,7 @@ $('playBtn').addEventListener('click', () => {
   if (mode === 'voxel' && vox?.playing()) { vox.pause(); $('playBtn').textContent = '▶ play'; return; }
   try { audio ||= new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch {}
   $('playBtn').textContent = '■ stop';
-  if (mode === 'voxel') { $('playBtn').textContent = '❚❚ pause'; vox.play(() => { $('playBtn').textContent = '▶ play'; }); return; }
+  if (mode === 'voxel') { startReplay(false); return; }
   const passed = new Set(); sweepStart = performance.now();
   const step = now => {
     const k = Math.min(1, (now - sweepStart) / 8000), a = -Math.PI / 2 + k * Math.PI * 2;
@@ -768,6 +769,13 @@ $('playBtn').addEventListener('click', () => {
   sweepRaf = requestAnimationFrame(step);
 });
 
+function startReplay(auto) {
+  if (!vox || vox.playing()) return;
+  if (!auto) { try { audio ||= new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch {} }
+  $('playBtn').textContent = '❚❚ pause';
+  $('viewHint').textContent = (auto ? 'replaying this history, one epoch per second · pause to explore · ' : '') + 'click a brick to zoom in, a cube to open its block, double-click to back out · click once to take the controls, then scroll zooms and drag orbits';
+  vox.play(() => { $('playBtn').textContent = '▶ play'; });
+}
 $('shareBtn').addEventListener('click', async () => {
   const url = location.origin + location.pathname + '?npub=' + npub + (mode === 'orbit' ? '&view=orbit' : '');
   try { await navigator.clipboard.writeText(url); $('shareBtn').textContent = 'copied'; setTimeout(() => { $('shareBtn').textContent = 'copy link'; }, 1500); }
