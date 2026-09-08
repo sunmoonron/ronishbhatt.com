@@ -7778,7 +7778,8 @@ var NostrTools = (() => {
 })();
 </script>
 <script>
-const T = window.NostrTools, out = document.getElementById('out'), say = s => { out.textContent += s + '\n'; };
+const T = window.NostrTools, out = document.getElementById('out'), say = s => { out.textContent += s + '\n'; try { sessionStorage.setItem('rb.console.last', out.textContent); } catch {} };
+try { const last = sessionStorage.getItem('rb.console.last'); if (last) out.textContent = 'last report, kept from the previous run:\n' + last + '\n'; } catch {}
 document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b)); document.querySelectorAll('section').forEach(s => s.classList.toggle('on', s.id === b.dataset.t)); });
 const relays = () => document.getElementById('relays').value.split('\n').map(s => s.trim()).filter(Boolean);
 function secret() {
@@ -7825,7 +7826,8 @@ document.getElementById('go_dm').onclick = async () => { out.textContent = ''; t
   const inbox = lists[0] ? lists[0].tags.filter(t => t[0] === 'relay').map(t => t[1]) : [];
   say(inbox.length ? 'their inbox relays: ' + inbox.join(', ') : 'no inbox relay list published, using the relays above');
   const me = T.getPublicKey(sk);
-  const wraps = T.nip17.wrapManyEvents(sk, [{ publicKey: to }], text); // the library adds the sender's own copy
+  // one rumor, addressed to them, wrapped once for them and once for you, so your own inbox files it under their name
+  const wraps = T.nip59.wrapManyEvents({ kind: 14, content: text, tags: [['p', to]], created_at: Math.floor(Date.now() / 1000) }, sk, [to]);
   const targets = [...new Set([...inbox, ...relays()])];
   for (const w of wraps) { say('wrap for ' + (w.tags.find(t => t[0] === 'p')?.[1] === to ? 'them' : 'you') + ':'); await publish(w, targets); }
   say('done. They see it in any NIP-17 client.');

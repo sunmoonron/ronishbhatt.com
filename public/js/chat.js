@@ -37,7 +37,7 @@ function addMsg(peer, m) {
   save(); notify();
 }
 function save() { try { localStorage.setItem(CACHE(), JSON.stringify([...chat.threads.values()].map(t => ({ ...t, unread: 0 })))); } catch {} }
-function load() { try { for (const t of JSON.parse(localStorage.getItem(CACHE()) || '[]')) { chat.threads.set(t.peer, t); t.msgs.forEach(m => { seen.add(m.id); if (m.pending) { m.pending = false; m.failed = [{ msg: 'interrupted' }]; } }); } } catch {} }
+function load() { try { for (const t of JSON.parse(localStorage.getItem(CACHE()) || '[]')) { if (t.peer === chat.me) continue; chat.threads.set(t.peer, t); t.msgs.forEach(m => { seen.add(m.id); if (m.pending) { m.pending = false; m.failed = [{ msg: 'interrupted' }]; } }); } } catch {} }
 
 function onWrap(wrap) {
   if (seen.has(wrap.id)) return; seen.add(wrap.id);
@@ -45,6 +45,7 @@ function onWrap(wrap) {
   if (seen.has(rumor.id)) return; seen.add(rumor.id);
   const to = tag(rumor, 'p') || '', mine_ = rumor.pubkey === chat.me, peer = mine_ ? to : rumor.pubkey;
   if (!/^[0-9a-f]{64}$/.test(peer) || (chat.mode === 'visitor' && peer !== env.SITE)) return;
+  if (mine_ && to === chat.me) return; // a copy addressed to myself is not a conversation
   const text = String(rumor.content || '').slice(0, 5000);
   addMsg(peer, { id: rumor.id, from: rumor.pubkey, to, text, ts: rumor.created_at, mine: mine_, subject: mine_ ? '' : tag(rumor, 'subject') || '' });
   if (!mine_ && rumor.created_at > now() - 3 * 86400) {
@@ -95,7 +96,7 @@ export async function send(peer, text) {
 // ---- component (live=false is the shell the bake pre-renders; boot.js wires it) ----
 const fmtTime = ts => { const d = new Date(ts * 1000); return `${d.toISOString().slice(5, 10).replace('-', '/')} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`; };
 const Delivery = ({ m }) => m.pending ? html`<small>${chat.busy === 'sealing' ? 'sealing (proof of work)…' : 'sending…'}</small>`
-  : m.mine ? html`<small title=${(m.delivered || []).join('\n')}>${fmtTime(m.ts)} · ${m.delivered?.length ? `✓ ${m.delivered.length} relay${m.delivered.length > 1 ? 's' : ''}${m.delivered.includes(env.PRIMARY) ? ' incl. mine' : ''}` : '✗ not delivered'}</small>`
+  : m.mine ? html`<small title=${(m.delivered || []).join('\n')}>${fmtTime(m.ts)} · ${m.delivered?.length ? `✓ ${m.delivered.length} relay${m.delivered.length > 1 ? 's' : ''}${m.delivered.includes(env.PRIMARY) ? ' incl. mine' : ''}` : m.delivered ? '✗ not delivered' : '↗ sent'}</small>`
   : html`<small>${fmtTime(m.ts)}</small>`;
 function Log({ msgs }) {
   const ref = useRef();
