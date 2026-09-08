@@ -26,13 +26,16 @@ export class Columns {
 export class Lattice {
   constructor(h0, h1) {
     this.h0 = h0; this.h1 = h1; this.cols = new Columns(); this.buckets = new Map(); this.byId = new Map(); this.pending = new Map();
-    this.all = new Fenwick(h1 - h0 + 1); this.community = new Fenwick(h1 - h0 + 1); this.authors = []; this.listeners = new Set();
+    this.cap = h1 - h0 + 1 + 4032; this.all = new Fenwick(this.cap); this.community = new Fenwick(this.cap); this.authors = []; this.listeners = new Set(); this.followed = new Set();
   }
+  // the tip moved: blocks past the old h1 become real. Counting trees grow by doubling when the headroom runs out
+  advance(h1) { if (h1 <= this.h1) return; this.h1 = h1; if (h1 - this.h0 + 1 > this.cap) { this.cap *= 2; this.all = new Fenwick(this.cap); this.community = new Fenwick(this.cap); const c = this.cols; for (let i = 0; i < c.n; i++) { this.all.add(c.height[i] - this.h0, 1); if (c.flags[i] & F_COMMUNITY) this.community.add(c.height[i] - this.h0, 1); } } }
   addAuthor(a) { this.authors.push(a); return this.authors.length - 1; }
   address(h) { const i = ((h % BLOCKS_PER_EPOCH) + BLOCKS_PER_EPOCH) % BLOCKS_PER_EPOCH, d = i % BLOCKS_PER_DAY; return { epoch: Math.floor(h / BLOCKS_PER_EPOCH), day: Math.floor(i / BLOCKS_PER_DAY), row: Math.floor(d / SIDE), col: d % SIDE }; }
   // one event; replies and reactions credit their target's score, even when the target arrives later
   ingest(height, author, kind, flags, id, text, targetId) {
     if (height < this.h0 || height > this.h1 || (id && this.byId.has(id))) return -1;
+    if (this.followed.has(author)) flags |= F_COMMUNITY; else flags &= ~F_COMMUNITY;
     const c = this.cols, i = c.push(height, author, kind, flags, id, text);
     if (id) this.byId.set(id, i);
     let b = this.buckets.get(height); if (!b) this.buckets.set(height, b = []); b.push(i);
@@ -42,6 +45,10 @@ export class Lattice {
     return i;
   }
   ingestChunk(k) { for (let j = 0; j < k.height.length; j++) this.ingest(k.height[j], k.author[j], k.kind[j], k.flags[j], k.ids[j], k.text[j], k.targets[j] || null); this.emit(); }
+  setCommunity(author, on) { // follow or unfollow: flip the flag on every event of theirs and keep the community tree honest
+    if (on) this.followed.add(author); else this.followed.delete(author); const c = this.cols; for (let i = 0; i < c.n; i++) { if (c.author[i] !== author) continue; const was = !!(c.flags[i] & F_COMMUNITY); if (was === on) continue; c.flags[i] = on ? c.flags[i] | F_COMMUNITY : c.flags[i] & ~F_COMMUNITY; this.community.add(c.height[i] - this.h0, on ? 1 : -1); }
+    this.emit();
+  }
   count(a, b) { return this.all.range(a - this.h0, b - this.h0); }
   countCommunity(a, b) { return this.community.range(a - this.h0, b - this.h0); }
   block(h) { return this.buckets.get(h) || []; }

@@ -14,7 +14,7 @@ h1{font-size:1.1rem;letter-spacing:.12em;color:var(--accent);margin:.2rem 0 .3re
 .mb{background:var(--bg);border:1px solid var(--line);color:var(--mute);border-radius:.4rem;padding:.3rem .6rem;font:.66rem var(--mono);cursor:pointer;letter-spacing:.06em;text-transform:uppercase}.mb.on{color:var(--accent);border-color:var(--accent)}.mb.pri{background:var(--deep);color:var(--accent-ink);border-color:var(--accent);font-weight:700}
 #status{font-size:.72rem;color:var(--mute);min-height:1.2rem}#status b{color:var(--accent);font-weight:400}
 .panel{border:1px solid var(--line);border-radius:12px;background:var(--card);overflow:hidden;margin-top:.8rem}
-canvas#view{width:100%;aspect-ratio:16/9;max-height:76vh;display:block;touch-action:none}canvas#view.armed{box-shadow:0 0 0 2px var(--accent) inset;cursor:grab}
+canvas#view{width:100%;aspect-ratio:16/9;max-height:76vh;display:block;touch-action:none}canvas#view[hidden]{display:none}canvas#view.armed{box-shadow:0 0 0 2px var(--accent) inset;cursor:grab}
 .legend{display:flex;flex-wrap:wrap;gap:.4rem .9rem;padding:.55rem .9rem;font-size:.66rem;color:var(--mute);border-top:1px solid var(--line)}.legend i{display:inline-block;width:9px;height:9px;border-radius:2px;background:var(--k);margin-right:5px;vertical-align:-1px}
 .caption{display:grid;grid-template-columns:auto 1fr;gap:.9rem;align-items:start;margin:.5rem 0 0;padding:.5rem .8rem;background:var(--bg);border:1px solid var(--line);border-left:3px solid #e9c46a;border-radius:.5rem;font-size:.78rem;min-height:3rem}.caption[hidden]{display:none}.caption .w{font-size:.62rem;color:var(--accent);white-space:pre;line-height:1.5}.caption .t{color:var(--fg);line-height:1.45;max-height:4.4em;overflow:hidden}.caption .t b{color:var(--accent);font-weight:400}
 #tip{position:fixed;pointer-events:none;z-index:99;background:var(--card);border:1px solid var(--line);border-radius:.5rem;padding:.5rem .7rem;font-size:.7rem;max-width:22rem;opacity:0;transition:opacity .12s}#tip.on{opacity:1}#tip .h{color:var(--accent)}#tip .l{color:var(--fg);margin-top:.2rem;word-break:break-word}#tip .l b{color:var(--accent);font-weight:400}
@@ -22,6 +22,22 @@ canvas#view{width:100%;aspect-ratio:16/9;max-height:76vh;display:block;touch-act
 .day{display:grid;grid-template-columns:9rem 1fr;gap:.6rem;align-items:center;padding:.25rem .8rem;font-size:.66rem;color:var(--mute)}.grid{display:grid;grid-template-columns:repeat(24,1fr);gap:2px}.grid button{aspect-ratio:1;border:0;border-radius:2px;background:var(--soft);padding:0;cursor:pointer;min-width:0}.grid button:focus-visible{outline:2px solid var(--mint)}
 #blocklist{border-top:1px solid var(--line);padding:.6rem .8rem;font-size:.76rem}#blocklist h3{font-size:.7rem;color:var(--accent);margin:0 0 .4rem;font-weight:400}#blocklist p{margin:.2rem 0;color:var(--fg)}#blocklist p b{color:var(--accent);font-weight:400}#blocklist p.reply{color:var(--mute);padding-left:1rem}
 .hint{font-size:.66rem;color:var(--mute);padding:.5rem .9rem;border-top:1px solid var(--line)}
+.modes{display:flex;gap:.4rem;flex-wrap:wrap;align-items:center;padding:.55rem .9rem;border-bottom:1px solid var(--line)}.modes .grow{flex:1}.modes small{color:var(--mute);font-size:.66rem}
+#today{display:grid;grid-template-columns:minmax(18rem,26rem) 1fr;gap:1rem;padding:.9rem}#today[hidden]{display:none}
+.tilewrap{position:relative}.tile{display:grid;grid-template-columns:repeat(12,1fr);gap:3px;aspect-ratio:1}.tile button{aspect-ratio:1;border:1px solid transparent;border-radius:3px;background:var(--soft);padding:0;cursor:pointer;min-width:0;position:relative}
+.tile button.unread{border-color:var(--mint)}.tile button.future{background:transparent;border:1px dashed var(--line)}.tile button.now{outline:2px solid var(--accent)}.tile button.pick{outline:2px solid #e9c46a}.tile button.dim{opacity:.25}.tile button:focus-visible{outline:2px solid var(--mint)}
+.tile button i{position:absolute;right:2px;top:2px;width:5px;height:5px;border-radius:50%;background:#e9c46a}.tile button.mention{box-shadow:0 0 0 2px #e9c46a inset}.tile button.muted{background:repeating-linear-gradient(45deg,var(--soft) 0 3px,transparent 3px 6px)!important}
+#today.list{grid-template-columns:1fr}#today.list .tilewrap,#today.list .axis,#today.list #post{display:none}#today.list .tilehead{margin-bottom:.2rem}
+#discover{margin-top:.8rem;border-top:1px solid var(--line);padding-top:.5rem}#discover summary{cursor:pointer;font:.66rem var(--mono);color:var(--accent);list-style:none}#discover summary::before{content:'▸ ';color:var(--mute)}#discover[open] summary::before{content:'▾ '}#discover p{font-size:.68rem;color:var(--mute);margin:.3rem 0 .4rem;line-height:1.5}#followList button{margin:.15rem .3rem .15rem 0}
+#reading b.au{cursor:pointer;border-bottom:1px dotted var(--line)}#reading b.au.on{border-bottom-color:var(--accent)}#reading b.au:hover{color:#e9c46a}#reading .ago{color:#e9c46a;font-size:.64rem;margin-left:.4rem}#reading .tome{margin-bottom:.4rem}
+.tilehead .jump{margin-left:.4rem}.mb:disabled{opacity:.45;cursor:default}
+#reading h3 .mute{margin-left:auto;background:none;border:0;color:var(--mute);font:.6rem var(--mono);cursor:pointer;opacity:0}#reading h3:hover .mute,#reading h3 .mute:focus-visible{opacity:1}#reading h3 .mute:hover{color:#e5484d}
+.arcs{position:absolute;inset:0;pointer-events:none}.tilehead{display:flex;justify-content:space-between;gap:.5rem;font-size:.7rem;color:var(--mute);margin:0 0 .5rem}.tilehead b{color:var(--fg);font-weight:400}
+.axis{display:flex;justify-content:space-between;font-size:.6rem;color:var(--mute);margin-top:.35rem}
+#reading{font-size:.78rem;min-height:12rem}#reading h3{font:.68rem var(--mono);color:var(--accent);margin:.8rem 0 .3rem;display:flex;gap:.6rem;align-items:baseline}#reading h3:first-child{margin-top:0}#reading h3 span{color:var(--mute)}#reading p{margin:.15rem 0;color:var(--fg);line-height:1.45}#reading p b{color:var(--accent);font-weight:400}#reading p.reply{padding-left:1.1rem;color:var(--mute)}#reading p.reply b{color:var(--fg)}#reading .done{margin-top:1rem;padding:.6rem .8rem;border:1px dashed var(--line);border-radius:8px;color:var(--mute);font-size:.72rem}
+#week{display:none;padding:.9rem;gap:.6rem;grid-template-columns:repeat(auto-fill,minmax(7.5rem,1fr))}#week.on{display:grid}.wk{cursor:pointer;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:.45rem}.wk.on{border-color:var(--accent)}.wk .g{display:grid;grid-template-columns:repeat(12,1fr);gap:1px;aspect-ratio:1}.wk .g i{display:block;background:var(--soft);border-radius:1px}.wk small{display:block;font-size:.6rem;color:var(--mute);margin-top:.3rem}.wk small b{color:var(--fg);font-weight:400}
+#post{display:flex;gap:.4rem;margin-top:.6rem}#post input{flex:1;font-size:.76rem}
+@media (max-width:760px){#today{grid-template-columns:1fr}}
 @media (max-width:640px){.caption{grid-template-columns:1fr}.day{grid-template-columns:1fr}}
 </style>
 </head>
@@ -31,9 +47,10 @@ canvas#view{width:100%;aspect-ratio:16/9;max-height:76vh;display:block;touch-act
 <h1>LATTICE</h1>
 <p class="lede">A feed that is not a list. Every event lands at its Bitcoin block: epoch, day, row, column, the way a number has digits. A block is a voxel, a day is a 12 × 12 layer, an epoch is a brick, the bricks coil up one turn a year. Replies are strings between voxels, reactions are sparks. Counts arrive before the events, so the shape shows on a slow link before a single note has loaded, and text mode is the same lattice with no canvas at all.</p>
 <div class="bar">
-  <button class="mb pri" id="simBtn">simulate a community</button>
+  <button class="mb pri" id="simBtn">simulate a small world</button>
   <label class="mb" for="seed">seed</label><input id="seed" class="small" value="7" aria-label="seed">
   <label class="mb" for="crowd">crowd</label><input id="crowd" class="small" value="60" aria-label="crowd size">
+  <button class="mb" id="liveBtn" title="the simulated chain keeps mining and the people keep acting">live: 1 block / 10 s</button>
   <input id="npub" placeholder="or paste an npub: their follows become the lattice" aria-label="npub">
   <button class="mb" id="realBtn">load a real feed</button>
 </div>
@@ -41,10 +58,23 @@ canvas#view{width:100%;aspect-ratio:16/9;max-height:76vh;display:block;touch-act
   <button class="mb" id="playBtn">▶ play</button><button class="mb" id="rateBtn" title="epochs per second">1 epoch/s</button>
   <button class="mb" id="catchBtn" title="only what got attention">catch-up: off</button>
   <button class="mb" id="textBtn">text mode</button><button class="mb" id="resetBtn">reset view</button>
+  <button class="mb" id="forgetBtn" title="clear what this device remembers about this feed: last seen, follows, mutes, choices">forget this device</button>
 </div>
 <div id="status">nothing loaded</div>
 <div class="panel" id="viewPanel">
-  <canvas id="view"></canvas>
+  <div class="modes"><button class="mb on" data-level="today">today</button><button class="mb" data-level="list">list</button><button class="mb" data-level="week">fortnight</button><button class="mb" data-level="coil">coil (3D)</button><span class="grow"></span><small id="unreadNote" aria-live="polite"></small><button class="mb" id="budgetBtn" title="how much to read in one sitting">budget: everything</button><button class="mb" id="readAll">mark all read</button></div>
+  <section id="today" aria-label="today">
+    <div>
+      <p class="tilehead"><b id="tileDate"></b><span id="tileCount"></span></p>
+      <div class="tilewrap"><div class="tile" id="tile" role="grid" aria-label="the blocks of this day"></div><svg class="arcs" id="arcs" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"></svg></div>
+      <div class="axis"><span>00:00, block 1</span><span>a row is two hours</span><span>block 144</span></div>
+      <details id="discover"><summary>people who keep showing up</summary><p id="discoverNote"></p><div id="followList"></div></details>
+      <form id="post"><input id="postText" placeholder="say something; it lands in the newest block" maxlength="140" aria-label="post"><button class="mb pri" type="submit">post</button></form>
+    </div>
+    <div id="reading"></div>
+  </section>
+  <div id="week"></div>
+  <canvas id="view" hidden></canvas>
   <div class="legend" id="legend"></div>
   <div class="hint" id="hint">chain level shows how much happened per epoch, community share in the brighter green · click a brick to zoom, a voxel to read the block · click once to take the controls, then scroll zooms and drag orbits · Esc releases</div>
 </div>
@@ -57,10 +87,15 @@ canvas#view{width:100%;aspect-ratio:16/9;max-height:76vh;display:block;touch-act
 import { Lattice, BLOCKS_PER_EPOCH, BLOCKS_PER_DAY, F_REPLY, F_MEDIA, F_COMMUNITY } from './lattice.js';
 import { createView } from './view.js';
 import { setTip, tipHeight, blockToDate, estimateHeight } from '/projects/js/orbit/anchor.js';
+// One page for everyone. Nothing here asks who you are. What differs between two people looking at
+// the same feed is state their own device already holds: the last block they read, whom they follow,
+// what they muted, how they like to read, and how thin their connection is. The page derives its
+// defaults from that state and lets the person override any of them; the overrides are state too.
 const $ = id => document.getElementById(id);
-const PALETTE = ['#b4f5d1', '#7dd3a8', '#5fc9c4', '#b9e26b', '#3aa876', '#8dddae']; // people are greens and teals; amber is media only
-const STRANGER = '#4e6f5f', CROWD = '#255a3f';
+const PALETTE = ['#b4f5d1', '#7dd3a8', '#5fc9c4', '#b9e26b', '#3aa876', '#8dddae', '#9be7c0', '#6fd6b0']; // people you follow are greens and teals; amber is media and mentions
+const STRANGER = '#4e6f5f', CROWD = '#255a3f', YOU = '#ffffff';
 const POTATO = (navigator.hardwareConcurrency || 4) <= 2 || (navigator.deviceMemory || 4) <= 2;
+const THIN = !!(navigator.connection && (navigator.connection.saveData || /(^|-)2g$/.test(navigator.connection.effectiveType || '')));
 let lattice = null, view = null, worker = null, catchUp = 0, textMode = false, rebuildTimer = 0, runId = 0;
 const fmt = n => n.toLocaleString();
 const day = h => blockToDate(h).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
@@ -68,76 +103,190 @@ const clock = h => blockToDate(h).toLocaleString(undefined, { month: 'short', da
 const status = (s, html) => { if (html) $('status').innerHTML = s; else $('status').textContent = s; };
 fetch('https://mempool.space/api/blocks/tip/height', { signal: AbortSignal.timeout(5000) }).then(r => r.text()).then(h => setTip(Number(h))).catch(() => {});
 
+// device state, per feed: everything the page remembers lives here and can be forgotten in one tap
+let level = 'today', dayH = null, budget = 0, source = 'sim', pickH = null, me = -1, onlyMe = false, liveMs = 10000, first = false;
+const K = name => `lattice.${name}.${source}`;
+const get = (name, d) => { try { const v = localStorage.getItem(K(name)); return v == null ? d : JSON.parse(v); } catch { return d; } };
+const put = (name, v) => { try { if (v == null) localStorage.removeItem(K(name)); else localStorage.setItem(K(name), JSON.stringify(v)); } catch {} };
+const lastSeen = () => Number(get('seen', 0)) || 0;
+const follows = () => new Set(get('follows', []));
+const muted = () => new Set(get('muted', []));
+const setSeen = h => { put('seen', h); first = false; renderDay(); if (level === 'week') renderWeek(); };
+const dayStart = h => h - ((h % BLOCKS_PER_EPOCH) % BLOCKS_PER_DAY);
+const epochOf = h => Math.floor(h / BLOCKS_PER_EPOCH);
+const BUDGETS = [0, 20, 5];
+function unreadBlocks() { const seen = lastSeen(); let n = 0; for (const [h, idx] of lattice.buckets) if (h > seen && h <= lattice.h1 && idx.length) n++; return n; }
+// the defaults: derived from state, never asked. A week of unread proposes a budget; a thin link proposes text; a chosen level is kept
+function applyState() {
+  if (get('seen', null) == null) { first = true; put('seen', lattice.h1); } // first visit: nothing is owed, the baseline is now; what happens from here on is new
+  const f = follows(); lattice.authors.forEach((a, i) => { const on = f.has(a.name) || (a.role === 'you'); if (on !== lattice.followed.has(i)) lattice.setCommunity(i, on); a.color = a.role === 'you' ? YOU : on ? PALETTE[i % PALETTE.length] : a.role === 'friend' ? STRANGER : CROWD; });
+  me = lattice.authors.findIndex(a => a.role === 'you');
+  const stored = get('budget', null); budget = stored != null ? stored : first ? 0 : (textMode ? 5 : unreadBlocks() > 60 ? 20 : 0); showBudget();
+  $('discover').open = f.size === 0;
+  legend(); setLevel(get('level', level));
+}
+function showBudget() { $('budgetBtn').textContent = budget ? `budget: ${budget} blocks` : 'budget: everything'; $('budgetBtn').classList.toggle('on', !!budget); }
+function toggleFollow(i) { const a = lattice.authors[i]; if (!a || a.role === 'you') return; const f = follows(); if (f.has(a.name)) f.delete(a.name); else f.add(a.name); put('follows', [...f]); applyState(); }
+$('forgetBtn').addEventListener('click', () => { for (const k of ['seen', 'follows', 'muted', 'budget', 'level']) put(k, null); first = false; try { localStorage.removeItem('lattice.text'); } catch {} textMode = THIN; showText(); level = 'today'; if (lattice) applyState(); status('this device forgot the feed: first visit again'); });
 function fresh(h0, h1) {
-  view?.destroy(); lattice = new Lattice(h0, h1);
+  view?.destroy(); lattice = new Lattice(h0, h1); dayH = dayStart(h1); pickH = null; me = -1; onlyMe = false; first = false;
   view = createView($('view'), lattice, { potato: POTATO, onHover: showTip, onPick: openBlock, onHead: headCaption, threshold: () => catchUp });
-  lattice.onChange(() => { clearTimeout(rebuildTimer); rebuildTimer = setTimeout(() => { view.rebuild(); if (textMode) renderText(); }, 150); });
+  lattice.onChange(() => { clearTimeout(rebuildTimer); rebuildTimer = setTimeout(() => { view.rebuild(); if (textMode) renderText(); renderDay(); if (level === 'week') renderWeek(); }, 150); });
   $('caption').hidden = true;
 }
 function legend() {
   const L = $('legend'); L.textContent = '';
-  for (const a of lattice.authors.slice(0, 8)) { const s = document.createElement('span'); s.innerHTML = `<i style="--k:${a.color}"></i>${a.name} <span style="opacity:.6">${a.role}</span>`; L.append(s); }
+  for (const a of lattice.authors) { if (a.role === 'crowd') continue; const s = document.createElement('span'); s.innerHTML = `<i style="--k:${a.color}"></i>${a.name} <span style="opacity:.6">${a.role === 'you' ? 'you' : lattice.followed.has(lattice.authors.indexOf(a)) ? 'followed' : 'not followed'}</span>`; if (a.story) s.title = a.story; L.append(s); }
   const crowd = lattice.authors.filter(a => a.role === 'crowd').length; if (crowd) { const s = document.createElement('span'); s.innerHTML = `<i style="--k:${CROWD}"></i>crowd of ${crowd}`; L.append(s); }
-  const m = document.createElement('span'); m.innerHTML = `<i style="--k:#e9c46a"></i>media · strings are replies · sparks are reactions`; L.append(m);
+  const m = document.createElement('span'); m.innerHTML = `<i style="--k:#e9c46a"></i>media · amber ring: answers to you · strings are replies · sparks are reactions`; L.append(m);
 }
-// simulation: a worker streams chunks; the lattice is drawable after the first
+// simulation: a worker streams chunks, then keeps mining; the page copes with a tip that moves
 $('simBtn').addEventListener('click', () => {
-  const id = ++runId; worker?.terminate(); worker = new Worker('./sim.js');
+  const id = ++runId; source = 'sim' + ($('seed').value || 7); worker?.terminate(); worker = new Worker('./sim.js');
   const tip = tipHeight(); let got = 0;
   worker.onmessage = ({ data }) => {
     if (id !== runId) return;
-    if (data.type === 'authors') { fresh(data.h0, data.h1); data.authors.forEach((a, i) => lattice.addAuthor({ ...a, color: a.role === 'community' ? PALETTE[i % PALETTE.length] : a.role === 'stranger' ? STRANGER : CROWD })); legend(); status('streaming…'); }
-    else if (data.type === 'chunk') { lattice.ingestChunk(data); got += data.height.length; status(`<b>${fmt(got)}</b> events streamed into <b>${fmt(lattice.buckets.size)}</b> blocks · community ${fmt(lattice.countCommunity(lattice.h0, lattice.h1))} · crowd ${fmt(lattice.count(lattice.h0, lattice.h1) - lattice.countCommunity(lattice.h0, lattice.h1))}`, true); }
-    else if (data.type === 'done') { clearTimeout(rebuildTimer); view.rebuild(); if (textMode) renderText(); status(`<b>${fmt(got)}</b> events in <b>${fmt(lattice.buckets.size)}</b> blocks over ${fmt(lattice.h1 - lattice.h0 + 1)} blocks of chain · community ${fmt(lattice.countCommunity(lattice.h0, lattice.h1))} · crowd ${fmt(lattice.count(lattice.h0, lattice.h1) - lattice.countCommunity(lattice.h0, lattice.h1))} · ${fmt(view.state().strings)} reply strings`, true); }
+    if (data.type === 'authors') { fresh(data.h0, data.h1); data.authors.forEach(a => lattice.addAuthor({ ...a, color: CROWD })); const f = follows(); lattice.authors.forEach((a, i) => { if (f.has(a.name) || a.role === 'you') lattice.followed.add(i); }); applyState(); status('streaming…'); }
+    else if (data.type === 'chunk') {
+      if (data.tip > lattice.h1) { const grew = epochOf(data.tip) > epochOf(lattice.h1); lattice.advance(data.tip); if (grew) { view.destroy(); view = createView($('view'), lattice, { potato: POTATO, onHover: showTip, onPick: openBlock, onHead: headCaption, threshold: () => catchUp }); } }
+      lattice.ingestChunk(data); got += data.height.length;
+      if (data.height.length) status(`<b>${fmt(got)}</b> events in <b>${fmt(lattice.buckets.size)}</b> blocks · tip <b>#${fmt(lattice.h1)}</b> · followed ${fmt(lattice.countCommunity(lattice.h0, lattice.h1))} · rest ${fmt(lattice.count(lattice.h0, lattice.h1) - lattice.countCommunity(lattice.h0, lattice.h1))}`, true);
+    }
+    else if (data.type === 'done') { clearTimeout(rebuildTimer); view.rebuild(); applyState(); if (textMode) renderText(); renderDay(); status(`<b>${fmt(got)}</b> events in <b>${fmt(lattice.buckets.size)}</b> blocks over ${fmt(lattice.h1 - lattice.h0 + 1)} blocks of chain · tip <b>#${fmt(lattice.h1)}</b> · ${fmt(view.state().strings)} reply strings · live`, true); worker.postMessage({ type: 'live', ms: liveMs }); }
   };
   worker.postMessage({ seed: Number($('seed').value) || 7, tip, epochs: 3, crowd: Math.max(0, Math.min(400, Number($('crowd').value) || 60)) });
 });
+const LIVE = [10000, 1000, 0]; $('liveBtn').addEventListener('click', () => { liveMs = LIVE[(LIVE.indexOf(liveMs) + 1) % LIVE.length]; $('liveBtn').textContent = liveMs ? `live: 1 block / ${liveMs / 1000} s` : 'live: paused'; $('liveBtn').classList.toggle('on', liveMs === 1000); worker?.postMessage({ type: 'live', ms: liveMs }); });
 // a real feed: the follows of an npub become the authors, their events stream in per relay and per chunk of authors
 const RELAYS = ['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.primal.net'];
 function req(url, filters, onEvent, ms = 8000) { return new Promise(res => { let ws; const done = () => { try { ws.close(); } catch {} res(); }; const t = setTimeout(done, ms); try { ws = new WebSocket(url); } catch { return res(); } const sub = 'l' + Math.random().toString(36).slice(2); ws.onopen = () => ws.send(JSON.stringify(['REQ', sub, ...filters])); ws.onmessage = ({ data }) => { try { const m = JSON.parse(data); if (m[0] === 'EVENT' && m[1] === sub) onEvent(m[2]); if (m[0] === 'EOSE') { clearTimeout(t); done(); } } catch {} }; ws.onerror = () => done(); }); }
 $('realBtn').addEventListener('click', async () => {
   let hex; try { const d = window.NostrTools.nip19.decode($('npub').value.trim()); hex = d.type === 'npub' ? d.data : d.data.pubkey; } catch { status('paste a valid npub'); return; }
-  const id = ++runId; worker?.terminate(); status('reading the follow list…');
-  let follows = null; await Promise.all(RELAYS.map(r => req(r, [{ kinds: [3], authors: [hex], limit: 1 }], ev => { if (!follows || ev.created_at > follows.created_at) follows = ev; })));
-  if (id !== runId) return; if (!follows) { status('no follow list found on the public relays'); return; }
-  const pks = [...new Set(follows.tags.filter(t => t[0] === 'p' && /^[0-9a-f]{64}$/.test(t[1])).map(t => t[1]))].slice(0, 40);
+  const id = ++runId; source = hex.slice(0, 12); worker?.terminate(); status('reading the follow list…');
+  let fl = null; await Promise.all(RELAYS.map(r => req(r, [{ kinds: [3], authors: [hex], limit: 1 }], ev => { if (!fl || ev.created_at > fl.created_at) fl = ev; })));
+  if (id !== runId) return; if (!fl) { status('no follow list found on the public relays'); return; }
+  const pks = [...new Set(fl.tags.filter(t => t[0] === 'p' && /^[0-9a-f]{64}$/.test(t[1])).map(t => t[1]))].slice(0, 40);
   const tip = tipHeight(), h0 = Math.floor((tip - 3 * BLOCKS_PER_EPOCH) / BLOCKS_PER_EPOCH) * BLOCKS_PER_EPOCH;
-  fresh(h0, tip); const idx = new Map(); pks.forEach((pk, i) => idx.set(pk, lattice.addAuthor({ name: pk.slice(0, 8), pk, role: 'community', color: PALETTE[i % PALETTE.length] }))); legend();
+  fresh(h0, tip); const idx = new Map(); idx.set(hex, lattice.addAuthor({ name: 'you', pk: hex, role: 'you', color: YOU })); pks.forEach((pk, i) => idx.set(pk, lattice.addAuthor({ name: pk.slice(0, 8), pk, role: 'friend', color: PALETTE[i % PALETTE.length] })));
+  if (get('follows', null) == null) put('follows', pks.map(pk => pk.slice(0, 8))); // the kind 3 seeds the local follow set; unfollowing here is local
+  applyState();
   const since = Math.floor(blockToDate(h0).getTime() / 1000); let got = 0, seen = new Set();
-  const chunks = []; for (let i = 0; i < pks.length; i += 10) chunks.push(pks.slice(i, i + 10));
+  const chunks = [[hex]]; for (let i = 0; i < pks.length; i += 10) chunks.push(pks.slice(i, i + 10));
   status(`${pks.length} follows · streaming events from ${RELAYS.length} relays in ${chunks.length} batches…`);
   await Promise.all(chunks.flatMap(c => RELAYS.map(r => req(r, [{ kinds: [1, 6, 7], authors: c, since, limit: 300 }], ev => {
     if (id !== runId || seen.has(ev.id)) return; seen.add(ev.id);
     const h = estimateHeight(ev.created_at), a = idx.get(ev.pubkey); if (a == null) return;
-    const e = ev.tags.filter(t => t[0] === 'e'); const flags = F_COMMUNITY | (ev.kind === 1 && e.length ? F_REPLY : 0) | (/https?:\/\/\S+\.(png|jpe?g|gif|webp)/i.test(ev.content) ? F_MEDIA : 0);
+    const e = ev.tags.filter(t => t[0] === 'e'); const flags = (ev.kind === 1 && e.length ? F_REPLY : 0) | (/https?:\/\/\S+\.(png|jpe?g|gif|webp)/i.test(ev.content) ? F_MEDIA : 0);
     lattice.ingest(h, a, ev.kind, flags, ev.id, ev.kind === 7 ? '+' : ev.content.slice(0, 200), e.length ? e[e.length - 1][1] : null); got++;
     if (got % 50 === 0) { lattice.emit(); status(`<b>${fmt(got)}</b> events streamed into <b>${fmt(lattice.buckets.size)}</b> blocks…`, true); }
   }, 12000))));
-  if (id !== runId) return; lattice.emit(); status(`<b>${fmt(got)}</b> events from ${pks.length} follows in <b>${fmt(lattice.buckets.size)}</b> blocks · replies threaded where both ends were found`, true);
+  if (id !== runId) return; lattice.emit(); applyState(); status(`<b>${fmt(got)}</b> events from ${pks.length} follows in <b>${fmt(lattice.buckets.size)}</b> blocks · replies threaded where both ends were found`, true);
 });
+// the day, top down: 144 cells, unread is everything after one remembered block, replies are arcs
+function cellInfo(h) { const idx = lattice.block(h), c = lattice.cols; let community = 0, media = false, score = 0, toMe = 0; for (const i of idx) { if (c.flags[i] & F_COMMUNITY) community++; if (c.flags[i] & F_MEDIA) media = true; score += c.score[i]; if (me >= 0 && c.target[i] >= 0 && c.author[c.target[i]] === me && c.author[i] !== me) toMe++; } const dom = lattice.dominant(h), a = lattice.authors[dom]; return { h, n: idx.length, community, media, score, toMe, color: a ? a.color : CROWD, idx }; }
+function chosen(d0, d1) { // the budget: the blocks worth reading, followed people and answers to you weighted, since the last visit
+  const seen = lastSeen(), cells = []; for (let h = first ? d0 : Math.max(d0, seen + 1); h <= Math.min(d1, lattice.h1); h++) { const c = cellInfo(h); if (c.n) cells.push(c); }
+  if (!budget || cells.length <= budget) return new Set(cells.map(c => c.h));
+  return new Set(cells.sort((a, b) => (b.score + b.community * 2 + b.toMe * 6 + b.n) - (a.score + a.community * 2 + a.toMe * 6 + a.n)).slice(0, budget).map(c => c.h));
+}
+function renderDay() {
+  if (!lattice || (level !== 'today' && level !== 'list')) return;
+  const d0 = dayH, d1 = d0 + BLOCKS_PER_DAY - 1, seen = lastSeen(), tile = $('tile'), tip = lattice.h1, keep = chosen(d0, d1), mutes = muted();
+  tile.textContent = ''; let max = 1, total = 0, unread = 0; const focusH = document.activeElement?.dataset?.h;
+  for (let h = d0; h <= d1; h++) { const n = lattice.count(h, h); max = Math.max(max, n); total += n; if (h > seen && h <= tip) unread += n; }
+  for (let h = d0; h <= d1; h++) {
+    const c = cellInfo(h), b = document.createElement('button'); b.setAttribute('role', 'gridcell'); b.dataset.h = h;
+    if (h > tip) { b.className = 'future'; b.setAttribute('aria-label', `block ${fmt(h)}, not mined yet`); b.disabled = true; }
+    else { const k = c.n ? 0.25 + 0.75 * c.n / max : 0; b.style.background = c.n ? `color-mix(in srgb, ${c.color} ${Math.round(k * 100)}%, var(--soft))` : ''; if (h > seen) b.classList.add('unread'); if (h === tip) b.classList.add('now'); if (h === pickH) b.classList.add('pick'); if (c.n && !keep.has(h) && h > seen) b.classList.add('dim'); if (mutes.has(h)) b.classList.add('muted'); if (c.toMe) b.classList.add('mention'); if (c.media) b.append(document.createElement('i')); b.setAttribute('aria-label', `block ${fmt(h)}, ${clock(h)}, ${c.n} event${c.n === 1 ? '' : 's'}${h > seen ? ', unread' : ''}${c.toMe ? `, ${c.toMe} to you` : ''}${mutes.has(h) ? ', muted' : ''}`); b.tabIndex = String(h) === focusH || (!focusH && h === (pickH ?? Math.min(tip, d1))) ? 0 : -1; b.addEventListener('click', () => { pickH = pickH === h ? null : h; renderDay(); }); }
+    tile.append(b);
+  }
+  if (focusH) tile.querySelector(`[data-h="${focusH}"]`)?.focus();
+  // arcs: replies whose target is in this day; a reply to an older day gets a stub to the left edge, where the past is
+  const svg = $('arcs'); svg.textContent = ''; const c = lattice.cols; const at = h => { const i = h - d0; return [(i % 12 + 0.5) / 12 * 100, (Math.floor(i / 12) + 0.5) / 12 * 100]; };
+  const arc = (x1, y1, x2, y2, color, op) => { const path = document.createElementNS('http://www.w3.org/2000/svg', 'path'); const mx = (x1 + x2) / 2, my = (y1 + y2) / 2 - Math.hypot(x2 - x1, y2 - y1) * 0.25; path.setAttribute('d', `M${x1} ${y1} Q${mx} ${my} ${x2} ${y2}`); path.setAttribute('fill', 'none'); path.setAttribute('stroke', color); path.setAttribute('stroke-width', '0.6'); path.setAttribute('opacity', op); svg.append(path); };
+  for (let h = d0; h <= Math.min(d1, tip); h++) for (const i of lattice.block(h)) { const t = c.target[i]; if (t < 0 || c.kind[i] !== 1) continue; const th = c.height[t]; if (th === h || th > d1) continue; const [x1, y1] = at(h), color = lattice.authors[c.author[i]]?.color || CROWD, op = h > seen ? '0.85' : '0.3'; if (th < d0) { arc(x1, y1, -1, y1 - 4, color, op); continue; } const [x2, y2] = at(th); arc(x1, y1, x2, y2, color, op); }
+  $('tileDate').textContent = `${blockToDate(d0).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} · #${fmt(d0)} → #${fmt(d1)}`;
+  $('tileCount').textContent = `${fmt(total)} events · ${fmt(unread)} unread`;
+  if (dayStart(tip) !== dayH) { const j = document.createElement('button'); j.className = 'mb jump'; j.textContent = `→ ${day(dayStart(tip))}, where the tip is`; j.addEventListener('click', () => { dayH = dayStart(tip); pickH = null; renderDay(); }); $('tileCount').append(' ', j); }
+  const totalUnread = seen >= tip ? 0 : lattice.count(seen + 1, tip);
+  $('unreadNote').textContent = first ? (totalUnread ? `first visit: ${fmt(totalUnread)} new since you arrived, nothing owed before that` : 'first visit: nothing is owed; look around') : seen >= tip ? 'you are caught up' : `${fmt(totalUnread)} unread since block #${fmt(seen + 1)}`;
+  renderDiscover(d0, d1); renderReading(d0, d1, keep);
+}
+// who keeps showing up: the day's most present people, followable in place. Open by itself when you follow nobody
+function renderDiscover(d0, d1) {
+  const c = lattice.cols, f = follows(), score = new Map();
+  let a0 = Math.max(d0, lattice.h0), a1 = Math.min(d1, lattice.h1); if (lattice.count(a0, a1) < 40) { a0 = Math.max(lattice.h0, a1 - 7 * BLOCKS_PER_DAY); }
+  for (let h = a0; h <= a1; h++) for (const i of lattice.block(h)) { const a = c.author[i]; if (lattice.authors[a]?.role === 'you') continue; score.set(a, (score.get(a) || 0) + (c.kind[i] === 1 ? 1 : 0.2) + c.score[i] * 2); }
+  const top = [...score.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8); const box = $('followList'); box.textContent = '';
+  $('discoverNote').textContent = f.size ? `${f.size} followed. ${top.length} people most present ${a0 === Math.max(d0, lattice.h0) ? 'today' : 'this week'}; tap to follow or unfollow, the colours follow you.` : `You follow nobody yet, so the day is the whole crowd in one colour. These ${top.length} people were most present ${a0 === Math.max(d0, lattice.h0) ? 'today' : 'this week'}. Follow one and the day, and every day before it, recolours.`;
+  for (const [a, sc] of top) { const au = lattice.authors[a], on = f.has(au.name); const b = document.createElement('button'); b.className = 'mb' + (on ? ' on' : ''); b.textContent = `${on ? '✓ ' : '+ '}${au.name} · ${Math.round(sc)}`; if (au.story) b.title = au.story; b.addEventListener('click', () => toggleFollow(a)); box.append(b); }
+}
+function renderReading(d0, d1, keep) {
+  const R = $('reading'), seen = lastSeen(), tip = lattice.h1, c = lattice.cols, mutes = muted(); R.textContent = '';
+  if (level === 'list') { d0 = Math.max(lattice.h0, dayH - 13 * BLOCKS_PER_DAY); d1 = dayH + BLOCKS_PER_DAY - 1; }
+  const from = pickH != null ? pickH : first ? d0 : Math.max(d0, seen + 1), to = pickH != null ? pickH : Math.min(d1, tip);
+  if (me >= 0) { let n = 0; for (let h = from; h <= to; h++) for (const i of lattice.block(h)) if (c.target[i] >= 0 && c.author[c.target[i]] === me && c.author[i] !== me) n++; const t = document.createElement('button'); t.className = 'mb tome' + (onlyMe ? ' on' : ''); t.textContent = `to you: ${n}`; t.disabled = !n && !onlyMe; t.title = 'only replies and reactions to what you posted'; t.addEventListener('click', () => { onlyMe = !onlyMe; renderDay(); }); R.append(t); }
+  let shown = 0, blocks = 0;
+  for (let h = from; h <= to; h++) {
+    let idx = lattice.block(h); if (mutes.has(h) || !idx.length || (pickH == null && level !== 'list' && !keep.has(h))) continue;
+    if (onlyMe) { idx = idx.filter(i => c.target[i] >= 0 && c.author[c.target[i]] === me && c.author[i] !== me); if (!idx.length) continue; }
+    blocks++; const hd = document.createElement('h3'); hd.innerHTML = `#${fmt(h)} <span>${clock(h)} · ${idx.length} event${idx.length === 1 ? '' : 's'}</span>`; const m = document.createElement('button'); m.className = 'mute'; m.textContent = 'mute block'; m.title = 'hide this block on this device; the rest of the day stays'; m.addEventListener('click', () => { const set = muted(); set.add(h); put('muted', [...set]); renderDay(); }); hd.append(m); R.append(hd);
+    const inBlock = new Set(idx);
+    for (const i of idx) { if (c.target[i] >= 0 && inBlock.has(c.target[i])) continue; R.insertAdjacentHTML('beforeend', line(i)); for (const j of idx) if (c.target[j] === i) R.insertAdjacentHTML('beforeend', line(j, true)); shown++; if (shown > 300) break; }
+    if (shown > 300) { R.insertAdjacentHTML('beforeend', '<p class="done">that is enough for one sitting; mark read and come back</p>'); break; }
+  }
+  if (!blocks) R.insertAdjacentHTML('beforeend', pickH != null ? '<p class="done">nothing in this block</p>' : onlyMe ? '<p class="done">nothing aimed at you in this range</p>' : seen >= tip ? '<p class="done">caught up: every block up to the tip is read</p>' : '<p class="done">nothing unread in this day; pick another day in the fortnight view</p>');
+  else if (pickH == null && !first) { const btn = document.createElement('button'); btn.className = 'mb'; btn.textContent = `mark read through #${fmt(to)}`; btn.addEventListener('click', () => setSeen(to)); const wrap = document.createElement('p'); wrap.className = 'done'; wrap.append(btn); R.append(wrap); }
+}
+function line(i, reply) { const c = lattice.cols, ai = c.author[i], a = lattice.authors[ai], t = c.target[i] >= 0 ? lattice.authors[c.author[c.target[i]]]?.name : null; const th = c.target[i] >= 0 ? c.height[c.target[i]] : -1, gap = th >= 0 ? c.height[i] - th : 0; const ago = gap >= BLOCKS_PER_DAY ? `<span class="ago">↩ ${Math.floor(gap / BLOCKS_PER_DAY)} day${gap >= 2 * BLOCKS_PER_DAY ? 's' : ''} later</span>` : gap >= 18 ? `<span class="ago">↩ ${Math.round(gap / 6)} h later</span>` : ''; return `<p class="${reply || (c.flags[i] & F_REPLY) ? 'reply' : ''}"><b class="au${lattice.followed.has(ai) && a?.role !== 'you' ? ' on' : ''}" data-a="${ai}" title="${a?.role === 'you' ? 'you' : lattice.followed.has(ai) ? 'followed; tap to unfollow' : 'tap to follow'}">${a?.name || '?'}</b>${t && !reply ? ` → ${t}` : ''}${ago}: ${c.kind[i] === 7 ? '♥' : c.kind[i] === 6 ? '↻ repost' : escape(c.text[i] || '')}</p>`; }
+$('reading').addEventListener('click', e => { const b = e.target.closest('b.au'); if (b) toggleFollow(Number(b.dataset.a)); });
+// the fortnight: the last fourteen days, rolling, unread per day
+function renderWeek() {
+  const W = $('week'); W.textContent = ''; const seen = lastSeen(), last = dayStart(lattice.h1), e0 = Math.max(dayStart(lattice.h0), last - 13 * BLOCKS_PER_DAY);
+  for (let d = e0; d <= last; d += BLOCKS_PER_DAY) {
+    if (d > lattice.h1 || d + BLOCKS_PER_DAY - 1 < lattice.h0) continue;
+    const box = document.createElement('div'); box.className = 'wk' + (d === dayH ? ' on' : ''); box.setAttribute('role', 'button'); box.tabIndex = 0;
+    const g = document.createElement('div'); g.className = 'g'; let max = 1; for (let h = d; h < d + BLOCKS_PER_DAY; h++) max = Math.max(max, lattice.count(h, h));
+    for (let h = d; h < d + BLOCKS_PER_DAY; h++) { const n = lattice.count(h, h), i = document.createElement('i'); if (n) { const cm = lattice.countCommunity(h, h); i.style.background = `rgba(${cm ? '180,245,209' : '67,149,107'},${0.25 + 0.75 * n / max})`; } if (h > seen && h <= lattice.h1 && n) i.style.outline = '1px solid rgba(180,245,209,.6)'; g.append(i); }
+    const end = Math.min(d + BLOCKS_PER_DAY - 1, lattice.h1), n = lattice.count(d, end), un = end > seen ? lattice.count(Math.max(d, seen + 1), end) : 0;
+    box.append(g); box.insertAdjacentHTML('beforeend', `<small><b>${day(d)}</b> · ${fmt(n)} events${un ? ` · ${fmt(un)} unread` : ''}</small>`);
+    const go = () => { dayH = d; pickH = null; setLevel('today'); }; box.addEventListener('click', go); box.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+    W.append(box);
+  }
+}
+function setLevel(l, remember) {
+  level = l; if (remember) put('level', l); document.querySelectorAll('[data-level]').forEach(b => b.classList.toggle('on', b.dataset.level === l));
+  $('today').hidden = l !== 'today' && l !== 'list'; $('today').classList.toggle('list', l === 'list'); $('week').classList.toggle('on', l === 'week'); $('view').hidden = l !== 'coil'; $('hint').hidden = l !== 'coil';
+  if (!lattice) return; if (l === 'today' || l === 'list') renderDay(); if (l === 'week') renderWeek(); if (l === 'coil' && view) { view.resize(); view.flyTo(epochOf(dayH)); }
+}
+document.querySelectorAll('[data-level]').forEach(b => b.addEventListener('click', () => setLevel(b.dataset.level, true)));
+$('tile').addEventListener('keydown', e => { const cells = [...$('tile').querySelectorAll('button')], i = cells.indexOf(document.activeElement); if (i < 0) return; const step = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: 12, ArrowUp: -12, Home: -i, End: cells.length - 1 - i }[e.key]; if (step == null) return; e.preventDefault(); let j = i + step; while (j >= 0 && j < cells.length && cells[j].disabled) j += Math.sign(step) * (Math.abs(step) === 12 ? 12 : 1); if (j < 0 || j >= cells.length || cells[j].disabled) return; cells.forEach(c => c.tabIndex = -1); cells[j].tabIndex = 0; cells[j].focus(); });
+$('budgetBtn').addEventListener('click', () => { budget = BUDGETS[(BUDGETS.indexOf(budget) + 1) % BUDGETS.length]; put('budget', budget); showBudget(); renderDay(); });
+$('readAll').addEventListener('click', () => { if (lattice) setSeen(lattice.h1); });
+$('post').addEventListener('submit', e => { e.preventDefault(); const t = $('postText').value.trim(); if (!t || !lattice) return; if (me < 0) me = lattice.addAuthor({ name: 'you', role: 'you', color: YOU }); lattice.followed.add(me); const id = 'you' + Date.now().toString(36); lattice.ingest(lattice.h1, me, 1, F_COMMUNITY, id, t, null); $('postText').value = ''; lattice.emit(); worker?.postMessage({ type: 'post', id, height: lattice.h1 }); });
 // reading a block
 function lines(idx, max = 6) { const c = lattice.cols; return idx.slice(0, max).map(i => { const a = lattice.authors[c.author[i]]; const t = c.target[i] >= 0 ? lattice.authors[c.author[c.target[i]]]?.name : null; return `<p class="${c.flags[i] & F_REPLY ? 'reply' : ''}"><b>${a?.name || '?'}</b>${t ? ` → ${t}` : ''}: ${c.kind[i] === 7 ? '♥' : c.kind[i] === 6 ? '↻ repost' : escape(c.text[i] || '')}</p>`; }).join('') + (idx.length > max ? `<p style="color:var(--mute)">… ${idx.length - max} more</p>` : ''); }
-const escape = s => s.replace(/[&<>]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[ch]);
+const escape = s => s.replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]);
 function showTip(hit, ev) {
   const tip = $('tip'); if (!hit) { tip.classList.remove('on'); return; }
-  if (hit.voxel) { const v = hit.voxel; $('tipH').textContent = `#${fmt(v.h)} · ${clock(v.h)} · ${v.n} event${v.n === 1 ? '' : 's'}${v.community ? ` · ${v.community} community` : ''}${v.replies ? ` · ${v.replies} repl${v.replies === 1 ? 'y' : 'ies'}` : ''}`; $('tipL').innerHTML = lines(v.idx, 4); }
-  else { const b = hit.brick; $('tipH').textContent = `E${b.epoch} · #${fmt(b.h0)} · ${day(b.h0)} → ${day(b.h0 + BLOCKS_PER_EPOCH - 1)}`; $('tipL').innerHTML = `${fmt(hit.total)} events, ${fmt(hit.comm)} from the community · click to zoom in`; }
+  if (hit.voxel) { const v = hit.voxel; $('tipH').textContent = `#${fmt(v.h)} · ${clock(v.h)} · ${v.n} event${v.n === 1 ? '' : 's'}${v.community ? ` · ${v.community} followed` : ''}${v.replies ? ` · ${v.replies} repl${v.replies === 1 ? 'y' : 'ies'}` : ''}`; $('tipL').innerHTML = lines(v.idx, 4); }
+  else { const b = hit.brick; $('tipH').textContent = `E${b.epoch} · #${fmt(b.h0)} · ${day(b.h0)} → ${day(b.h0 + BLOCKS_PER_EPOCH - 1)}`; $('tipL').innerHTML = `${fmt(hit.total)} events, ${fmt(hit.comm)} from people you follow · click to zoom in`; }
   if (ev) { tip.style.left = (ev.clientX + 14 + 360 > innerWidth ? ev.clientX - 370 : ev.clientX + 14) + 'px'; tip.style.top = Math.min(ev.clientY - 12, innerHeight - 160) + 'px'; }
   tip.classList.add('on');
 }
 function openBlock(v) { const bl = $('blocklist'); $('text').hidden = false; bl.hidden = false; bl.innerHTML = `<h3>block #${fmt(v.h)} · ${clock(v.h)} · ${v.n} events</h3>` + lines(v.idx, 40); bl.scrollIntoView({ block: 'nearest' }); }
 function headCaption(v) { if (catchUp && v.score < catchUp && !v.community) return; $('caption').hidden = false; $('capW').textContent = `#${fmt(v.h)} · ${clock(v.h)}\n${v.n} event${v.n === 1 ? '' : 's'}`; $('capT').innerHTML = lines(v.idx, 3); }
-// text mode: the same lattice as days of 144 cells, keyboard first, no canvas needed
+// text mode: the same lattice as days of 144 cells, keyboard first, no canvas needed. Chosen by itself on a thin link
 function renderText() {
   const D = $('days'); D.textContent = ''; const epochs = new Map();
-  for (let h = lattice.h0; h <= lattice.h1; h += BLOCKS_PER_DAY) { const e = Math.floor(h / BLOCKS_PER_EPOCH); if (!epochs.has(e)) epochs.set(e, []); epochs.get(e).push(h); }
+  for (let h = lattice.h0; h <= lattice.h1; h += BLOCKS_PER_DAY) { const e = epochOf(h); if (!epochs.has(e)) epochs.set(e, []); epochs.get(e).push(h); }
   let first = true;
   for (const [e, days] of epochs) {
     const det = document.createElement('details'); det.open = first; first = false;
     det.innerHTML = `<summary><b>E${e}</b> · #${fmt(e * BLOCKS_PER_EPOCH)} · ${day(e * BLOCKS_PER_EPOCH)} → ${day(e * BLOCKS_PER_EPOCH + BLOCKS_PER_EPOCH - 1)} · ${fmt(lattice.count(Math.max(lattice.h0, e * BLOCKS_PER_EPOCH), Math.min(lattice.h1, e * BLOCKS_PER_EPOCH + BLOCKS_PER_EPOCH - 1)))} events</summary>`;
     for (const h of days) {
       const row = document.createElement('div'); row.className = 'day'; const end = Math.min(h + BLOCKS_PER_DAY - 1, lattice.h1), n = lattice.count(h, end), cm = lattice.countCommunity(h, end);
-      row.innerHTML = `<span>${day(h)} · ${fmt(n)} event${n === 1 ? '' : 's'}, ${fmt(cm)} community</span>`;
+      row.innerHTML = `<span>${day(h)} · ${fmt(n)} event${n === 1 ? '' : 's'}, ${fmt(cm)} followed</span>`;
       const grid = document.createElement('div'); grid.className = 'grid'; grid.setAttribute('role', 'group'); grid.setAttribute('aria-label', `blocks of ${day(h)}`);
       let max = 1; for (let b = h; b <= end; b++) max = Math.max(max, lattice.count(b, b));
       for (let b = h; b <= end; b++) { const c = lattice.count(b, b); const btn = document.createElement('button'); btn.setAttribute('aria-label', `block ${fmt(b)}, ${c} event${c === 1 ? '' : 's'}`); btn.title = `#${fmt(b)} · ${c}`; if (c) { const k = 0.2 + 0.8 * c / max; btn.style.background = lattice.countCommunity(b, b) ? `rgba(125,211,168,${k})` : `rgba(67,149,107,${k})`; } btn.addEventListener('click', () => openBlock({ h: b, n: c, idx: lattice.block(b) })); grid.append(btn); }
@@ -146,14 +295,18 @@ function renderText() {
     D.append(det);
   }
 }
-$('textBtn').addEventListener('click', () => { textMode = !textMode; $('textBtn').classList.toggle('on', textMode); $('text').hidden = !textMode; $('viewPanel').hidden = textMode; if (textMode && lattice) renderText(); });
+function showText() { $('textBtn').classList.toggle('on', textMode); $('text').hidden = !textMode; $('viewPanel').hidden = textMode; if (textMode && lattice) renderText(); }
+try { textMode = localStorage.getItem('lattice.text') == null ? THIN : localStorage.getItem('lattice.text') === '1'; } catch { textMode = THIN; }
+$('textBtn').addEventListener('click', () => { textMode = !textMode; try { localStorage.setItem('lattice.text', textMode ? '1' : '0'); } catch {} showText(); });
+$('resetBtn').textContent = 'reset coil';
 $('playBtn').addEventListener('click', () => { if (!view) return; if (view.playing()) { view.pause(); $('playBtn').textContent = '▶ play'; return; } $('playBtn').textContent = '❚❚ pause'; view.play(() => { $('playBtn').textContent = '▶ play'; }); });
 const RATES = [1, 2, 5]; $('rateBtn').addEventListener('click', () => { const r = RATES[(RATES.indexOf(view?.rate() || 1) + 1) % RATES.length]; view?.rate(r); $('rateBtn').textContent = `${r} epoch${r === 1 ? '' : 's'}/s`; });
 const CATCH = [0, 2, 5]; $('catchBtn').addEventListener('click', () => { catchUp = CATCH[(CATCH.indexOf(catchUp) + 1) % CATCH.length]; $('catchBtn').textContent = catchUp ? `catch-up: ${catchUp}+ reactions` : 'catch-up: off'; $('catchBtn').classList.toggle('on', !!catchUp); view?.touch(); });
 $('resetBtn').addEventListener('click', () => view?.reset());
 window.addEventListener('resize', () => view?.resize());
 document.addEventListener('keydown', e => { if (e.key === ' ' && view && view.state().armed && !e.target?.closest?.('input, textarea')) { e.preventDefault(); $('playBtn').click(); } });
-window.lattice = { get lattice() { return lattice; }, get view() { return view; } };
+window.lattice = { get lattice() { return lattice; }, get view() { return view; }, get worker() { return worker; } };
+showText(); setLevel('today');
 if (new URLSearchParams(location.search).get('sim') !== '0') setTimeout(() => $('simBtn').click(), 200);
 </script>
 </body>
