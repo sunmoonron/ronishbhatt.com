@@ -351,7 +351,7 @@
   </div>
 
   <div class="panel viewpanel">
-    <div class="ph"><h3 id="viewTitle">Orbital View</h3><div class="modes"><button class="mb on" id="modeOrbit">orbit</button><button class="mb" id="modeTower">voxels 3D</button><button class="mb" id="playBtn">▶ play</button><button class="mb" id="rateBtn" hidden title="playback speed">1 epoch/s</button><button class="mb" id="camBtn" hidden title="camera angle">top view</button><button class="mb" id="resetBtn" hidden>reset</button></div></div>
+    <div class="ph"><h3 id="viewTitle">Orbital View</h3><div class="modes"><button class="mb on" id="modeOrbit">orbit</button><button class="mb" id="modeTower">voxels 3D</button><button class="mb" id="playBtn">▶ play</button><button class="mb" id="soundBtn" title="blips as the replay crosses your notes">🔊 sound</button><button class="mb" id="rateBtn" hidden title="playback speed">1 epoch/s</button><button class="mb" id="camBtn" hidden title="camera angle">top view</button><button class="mb" id="resetBtn" hidden>reset</button></div></div>
     <div id="crumb" class="crumb" hidden></div>
     <div id="orbitWrap"><canvas id="orbitCanvas"></canvas></div>
     <div id="scrubRow"><canvas id="tlCanvas"></canvas></div>
@@ -734,8 +734,14 @@ $('fClose').addEventListener('click', closeFocus);
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFocus(); });
 
 // play: a sweep through the history with a blip per event (radar hand in 2D, a rising plane in 3D)
+let soundOn = (() => { try { return localStorage.getItem('rb.orbit.sound') !== '0'; } catch { return true; } })();
+function armAudio() { if (!soundOn) return; try { audio ||= new (window.AudioContext || window.webkitAudioContext)(); if (audio.state !== 'running') audio.resume().then(syncSound, syncSound); } catch {} syncSound(); }
+function syncSound() { const b = $('soundBtn'); b.textContent = !soundOn ? '🔇 muted' : (audio && audio.state === 'running') ? '🔊 sound' : '🔊 tap for sound'; b.classList.toggle('on', soundOn); }
+$('soundBtn').addEventListener('click', () => { soundOn = !soundOn; try { localStorage.setItem('rb.orbit.sound', soundOn ? '1' : '0'); } catch {} if (soundOn) armAudio(); else syncSound(); });
+for (const ev of ['pointerdown', 'keydown']) document.addEventListener(ev, () => armAudio(), { once: true, capture: true }); // the first real click unlocks audio for an autoplayed replay
+syncSound();
 function blip(kind, era) {
-  if (!audio) return;
+  if (!audio || !soundOn || audio.state !== 'running') return;
   const t = audio.currentTime;
   if (t < blip.next) return; blip.next = t + 0.035;
   const o = audio.createOscillator(), g = audio.createGain();
@@ -755,7 +761,7 @@ $('playBtn').addEventListener('click', () => {
   if (!metrics) return;
   if (sweepRaf) { stopPlay(); return; }
   if (mode === 'voxel' && vox?.playing()) { vox.pause(); $('playBtn').textContent = '▶ play'; return; }
-  try { audio ||= new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch {}
+  armAudio();
   $('playBtn').textContent = '■ stop';
   if (mode === 'voxel') { startReplay(false); return; }
   const passed = new Set(); sweepStart = performance.now();
@@ -771,7 +777,7 @@ $('playBtn').addEventListener('click', () => {
 
 function startReplay(auto) {
   if (!vox || vox.playing()) return;
-  if (!auto) { try { audio ||= new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch {} }
+  if (!auto) armAudio();
   $('playBtn').textContent = '❚❚ pause';
   $('viewHint').textContent = (auto ? 'replaying this history, one epoch per second · pause to explore · ' : '') + 'click a brick to zoom in, a cube to open its block, double-click to back out · click once to take the controls, then scroll zooms and drag orbits';
   vox.play(() => { $('playBtn').textContent = '▶ play'; });
