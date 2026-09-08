@@ -7810,7 +7810,7 @@ async function resolve(to) {
   catch (e) { if (/no such NIP-05/.test(e.message)) throw e; blocked = true; }
   // the domain serves its NIP-05 file without the header that lets a browser read it, so it cannot be verified from here;
   // ask the search relay which profiles claim the name and hand the answer to a human instead of sending to it blindly
-  const hits = (await query('wss://relay.nostr.band', { kinds: [0], search: to, limit: 20 })).filter(ev => { try { return (JSON.parse(ev.content).nip05 || '').toLowerCase() === to.toLowerCase(); } catch { return false; } }).sort((a, b) => b.created_at - a.created_at);
+  const hits = (await Promise.all(['wss://search.nos.today', 'wss://relay.nostr.band'].map(u => query(u, { kinds: [0], search: name, limit: 30 })))).flat().filter(ev => { try { return (JSON.parse(ev.content).nip05 || '').toLowerCase() === to.toLowerCase(); } catch { return false; } }).sort((a, b) => b.created_at - a.created_at);
   if (hits.length) { const c = JSON.parse(hits[0].content); throw new Error(`${domain} does not let browsers read its NIP-05 file, so the name cannot be verified here. A profile on the relays claims it: "${c.display_name || c.name || '?'}", ${T.nip19.npubEncode(hits[0].pubkey)}. If that is the right person, paste that npub into the "to" field and send again.`); }
   throw new Error(`${domain} does not let browsers read its NIP-05 file and no profile claiming ${to} was found; paste their npub instead`);
 }
