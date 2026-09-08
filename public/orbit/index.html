@@ -737,7 +737,12 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFocus()
 let soundOn = (() => { try { return localStorage.getItem('rb.orbit.sound') !== '0'; } catch { return true; } })();
 function armAudio() { if (!soundOn) return; try { audio ||= new (window.AudioContext || window.webkitAudioContext)(); if (audio.state !== 'running') audio.resume().then(syncSound, syncSound); } catch {} syncSound(); }
 function syncSound() { const b = $('soundBtn'); b.textContent = !soundOn ? '🔇 muted' : (audio && audio.state === 'running') ? '🔊 sound' : '🔊 tap for sound'; b.classList.toggle('on', soundOn); }
-$('soundBtn').addEventListener('click', () => { soundOn = !soundOn; try { localStorage.setItem('rb.orbit.sound', soundOn ? '1' : '0'); } catch {} if (soundOn) armAudio(); else syncSound(); });
+$('soundBtn').addEventListener('click', () => {
+  const armed = !!audio && audio.state === 'running';
+  if (soundOn && !armed) { armAudio(); return; } // 'tap for sound': this tap unlocks audio, it does not mute
+  soundOn = !soundOn; try { localStorage.setItem('rb.orbit.sound', soundOn ? '1' : '0'); } catch {}
+  if (soundOn) armAudio(); else syncSound();
+});
 for (const ev of ['pointerdown', 'keydown']) document.addEventListener(ev, () => armAudio(), { once: true, capture: true }); // the first real click unlocks audio for an autoplayed replay
 syncSound();
 function blip(kind, era) {
