@@ -14,6 +14,9 @@ export const init = ({ site, relay, backups, veil, NT, icon, assets, sri }) => {
   if (icon) env.ICON = icon; if (assets) env.ASSETS = assets; if (sri) env.SRI = sri;
   if (veil && /^[0-9a-f]{64}$/i.test(veil)) env.VEIL = Uint8Array.from(veil.match(/../g).map(x => parseInt(x, 16)));
 };
+// the rules the mural, garden and story need: appended to whatever stylesheet is live so a
+// signed stylesheet that predates an experiment can never leave it unstyled
+export const COMPONENT_CSS = ".tiny{margin-left:.5rem;font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);border:1px solid color-mix(in srgb,var(--accent) 40%,transparent);border-radius:999px;padding:0 .4rem}.mural{padding:.25rem 1rem 1rem}.mural svg{width:100%;height:auto;display:block;border-radius:8px;background:var(--soft)}.garden{padding:.25rem 1rem 1rem}.words{display:flex;flex-wrap:wrap;gap:.35rem;margin:.25rem 0 .75rem}.word{font-size:.8rem;padding:.2rem .55rem;border-radius:999px;background:color-mix(in srgb,var(--accent) 12%,transparent);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent)}.plantform{display:flex;gap:.5rem;flex-wrap:wrap}.plantform input{max-width:14rem}.story{margin:.75rem 0 0;font-size:.95rem;line-height:1.7}.story .mem{color:var(--mint);font-weight:600}.legend{font-size:.72rem;color:var(--mute);margin:.6rem 0 0}.empty{color:var(--mute);font-size:.9rem;margin:0}";
 export const DEFAULT_CFG = { title: 'Ronish Bhatt', chat: true, experiments: ['mural', 'garden'], sections: ['courses', 'projects', 'writing', 'chat', 'archive', 'colophon'],
   links: [{ label: 'GitHub', url: 'https://github.com/sunmoonron' }, { label: 'résumé', url: '/resume/' }] };
 
@@ -74,6 +77,7 @@ export const sel = {
   config: () => { try { const e = sel.layoutEvent(); return e ? { ...DEFAULT_CFG, ...JSON.parse(text(e)) } : DEFAULT_CFG; } catch { return DEFAULT_CFG; } },
   cssEvent: () => store.events.get(`${K.block}:${env.SITE}:${h('css')}`),
   css: () => { const e = sel.cssEvent(); return e ? text(e) : ''; },
+  themeCss: () => sel.css() + COMPONENT_CSS,
   articles: type => blocks().filter(e => meta(e).type === type).sort((a, b) => num(meta(a).order) - num(meta(b).order) || (+meta(b).published_at || b.created_at) - (+meta(a).published_at || a.created_at)),
   section: slug => { const e = store.events.get(`${K.block}:${env.SITE}:${h(slug)}`); return e && meta(e)?.slug ? e : null; },
   notes: () => [...store.events.values()].filter(e => e.kind === K.note).sort((a, b) => b.created_at - a.created_at),

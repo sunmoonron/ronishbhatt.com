@@ -80,7 +80,7 @@ const out = src
   .replace(/<script id="wildboot">[\s\S]*?<\/script>/, `<script id="wildboot">${wildBoot}</script>`)
   .replace(/<style id="wild">[\s\S]*?<\/style>/, `<style id="wild">${wildCss.replace(/<\/style/gi, '')}</style>`)
   .replace(/<script type="importmap">[\s\S]*?<\/script>/, `<script type="importmap">${importmap}</script>`)
-  .replace(/<style id="theme">[\s\S]*?<\/style>/, `<style id="theme">${sel.css().replace(/<\/style/gi, '')}</style>`)
+  .replace(/<style id="theme">[\s\S]*?<\/style>/, `<style id="theme">${sel.themeCss().replace(/<\/style/gi, '')}</style>`)
   .replace(/<main id="app">[\s\S]*?<\/main>/, `<main id="app">${body}</main>`)
   .replace(/(<script type="application\/json" id="snapshot">)[\s\S]*?(<\/script>)/, `$1${index}$2`)
   .replace(/<script type="module" src="[^"]*" integrity="[^"]*">/, `<script type="module" src="/js/${hashed.boot}" integrity="${sri('/js/' + hashed.boot)}">`);

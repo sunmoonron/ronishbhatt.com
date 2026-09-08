@@ -55,7 +55,7 @@ const Story = ({ story }) => { let cap = true, out = [];
 export function Garden({ live }) {
   const [word, setWord] = useState(''), [busy, setBusy] = useState(''), [story, setStory] = useState(null), [status, setStatus] = useState('');
   useEffect(() => { if (live) subscribeWords(); }, [live]);
-  const words = recentWords(40);
+  const words = recentWords(40).reverse(); // oldest first, so the row reads left to right the way it was planted
   const doPlant = async e => { e.preventDefault(); if (!live) return; setBusy('planting, 18 bits of work…'); try { await plant(word); setWord(''); toast('planted; Bip will remember it'); } catch (x) { toast(x.message, 'err'); } finally { setBusy(''); } };
   const doTell = async () => { if (!live || busy) return; setBusy('telling…'); setStory([]); try { await tell(words.map(w => w.word), s => setStory([...s]), setStatus); } catch (x) { toast('Bip stumbled: ' + x.message, 'err'); } finally { setBusy(''); } };
   return html`<div class="garden">

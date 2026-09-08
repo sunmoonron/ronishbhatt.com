@@ -22,7 +22,7 @@ function App() {
   const [unlockOpen, setUnlockOpen] = useState(initial.unlockOpen), [editing, setEditing] = useState(null), [consoleOpen, setConsoleOpen] = useState(false);
   const isOwner = !!(Owner && owner.sk), cfg = sel.config();
   useEffect(() => { document.title = cfg.title; }, [cfg.title]);
-  useEffect(() => { const el = document.getElementById('theme'), css = sel.css(); if (el && css && el.textContent !== css) el.textContent = css; });
+  useEffect(() => { const el = document.getElementById('theme'), css = sel.themeCss(); if (el && css && el.textContent !== css) el.textContent = css; });
   useEffect(() => { chatConfigure(isOwner); }, [isOwner]);
   const edit = isOwner ? (kind, ev, preset) => html`<button class="sm edit" onClick=${e => { e.preventDefault(); e.stopPropagation(); setEditing({ kind, ev, preset }); }}>edit</button>` : null;
   const openUnlock = async () => { if (!Owner) Owner = await import('./owner.js'); setUnlockOpen(true); };
