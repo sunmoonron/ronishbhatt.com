@@ -1,0 +1,11 @@
+{
+  "name": "cube",
+  "short_name": "cube",
+  "description": "A Nostr client: the world in every language, media that loads ahead of you, translation on tap, and a cube that is you.",
+  "start_url": "/cube/",
+  "scope": "/cube/",
+  "display": "standalone",
+  "background_color": "#0b1210",
+  "theme_color": "#0b1210",
+  "icons": [{ "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" }]
+}
