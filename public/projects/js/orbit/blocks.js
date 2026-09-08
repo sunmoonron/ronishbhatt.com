@@ -68,13 +68,14 @@ export function createBlocks(root, anchored, opts = {}) {
   const caps = el('blk-caps'); caps.append(el('c1', 'in progress'), el('c2', 'mined · newest first →'));
   const row = el('blk-row'), panel = el('blk-open'); panel.hidden = true;
   root.append(caps, row, panel);
-  document.addEventListener('keydown', ev => {
+  const keys = ev => {
     if (openEpoch == null || ev.target?.closest?.('input, textarea')) return;
     if (ev.key === 'Escape') api.close();
     const order = [cur, ...past], i = order.indexOf(openEpoch);
     if (ev.key === 'ArrowLeft' && i > 0) { ev.preventDefault(); open(order[i - 1]); }
     if (ev.key === 'ArrowRight' && i >= 0 && i < order.length - 1) { ev.preventDefault(); open(order[i + 1]); }
-  });
+  };
+  document.addEventListener('keydown', keys);
   row.addEventListener('pointermove', ev => { const r = row.getBoundingClientRect(); row.style.setProperty('--tilt', ((ev.clientX - r.left) / r.width - 0.5) * 16 + 'deg'); });
   row.addEventListener('pointerleave', () => row.style.setProperty('--tilt', '0deg'));
 
@@ -220,6 +221,7 @@ export function createBlocks(root, anchored, opts = {}) {
     open, close() { panel.hidden = true; for (const [, o] of cubes) o.c.classList.remove('open'); openEpoch = null; tiles = []; },
     relayout() { if (openEpoch == null) return; const cb = cubes.get(openEpoch); layout(panel.querySelector('.bm'), cb.events, cb.era, engagement.get(openEpoch)); },
     epochs: () => past.length,
+    destroy() { document.removeEventListener('keydown', keys); root.textContent = ''; tiles = []; openEpoch = null; },
   };
   return api;
 }

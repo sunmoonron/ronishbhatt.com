@@ -384,7 +384,7 @@ import { computeMetrics, eraMeta }                            from '/projects/js
 import { drawOrbit, hitTest, blockAngle }                     from '/projects/js/orbit/orbit.js';
 import { createVoxels }                                       from '/projects/js/orbit/voxel.js?v=4';
 import { getTipHeight, getDifficultyAdjustments }             from '/projects/js/orbit/mempool.js';
-import { createBlocks, GOGGLES, topTags, hasTag }             from '/projects/js/orbit/blocks.js?v=3';
+import { createBlocks, GOGGLES, topTags, hasTag }             from '/projects/js/orbit/blocks.js?v=4';
 import { stack, nowStack, H, clock, dayShort }                from '/projects/js/orbit/time.js?v=2';
 
 const $ = id => document.getElementById(id);
@@ -395,7 +395,7 @@ const GREENS = ['#0b1a12','#10261a','#153223','#1a3f2c','#1f4c35','#255a3f','#2b
 const KINDS = { 1: 'note', 6: 'repost', 7: 'reaction' };
 const PARAMS = new URLSearchParams(location.search); // read once: the URL is rewritten after a run
 
-let anchored = [], metrics = null, dots = [], mode = 'orbit', vox = null, hover = null, sweep = 0, audio = null, npub = '', blocks = null;
+let runId = 0, anchored = [], metrics = null, dots = [], mode = 'orbit', vox = null, hover = null, sweep = 0, audio = null, npub = '', blocks = null;
 const chainChange = new Map(); // epoch start height -> difficulty change for that adjustment
 let orbitC = $('orbitCanvas');
 const wrap = $('orbitWrap'); // 2D interaction lives on the wrapper because the canvas element is swapped between views
@@ -465,6 +465,7 @@ async function run() {
   try { const d = window.NostrTools.nip19.decode(raw); if (d.type !== 'npub') throw 0; hex = d.data; }
   catch { setStatus('⚠ invalid npub, paste a valid npub1… string'); return; }
 
+  const id = ++runId; // a newer run makes this one a no-op the moment it finishes fetching
   analyzeBtn.disabled = true;
   dashboard.classList.remove('on'); loader.classList.add('on'); closeFocus(); stopPlay();
   if (vox) { orbitC = vox.destroy(); vox = null; }
@@ -475,6 +476,7 @@ async function run() {
   const batches = src && /^\/[\w./-]+\.json$/.test(src) ? [await fetch(src).then(r => r.json())] : await Promise.all(RELAYS.map((r, i) => fetchHistory(r, hex, n => {
     counts[i] = n; setStatus(`${counts.reduce((a, b) => a + b, 0).toLocaleString()} events so far from ${counts.filter(Boolean).length} relays…`);
   })));
+  if (id !== runId) return; // superseded while fetching
   const seen = new Set();
   const all = batches.flat().filter(e => !seen.has(e.id) && seen.add(e.id));
   const ots = all.filter(e => e.kind === 1040);
@@ -485,6 +487,7 @@ async function run() {
     loader.classList.remove('on'); analyzeBtn.disabled = false; return;
   }
   await Promise.race([chain, new Promise(r => setTimeout(r, 4000))]);
+  if (id !== runId) return;
   setStatus(`${events.length.toLocaleString()} events from ${batches.filter(b => b.length).length} relays, anchoring to blocks…`);
 
   anchored = anchorEventsFast(events);
@@ -529,7 +532,8 @@ function render(npub, hex) {
   document.querySelectorAll('link[rel="icon"]').forEach(l => { l.href = url; l.type = 'image/svg+xml'; });
 
 
-  if (!vox && !sweepRaf) mode = PARAMS.get('view') === 'orbit' ? 'orbit' : 'voxel'; // the voxel chain is the default; ?view=orbit brings the rings
+  if (vox) { orbitC = vox.destroy(); vox = null; } // never reuse a viewer built for other data
+  if (!sweepRaf) mode = PARAMS.get('view') === 'orbit' ? 'orbit' : 'voxel'; // the voxel chain is the default; ?view=orbit brings the rings
   dashboard.classList.add('on');
   // synchronous on purpose (a background tab never gets an animation frame), and each view on its own so one cannot sink the others
   safe(showView); safe(drawScrub); safe(buildBlocks);
@@ -540,6 +544,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && me
 
 // the blocks panel: cubes per epoch, goggles, engagement fetched when a block opens
 function buildBlocks() {
+  blocks?.destroy?.();
   blocks = createBlocks($('blocks'), anchored, { tip: showTip, pick, engage: engagement, change: h => chainChange.get(h), onOpen: (ep, quiet) => { if (!quiet && mode === 'voxel') vox?.flyTo(ep); }, onEngage: (ep, counts) => vox?.engage(counts) });
   const g = $('goggles'); g.textContent = '';
   const chips = [...Object.keys(GOGGLES).map(k => [k, GOGGLES[k]]), ...topTags(anchored).map(([t]) => ['#' + t, hasTag(t)])];
