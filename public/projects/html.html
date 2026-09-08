@@ -492,7 +492,7 @@ async function run() {
   metrics.otsTotal = ots.length;
   metrics.truncated = batches.some(b => b.truncated);
   npub = raw;
-  history.replaceState(null, '', '?npub=' + raw + (PARAMS.get('view') === 'voxel' ? '&view=voxel' : ''));
+  history.replaceState(null, '', '?npub=' + raw + (PARAMS.get('view') === 'orbit' ? '&view=orbit' : ''));
 
   loader.classList.remove('on'); setStatus('');
   render(raw, hex);
@@ -527,7 +527,7 @@ function render(npub, hex) {
   document.querySelectorAll('link[rel="icon"]').forEach(l => { l.href = url; l.type = 'image/svg+xml'; });
 
 
-  if (PARAMS.get('view') === 'voxel' && !vox) mode = 'voxel';
+  if (!vox && !sweepRaf) mode = PARAMS.get('view') === 'orbit' ? 'orbit' : 'voxel'; // the voxel chain is the default; ?view=orbit brings the rings
   dashboard.classList.add('on');
   // synchronous on purpose (a background tab never gets an animation frame), and each view on its own so one cannot sink the others
   safe(showView); safe(drawScrub); safe(buildBlocks);
@@ -767,7 +767,7 @@ $('playBtn').addEventListener('click', () => {
 });
 
 $('shareBtn').addEventListener('click', async () => {
-  const url = location.origin + location.pathname + '?npub=' + npub + (mode === 'voxel' ? '&view=voxel' : '');
+  const url = location.origin + location.pathname + '?npub=' + npub + (mode === 'orbit' ? '&view=orbit' : '');
   try { await navigator.clipboard.writeText(url); $('shareBtn').textContent = 'copied'; setTimeout(() => { $('shareBtn').textContent = 'copy link'; }, 1500); }
   catch { prompt('copy this link', url); }
 });
