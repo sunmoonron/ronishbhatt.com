@@ -2,7 +2,7 @@
 // A visitor's browser mints a key on first send; each message is a kind-14
 // rumor, sealed and gift-wrapped (NIP-59) with NIP-13 work on the wrap, then
 // published to the personal relay and the backups. The relay's write policy
-// (dell-nix modules/strfry-node.nix) admits wraps to the owner at POW_IN bits
+// the relay write policy admits wraps to the owner at POW_IN bits
 // and to anyone at POW_OUT (the owner's replies). Both sides keep a self-copy.
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { store, env, pool, owner, mine, publish, now, notify, tag } from './store.js';

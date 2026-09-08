@@ -5,5 +5,5 @@ set -euo pipefail
 cd "$(dirname "$0")"
 [ -d node_modules ] || npm install --silent --no-audit --no-fund
 node tools/bake.mjs || echo "bake failed — deploying with the previous snapshot"
-rsync -az --delete --exclude .DS_Store public/ dell7920:/var/www/ronishbhatt.com/
+rsync -az --delete --exclude .DS_Store public/ "${SITE_HOST:?set SITE_HOST=user@host}":/var/www/ronishbhatt.com/
 echo "deployed → https://ronishbhatt.com"
