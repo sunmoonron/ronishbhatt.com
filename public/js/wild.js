@@ -18,6 +18,7 @@ html.wild .veil{color:#43956b!important;text-shadow:none!important}html.wild #wi
 .term .l{white-space:pre-wrap;word-break:break-all}.term .ok{color:#7dd3a8}.term .dim{color:#43956b}.term .cur{display:inline-block;width:.6em;height:1em;background:#a4e9bf;vertical-align:-2px;animation:blink 1s steps(2) infinite}@keyframes blink{50%{opacity:0}}
 .term .bar{display:flex;gap:.5rem;justify-content:flex-end;margin-top:.35rem}.term button{font:11px var(--mono);padding:.15rem .5rem;background:rgba(125,211,168,.12);border:1px solid rgba(125,211,168,.35);color:#a4e9bf;border-radius:6px}
 .hud{position:fixed;left:1rem;bottom:1rem;z-index:61;font:12px var(--mono);color:#a4e9bf;background:rgba(3,6,4,.88);border:1px solid rgba(125,211,168,.35);border-radius:10px;padding:.5rem .8rem;display:none;max-width:16rem}.hud.on{display:block}.hud canvas{display:block;width:100%;height:auto;margin-bottom:.35rem}
+html.booting::before{content:"";position:fixed;inset:0;z-index:59;background:rgba(3,6,4,.97)}html.booting::after{content:"> boot \\25AE";position:fixed;left:2rem;top:2rem;z-index:59;color:#a4e9bf;font:13px/1.55 var(--mono)}
 @media (max-width:640px){html.wild main{padding-bottom:3.4rem}#orbit{display:none!important}.hud{left:.5rem;bottom:3rem;max-width:12rem}.term.min{inset:auto 0 0 0;width:100%;max-height:2.5rem;border-radius:10px 10px 0 0;border-width:1px 0 0;padding:.35rem .7rem;font-size:10px;overflow:hidden;display:flex;align-items:center;gap:.6rem;cursor:pointer}.term.min>div:first-child{flex:1;min-width:0;overflow:hidden}.term.min .l:not(:last-child){display:none}.term.min .l{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.term.min .bar{margin:0;flex:0 0 auto}.term.min.open{max-height:60vh;overflow:auto;display:block;padding:.55rem .8rem}.term.min.open .l{display:block;white-space:pre-wrap}.term.min.open .bar{margin-top:.35rem}}
 @media (prefers-reduced-motion:reduce){html.wild *{animation:none!important;transition:none!important}html.wild #rain{display:none}}`;
 
@@ -28,7 +29,7 @@ const blip = f => { if (!soundOn || !ctx) return; const o = ctx.createOscillator
 
 export async function start() {
   const html = document.documentElement; html.classList.add('wild');
-  const style = document.createElement('style'); style.textContent = CSS; document.head.append(style);
+  if (!document.getElementById('wild')?.textContent) { const style = document.createElement('style'); style.textContent = CSS; document.head.append(style); } // the shell usually carries it already
   const snap = await fetch('/site.json', { cache: 'no-cache' }).then(r => r.json()).catch(() => null);
   events = (snap?.events || []).filter(e => e.kind === 30078);
   cipher = events.map(e => e.content).join('') || 'QWxs';
@@ -53,6 +54,7 @@ function rain() {
 // ---- terminal: what actually happened to build this page ----
 async function terminal() {
   const t = document.createElement('div'); t.className = 'term'; document.body.append(t);
+  document.documentElement.classList.remove('booting'); // the terminal now covers what the inline cover was covering
   const out = document.createElement('div'); t.append(out);
   const bar = document.createElement('div'); bar.className = 'bar';
   const snd = document.createElement('button'); snd.textContent = 'sound'; snd.onclick = e => { e.stopPropagation(); soundOn = !soundOn; if (soundOn && !ctx) ctx = new (window.AudioContext || window.webkitAudioContext)(); snd.textContent = soundOn ? 'mute' : 'sound'; blip(660); };

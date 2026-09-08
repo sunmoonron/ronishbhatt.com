@@ -1,6 +1,6 @@
 {
  "site": "0bfcddd3f832913d00075f9246f2f45c362d5467546e593ec8e2f1d87a9e5a3d",
- "baked_at": 1788822900,
+ "baked_at": 1788825313,
  "events": [
   {
    "content": "how",
@@ -167,6 +167,20 @@
     [
      "d",
      "ca48e460b6aa096d"
+    ]
+   ]
+  },
+  {
+   "content": "",
+   "created_at": 1788824928,
+   "id": "29bc28e53a6b069a84dd4a22303c474b10903ff5f66594e949ec35607b8583c4",
+   "kind": 5,
+   "pubkey": "0bfcddd3f832913d00075f9246f2f45c362d5467546e593ec8e2f1d87a9e5a3d",
+   "sig": "ce3572124714eeead307cb50952270ea7aadc55c7db4e68db76db27b13e3fc22c7a536defba9affc5b78eae92635b5d3283dbdbc830c39069ac2a334d4db4106",
+   "tags": [
+    [
+     "e",
+     "345e2448d8abdf36ddf2648efa854b146201891bd31d4151378a3f864488a430"
     ]
    ]
   },

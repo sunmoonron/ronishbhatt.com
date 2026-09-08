@@ -64,6 +64,11 @@ const VENDOR = { preact: '/vendor/preact-10.29.8.c30e721e.mjs', 'preact/hooks': 
 const MODULES = [...Object.values(VENDOR), ...['app', 'store', 'ui', 'chat', 'garden', 'owner', 'wild'].map(n => '/js/' + hashed[n])];
 const LAZY = ['/vendor/nostr-tools-2.25.2.bundle.js', '/vendor/dompurify-3.4.14.min.c2f26ea4.js', ASSETS.engine];
 const importmap = JSON.stringify({ imports: VENDOR, integrity: Object.fromEntries(MODULES.map(f => [f, sri(f)])) });
+// wild mode paints first: its stylesheet rides inline in the shell and a tiny inline script sets the class
+// and starts fetching the module before the body is parsed, so the page never shows its calm face first
+const wildSrc = fs.readFileSync(PUB + 'js/wild.js', 'utf8'), wildCss = (wildSrc.match(/const CSS = `([\s\S]*?)`;/) || [])[1] || '';
+if (wildCss.includes('${')) throw new Error('wild CSS has interpolations; cannot inline');
+const wildBoot = `try{var s=location.search,d=document.documentElement,w=/[?&]wild/.test(s)||(localStorage.getItem('rb.wild')!=='0'&&!/[?&]calm/.test(s));if(w){d.classList.add('wild');if(!sessionStorage.getItem('rb.booted')){d.classList.add('booting');setTimeout(function(){d.classList.remove('booting')},7000)}import('/js/${hashed.wild}')}}catch(e){}`;
 const index = JSON.stringify({ baked_at, ids: events.map(e => e.id) });
 const out = src
   .replace(/<title>[^<]*<\/title>/, `<title>${esc(cfg.title)}</title>`)
@@ -71,7 +76,9 @@ const out = src
   .replace(/<meta name="site-sri" content="[^"]*">/, `<meta name="site-sri" content="${esc(JSON.stringify(Object.fromEntries(LAZY.map(f => [f, sri(f)]))))}">`)
   .replace(/<meta name="site-assets" content="[^"]*">/, `<meta name="site-assets" content="${esc(JSON.stringify(ASSETS))}">`)
   .replace(/href="\/favicon\.svg[^"]*"/g, `href="/favicon.svg?v=${iconV}"`).replace(/href="\/favicon\.ico[^"]*"/g, `href="/favicon.ico?v=${iconV}"`).replace(/href="\/apple-touch-icon\.png[^"]*"/g, `href="/apple-touch-icon.png?v=${iconV}"`)
-  .replace(/'sha256-[^']*'/, `'sha256-${sha('sha256', importmap)}'`)
+  .replace(/script-src 'self'[^;]*/, `script-src 'self' 'sha256-${sha('sha256', importmap)}' 'sha256-${sha('sha256', wildBoot)}'`)
+  .replace(/<script id="wildboot">[\s\S]*?<\/script>/, `<script id="wildboot">${wildBoot}</script>`)
+  .replace(/<style id="wild">[\s\S]*?<\/style>/, `<style id="wild">${wildCss.replace(/<\/style/gi, '')}</style>`)
   .replace(/<script type="importmap">[\s\S]*?<\/script>/, `<script type="importmap">${importmap}</script>`)
   .replace(/<style id="theme">[\s\S]*?<\/style>/, `<style id="theme">${sel.css().replace(/<\/style/gi, '')}</style>`)
   .replace(/<main id="app">[\s\S]*?<\/main>/, `<main id="app">${body}</main>`)
