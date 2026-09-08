@@ -640,7 +640,7 @@ function headCaption(v, playing) {
   $('capWhen').textContent = `${H(v.h)} · E${v.epoch} day ${v.layer + 1}\n${clock(new Date(first.created_at * 1000))}`;
   $('capText').textContent = v.events.map(e => e.kind === 1 ? (e.content || '').slice(0, 220) : e.kind === 6 ? '↻ repost' : `♥ ${(e.content || '+').slice(0, 4)}`).join('   ·   ');
   if (scrub) { scrub.head = v.h; if (!headCaption.t) headCaption.t = setTimeout(() => { headCaption.t = 0; drawScrub(); }, 80); }
-  if (playing) for (const e of v.events) blip(e.kind, e.anchor.era);
+  if (playing) for (const e of v.events.slice(0, 6)) blip(e.kind, e.anchor.era, e.anchor.height);
 }
 function crumbs(st) {
   const c = $('crumb'), text = `${st.level === 'chain' ? `chain · ${st.inView} epochs in view` : `${st.level} › E${st.epoch}`}${Number.isFinite(st.head) ? ` › playhead ${H(Math.round(st.head))}` : ''}`;
@@ -745,17 +745,35 @@ $('soundBtn').addEventListener('click', () => {
 });
 for (const ev of ['pointerdown', 'keydown']) document.addEventListener(ev, () => armAudio(), { once: true, capture: true }); // the first real click unlocks audio for an autoplayed replay
 syncSound();
-function blip(kind, era) {
+// Sound: every crossed event gets a slot a few milliseconds after the previous one instead of being
+// dropped, so a dense epoch rolls like an arpeggio; the roll gets quieter as it gets denser, a
+// compressor and a low-pass keep the sum clean, and the roll never trails the playhead by more than
+// a beat. Pitch comes from the block height on a pentatonic scale, the octave from the kind.
+let graph = null, nextSlot = 0;
+const SCALE = [0, 2, 4, 7, 9];
+function ensureGraph() {
+  if (graph || !audio) return;
+  const lp = audio.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 3400; lp.Q.value = 0.7;
+  const comp = audio.createDynamicsCompressor(); comp.threshold.value = -20; comp.knee.value = 10; comp.ratio.value = 8; comp.attack.value = 0.002; comp.release.value = 0.15;
+  const out = audio.createGain(); out.gain.value = 0.8;
+  lp.connect(comp); comp.connect(out); out.connect(audio.destination);
+  graph = { input: lp };
+}
+function blip(kind, era, h = 0) {
   if (!audio || !soundOn || audio.state !== 'running') return;
-  const t = audio.currentTime;
-  if (t < blip.next) return; blip.next = t + 0.035;
+  ensureGraph();
+  const now = audio.currentTime, backlog = Math.max(0, nextSlot - now);
+  if (backlog > 0.7) return;                                   // a beat behind is the limit; beyond it we skip, never lag
+  const spacing = backlog > 0.25 ? 0.012 : 0.03;               // dense stretches roll faster and quieter
+  const t = Math.max(now + 0.004, nextSlot); nextSlot = t + spacing;
+  const base = kind === 1 ? 330 : kind === 6 ? 196 : 784;
   const o = audio.createOscillator(), g = audio.createGain();
   o.type = kind === 1 ? 'triangle' : 'sine';
-  o.frequency.value = (kind === 1 ? 440 : kind === 6 ? 330 : 660) * Math.pow(2, (era % 3) / 12) * (1 + (Math.random() - 0.5) * 0.02);
-  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(kind === 1 ? 0.12 : 0.05, t + 0.005); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.07);
-  o.connect(g).connect(audio.destination); o.start(t); o.stop(t + 0.08);
+  o.frequency.value = base * Math.pow(2, (SCALE[Math.abs(h) % 5] + (era % 3)) / 12) * (1 + (Math.random() - 0.5) * 0.008);
+  const peak = (kind === 1 ? 0.18 : 0.08) / (1 + backlog * 2.5);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + 0.006); g.gain.exponentialRampToValueAtTime(0.0001, t + (kind === 1 ? 0.14 : 0.07));
+  o.connect(g); g.connect(graph.input); o.start(t); o.stop(t + 0.16);
 }
-blip.next = 0;
 let sweepRaf = 0, sweepStart = 0;
 function stopPlay() {
   if (sweepRaf) { cancelAnimationFrame(sweepRaf); sweepRaf = 0; sweep = 0; if (mode === 'orbit' && metrics) dots = drawOrbit(orbitC, anchored, metrics, {}); }
@@ -773,7 +791,7 @@ $('playBtn').addEventListener('click', () => {
   const step = now => {
     const k = Math.min(1, (now - sweepStart) / 8000), a = -Math.PI / 2 + k * Math.PI * 2;
     sweep = a;
-    for (const e of anchored) { if (!passed.has(e) && blockAngle(e.anchor.height) <= a) { passed.add(e); blip(e.kind, e.anchor.era); } }
+    for (const e of anchored) { if (!passed.has(e) && blockAngle(e.anchor.height) <= a) { passed.add(e); blip(e.kind, e.anchor.era, e.anchor.height); } }
     dots = drawOrbit(orbitC, anchored, metrics, { sweep: a, hover });
     if (k < 1) sweepRaf = requestAnimationFrame(step); else { sweepRaf = 0; sweep = 0; dots = drawOrbit(orbitC, anchored, metrics, {}); $('playBtn').textContent = '▶ play'; }
   };
