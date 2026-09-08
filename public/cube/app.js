@@ -38,7 +38,7 @@ const isFollow = pk => S.follows.includes(pk);
 const isMe = pk => !!(S.me && S.me.pk === pk);
 
 // ---- the worker: sockets, signatures, store -------------------------------------------------------
-const W = new Worker('./worker.js?v=2'); const H = {}; W.onmessage = ({ data }) => H[data.type]?.(data); const send = m => W.postMessage(m);
+const W = new Worker('./worker.js?v=3'); const H = {}; W.onmessage = ({ data }) => H[data.type]?.(data); const send = m => W.postMessage(m);
 let subN = 0; const subscribe = (filters, o = {}) => { const id = o.id || 's' + (++subN); send({ type: 'sub', id, filters, live: !!o.live, relays: o.relays || null, timeout: o.timeout }); return id; }; const unsubscribe = id => send({ type: 'unsub', id });
 const profileQueue = new Set(); let profileTimer = 0;
 function needProfile(pk) { if (!pk || !HEX.test(pk) || S.profiles.has(pk) || profileQueue.has(pk)) return; profileQueue.add(pk); clearTimeout(profileTimer); profileTimer = setTimeout(() => { const pks = [...profileQueue]; profileQueue.clear(); for (const c of chunks(pks, 250)) send({ type: 'profiles', pks: c }); }, 120); }
