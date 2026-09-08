@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lattice</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="A Nostr feed that is not a list: every block a voxel, a community and a crowd on one timechain, usable on slow links and without a canvas.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/theme.css">
+<style>
+main{max-width:76rem;margin:0 auto;padding:1.2rem 1rem 3rem;font-family:var(--mono)}
+h1{font-size:1.1rem;letter-spacing:.12em;color:var(--accent);margin:.2rem 0 .3rem}.lede{color:var(--mute);font-size:.8rem;line-height:1.55;max-width:60rem;margin:0 0 1rem}
+.bar{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center;margin:.6rem 0}.bar input{width:22rem;max-width:100%;font-size:.78rem}.bar input.small{width:5rem}
+.mb{background:var(--bg);border:1px solid var(--line);color:var(--mute);border-radius:.4rem;padding:.3rem .6rem;font:.66rem var(--mono);cursor:pointer;letter-spacing:.06em;text-transform:uppercase}.mb.on{color:var(--accent);border-color:var(--accent)}.mb.pri{background:var(--deep);color:var(--accent-ink);border-color:var(--accent);font-weight:700}
+#status{font-size:.72rem;color:var(--mute);min-height:1.2rem}#status b{color:var(--accent);font-weight:400}
+.panel{border:1px solid var(--line);border-radius:12px;background:var(--card);overflow:hidden;margin-top:.8rem}
+canvas#view{width:100%;aspect-ratio:16/9;max-height:76vh;display:block;touch-action:none}canvas#view.armed{box-shadow:0 0 0 2px var(--accent) inset;cursor:grab}
+.legend{display:flex;flex-wrap:wrap;gap:.4rem .9rem;padding:.55rem .9rem;font-size:.66rem;color:var(--mute);border-top:1px solid var(--line)}.legend i{display:inline-block;width:9px;height:9px;border-radius:2px;background:var(--k);margin-right:5px;vertical-align:-1px}
+.caption{display:grid;grid-template-columns:auto 1fr;gap:.9rem;align-items:start;margin:.5rem 0 0;padding:.5rem .8rem;background:var(--bg);border:1px solid var(--line);border-left:3px solid #e9c46a;border-radius:.5rem;font-size:.78rem;min-height:3rem}.caption[hidden]{display:none}.caption .w{font-size:.62rem;color:var(--accent);white-space:pre;line-height:1.5}.caption .t{color:var(--fg);line-height:1.45;max-height:4.4em;overflow:hidden}.caption .t b{color:var(--accent);font-weight:400}
+#tip{position:fixed;pointer-events:none;z-index:99;background:var(--card);border:1px solid var(--line);border-radius:.5rem;padding:.5rem .7rem;font-size:.7rem;max-width:22rem;opacity:0;transition:opacity .12s}#tip.on{opacity:1}#tip .h{color:var(--accent)}#tip .l{color:var(--fg);margin-top:.2rem;word-break:break-word}#tip .l b{color:var(--accent);font-weight:400}
+#text{margin-top:.8rem}#text[hidden]{display:none}#text details{border:1px solid var(--line);border-radius:10px;background:var(--card);margin:.5rem 0}#text summary{cursor:pointer;padding:.55rem .8rem;font-size:.74rem;color:var(--mute)}#text summary b{color:var(--fg);font-weight:400}
+.day{display:grid;grid-template-columns:9rem 1fr;gap:.6rem;align-items:center;padding:.25rem .8rem;font-size:.66rem;color:var(--mute)}.grid{display:grid;grid-template-columns:repeat(24,1fr);gap:2px}.grid button{aspect-ratio:1;border:0;border-radius:2px;background:var(--soft);padding:0;cursor:pointer;min-width:0}.grid button:focus-visible{outline:2px solid var(--mint)}
+#blocklist{border-top:1px solid var(--line);padding:.6rem .8rem;font-size:.76rem}#blocklist h3{font-size:.7rem;color:var(--accent);margin:0 0 .4rem;font-weight:400}#blocklist p{margin:.2rem 0;color:var(--fg)}#blocklist p b{color:var(--accent);font-weight:400}#blocklist p.reply{color:var(--mute);padding-left:1rem}
+.hint{font-size:.66rem;color:var(--mute);padding:.5rem .9rem;border-top:1px solid var(--line)}
+@media (max-width:640px){.caption{grid-template-columns:1fr}.day{grid-template-columns:1fr}}
+</style>
+</head>
+<body class="rb">
+<nav class="rb-bar"><a href="/"><img src="/favicon.svg" alt="">ronishbhatt.com</a><span class="sep">/</span><span>lattice</span><span class="grow"></span><span class="tag">prototype</span></nav>
+<main>
+<h1>LATTICE</h1>
+<p class="lede">A feed that is not a list. Every event lands at its Bitcoin block: epoch, day, row, column, the way a number has digits. A block is a voxel, a day is a 12 × 12 layer, an epoch is a brick, the bricks coil up one turn a year. Replies are strings between voxels, reactions are sparks. Counts arrive before the events, so the shape shows on a slow link before a single note has loaded, and text mode is the same lattice with no canvas at all.</p>
+<div class="bar">
+  <button class="mb pri" id="simBtn">simulate a community</button>
+  <label class="mb" for="seed">seed</label><input id="seed" class="small" value="7" aria-label="seed">
+  <label class="mb" for="crowd">crowd</label><input id="crowd" class="small" value="60" aria-label="crowd size">
+  <input id="npub" placeholder="or paste an npub: their follows become the lattice" aria-label="npub">
+  <button class="mb" id="realBtn">load a real feed</button>
+</div>
+<div class="bar">
+  <button class="mb" id="playBtn">▶ play</button><button class="mb" id="rateBtn" title="epochs per second">1 epoch/s</button>
+  <button class="mb" id="catchBtn" title="only what got attention">catch-up: off</button>
+  <button class="mb" id="textBtn">text mode</button><button class="mb" id="resetBtn">reset view</button>
+</div>
+<div id="status">nothing loaded</div>
+<div class="panel" id="viewPanel">
+  <canvas id="view"></canvas>
+  <div class="legend" id="legend"></div>
+  <div class="hint" id="hint">chain level shows how much happened per epoch, community share in the brighter green · click a brick to zoom, a voxel to read the block · click once to take the controls, then scroll zooms and drag orbits · Esc releases</div>
+</div>
+<div class="caption" id="caption" hidden><div class="w" id="capW"></div><div class="t" id="capT"></div></div>
+<section id="text" hidden aria-label="text mode"><div id="days"></div><div id="blocklist" hidden></div></section>
+<div id="tip"><div class="h" id="tipH"></div><div class="l" id="tipL"></div></div>
+</main>
+<script src="/vendor/nostr-tools-2.25.2.bundle.js"></script>
+<script type="module">
+import { Lattice, BLOCKS_PER_EPOCH, BLOCKS_PER_DAY, F_REPLY, F_MEDIA, F_COMMUNITY } from './lattice.js';
+import { createView } from './view.js';
+import { setTip, tipHeight, blockToDate, estimateHeight } from '/projects/js/orbit/anchor.js';
+const $ = id => document.getElementById(id);
+const PALETTE = ['#b4f5d1', '#7dd3a8', '#5fc9c4', '#b9e26b', '#3aa876', '#8dddae']; // people are greens and teals; amber is media only
+const STRANGER = '#4e6f5f', CROWD = '#255a3f';
+const POTATO = (navigator.hardwareConcurrency || 4) <= 2 || (navigator.deviceMemory || 4) <= 2;
+let lattice = null, view = null, worker = null, catchUp = 0, textMode = false, rebuildTimer = 0, runId = 0;
+const fmt = n => n.toLocaleString();
+const day = h => blockToDate(h).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+const clock = h => blockToDate(h).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+const status = (s, html) => { if (html) $('status').innerHTML = s; else $('status').textContent = s; };
+fetch('https://mempool.space/api/blocks/tip/height', { signal: AbortSignal.timeout(5000) }).then(r => r.text()).then(h => setTip(Number(h))).catch(() => {});
+
+function fresh(h0, h1) {
+  view?.destroy(); lattice = new Lattice(h0, h1);
+  view = createView($('view'), lattice, { potato: POTATO, onHover: showTip, onPick: openBlock, onHead: headCaption, threshold: () => catchUp });
+  lattice.onChange(() => { clearTimeout(rebuildTimer); rebuildTimer = setTimeout(() => { view.rebuild(); if (textMode) renderText(); }, 150); });
+  $('caption').hidden = true;
+}
+function legend() {
+  const L = $('legend'); L.textContent = '';
+  for (const a of lattice.authors.slice(0, 8)) { const s = document.createElement('span'); s.innerHTML = `<i style="--k:${a.color}"></i>${a.name} <span style="opacity:.6">${a.role}</span>`; L.append(s); }
+  const crowd = lattice.authors.filter(a => a.role === 'crowd').length; if (crowd) { const s = document.createElement('span'); s.innerHTML = `<i style="--k:${CROWD}"></i>crowd of ${crowd}`; L.append(s); }
+  const m = document.createElement('span'); m.innerHTML = `<i style="--k:#e9c46a"></i>media · strings are replies · sparks are reactions`; L.append(m);
+}
+// simulation: a worker streams chunks; the lattice is drawable after the first
+$('simBtn').addEventListener('click', () => {
+  const id = ++runId; worker?.terminate(); worker = new Worker('./sim.js');
+  const tip = tipHeight(); let got = 0;
+  worker.onmessage = ({ data }) => {
+    if (id !== runId) return;
+    if (data.type === 'authors') { fresh(data.h0, data.h1); data.authors.forEach((a, i) => lattice.addAuthor({ ...a, color: a.role === 'community' ? PALETTE[i % PALETTE.length] : a.role === 'stranger' ? STRANGER : CROWD })); legend(); status('streaming…'); }
+    else if (data.type === 'chunk') { lattice.ingestChunk(data); got += data.height.length; status(`<b>${fmt(got)}</b> events streamed into <b>${fmt(lattice.buckets.size)}</b> blocks · community ${fmt(lattice.countCommunity(lattice.h0, lattice.h1))} · crowd ${fmt(lattice.count(lattice.h0, lattice.h1) - lattice.countCommunity(lattice.h0, lattice.h1))}`, true); }
+    else if (data.type === 'done') { clearTimeout(rebuildTimer); view.rebuild(); if (textMode) renderText(); status(`<b>${fmt(got)}</b> events in <b>${fmt(lattice.buckets.size)}</b> blocks over ${fmt(lattice.h1 - lattice.h0 + 1)} blocks of chain · community ${fmt(lattice.countCommunity(lattice.h0, lattice.h1))} · crowd ${fmt(lattice.count(lattice.h0, lattice.h1) - lattice.countCommunity(lattice.h0, lattice.h1))} · ${fmt(view.state().strings)} reply strings`, true); }
+  };
+  worker.postMessage({ seed: Number($('seed').value) || 7, tip, epochs: 3, crowd: Math.max(0, Math.min(400, Number($('crowd').value) || 60)) });
+});
+// a real feed: the follows of an npub become the authors, their events stream in per relay and per chunk of authors
+const RELAYS = ['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.primal.net'];
+function req(url, filters, onEvent, ms = 8000) { return new Promise(res => { let ws; const done = () => { try { ws.close(); } catch {} res(); }; const t = setTimeout(done, ms); try { ws = new WebSocket(url); } catch { return res(); } const sub = 'l' + Math.random().toString(36).slice(2); ws.onopen = () => ws.send(JSON.stringify(['REQ', sub, ...filters])); ws.onmessage = ({ data }) => { try { const m = JSON.parse(data); if (m[0] === 'EVENT' && m[1] === sub) onEvent(m[2]); if (m[0] === 'EOSE') { clearTimeout(t); done(); } } catch {} }; ws.onerror = () => done(); }); }
+$('realBtn').addEventListener('click', async () => {
+  let hex; try { const d = window.NostrTools.nip19.decode($('npub').value.trim()); hex = d.type === 'npub' ? d.data : d.data.pubkey; } catch { status('paste a valid npub'); return; }
+  const id = ++runId; worker?.terminate(); status('reading the follow list…');
+  let follows = null; await Promise.all(RELAYS.map(r => req(r, [{ kinds: [3], authors: [hex], limit: 1 }], ev => { if (!follows || ev.created_at > follows.created_at) follows = ev; })));
+  if (id !== runId) return; if (!follows) { status('no follow list found on the public relays'); return; }
+  const pks = [...new Set(follows.tags.filter(t => t[0] === 'p' && /^[0-9a-f]{64}$/.test(t[1])).map(t => t[1]))].slice(0, 40);
+  const tip = tipHeight(), h0 = Math.floor((tip - 3 * BLOCKS_PER_EPOCH) / BLOCKS_PER_EPOCH) * BLOCKS_PER_EPOCH;
+  fresh(h0, tip); const idx = new Map(); pks.forEach((pk, i) => idx.set(pk, lattice.addAuthor({ name: pk.slice(0, 8), pk, role: 'community', color: PALETTE[i % PALETTE.length] }))); legend();
+  const since = Math.floor(blockToDate(h0).getTime() / 1000); let got = 0, seen = new Set();
+  const chunks = []; for (let i = 0; i < pks.length; i += 10) chunks.push(pks.slice(i, i + 10));
+  status(`${pks.length} follows · streaming events from ${RELAYS.length} relays in ${chunks.length} batches…`);
+  await Promise.all(chunks.flatMap(c => RELAYS.map(r => req(r, [{ kinds: [1, 6, 7], authors: c, since, limit: 300 }], ev => {
+    if (id !== runId || seen.has(ev.id)) return; seen.add(ev.id);
+    const h = estimateHeight(ev.created_at), a = idx.get(ev.pubkey); if (a == null) return;
+    const e = ev.tags.filter(t => t[0] === 'e'); const flags = F_COMMUNITY | (ev.kind === 1 && e.length ? F_REPLY : 0) | (/https?:\/\/\S+\.(png|jpe?g|gif|webp)/i.test(ev.content) ? F_MEDIA : 0);
+    lattice.ingest(h, a, ev.kind, flags, ev.id, ev.kind === 7 ? '+' : ev.content.slice(0, 200), e.length ? e[e.length - 1][1] : null); got++;
+    if (got % 50 === 0) { lattice.emit(); status(`<b>${fmt(got)}</b> events streamed into <b>${fmt(lattice.buckets.size)}</b> blocks…`, true); }
+  }, 12000))));
+  if (id !== runId) return; lattice.emit(); status(`<b>${fmt(got)}</b> events from ${pks.length} follows in <b>${fmt(lattice.buckets.size)}</b> blocks · replies threaded where both ends were found`, true);
+});
+// reading a block
+function lines(idx, max = 6) { const c = lattice.cols; return idx.slice(0, max).map(i => { const a = lattice.authors[c.author[i]]; const t = c.target[i] >= 0 ? lattice.authors[c.author[c.target[i]]]?.name : null; return `<p class="${c.flags[i] & F_REPLY ? 'reply' : ''}"><b>${a?.name || '?'}</b>${t ? ` → ${t}` : ''}: ${c.kind[i] === 7 ? '♥' : c.kind[i] === 6 ? '↻ repost' : escape(c.text[i] || '')}</p>`; }).join('') + (idx.length > max ? `<p style="color:var(--mute)">… ${idx.length - max} more</p>` : ''); }
+const escape = s => s.replace(/[&<>]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[ch]);
+function showTip(hit, ev) {
+  const tip = $('tip'); if (!hit) { tip.classList.remove('on'); return; }
+  if (hit.voxel) { const v = hit.voxel; $('tipH').textContent = `#${fmt(v.h)} · ${clock(v.h)} · ${v.n} event${v.n === 1 ? '' : 's'}${v.community ? ` · ${v.community} community` : ''}${v.replies ? ` · ${v.replies} repl${v.replies === 1 ? 'y' : 'ies'}` : ''}`; $('tipL').innerHTML = lines(v.idx, 4); }
+  else { const b = hit.brick; $('tipH').textContent = `E${b.epoch} · #${fmt(b.h0)} · ${day(b.h0)} → ${day(b.h0 + BLOCKS_PER_EPOCH - 1)}`; $('tipL').innerHTML = `${fmt(hit.total)} events, ${fmt(hit.comm)} from the community · click to zoom in`; }
+  if (ev) { tip.style.left = (ev.clientX + 14 + 360 > innerWidth ? ev.clientX - 370 : ev.clientX + 14) + 'px'; tip.style.top = Math.min(ev.clientY - 12, innerHeight - 160) + 'px'; }
+  tip.classList.add('on');
+}
+function openBlock(v) { const bl = $('blocklist'); $('text').hidden = false; bl.hidden = false; bl.innerHTML = `<h3>block #${fmt(v.h)} · ${clock(v.h)} · ${v.n} events</h3>` + lines(v.idx, 40); bl.scrollIntoView({ block: 'nearest' }); }
+function headCaption(v) { if (catchUp && v.score < catchUp && !v.community) return; $('caption').hidden = false; $('capW').textContent = `#${fmt(v.h)} · ${clock(v.h)}\n${v.n} event${v.n === 1 ? '' : 's'}`; $('capT').innerHTML = lines(v.idx, 3); }
+// text mode: the same lattice as days of 144 cells, keyboard first, no canvas needed
+function renderText() {
+  const D = $('days'); D.textContent = ''; const epochs = new Map();
+  for (let h = lattice.h0; h <= lattice.h1; h += BLOCKS_PER_DAY) { const e = Math.floor(h / BLOCKS_PER_EPOCH); if (!epochs.has(e)) epochs.set(e, []); epochs.get(e).push(h); }
+  let first = true;
+  for (const [e, days] of epochs) {
+    const det = document.createElement('details'); det.open = first; first = false;
+    det.innerHTML = `<summary><b>E${e}</b> · #${fmt(e * BLOCKS_PER_EPOCH)} · ${day(e * BLOCKS_PER_EPOCH)} → ${day(e * BLOCKS_PER_EPOCH + BLOCKS_PER_EPOCH - 1)} · ${fmt(lattice.count(Math.max(lattice.h0, e * BLOCKS_PER_EPOCH), Math.min(lattice.h1, e * BLOCKS_PER_EPOCH + BLOCKS_PER_EPOCH - 1)))} events</summary>`;
+    for (const h of days) {
+      const row = document.createElement('div'); row.className = 'day'; const end = Math.min(h + BLOCKS_PER_DAY - 1, lattice.h1), n = lattice.count(h, end), cm = lattice.countCommunity(h, end);
+      row.innerHTML = `<span>${day(h)} · ${fmt(n)} event${n === 1 ? '' : 's'}, ${fmt(cm)} community</span>`;
+      const grid = document.createElement('div'); grid.className = 'grid'; grid.setAttribute('role', 'group'); grid.setAttribute('aria-label', `blocks of ${day(h)}`);
+      let max = 1; for (let b = h; b <= end; b++) max = Math.max(max, lattice.count(b, b));
+      for (let b = h; b <= end; b++) { const c = lattice.count(b, b); const btn = document.createElement('button'); btn.setAttribute('aria-label', `block ${fmt(b)}, ${c} event${c === 1 ? '' : 's'}`); btn.title = `#${fmt(b)} · ${c}`; if (c) { const k = 0.2 + 0.8 * c / max; btn.style.background = lattice.countCommunity(b, b) ? `rgba(125,211,168,${k})` : `rgba(67,149,107,${k})`; } btn.addEventListener('click', () => openBlock({ h: b, n: c, idx: lattice.block(b) })); grid.append(btn); }
+      row.append(grid); det.append(row);
+    }
+    D.append(det);
+  }
+}
+$('textBtn').addEventListener('click', () => { textMode = !textMode; $('textBtn').classList.toggle('on', textMode); $('text').hidden = !textMode; $('viewPanel').hidden = textMode; if (textMode && lattice) renderText(); });
+$('playBtn').addEventListener('click', () => { if (!view) return; if (view.playing()) { view.pause(); $('playBtn').textContent = '▶ play'; return; } $('playBtn').textContent = '❚❚ pause'; view.play(() => { $('playBtn').textContent = '▶ play'; }); });
+const RATES = [1, 2, 5]; $('rateBtn').addEventListener('click', () => { const r = RATES[(RATES.indexOf(view?.rate() || 1) + 1) % RATES.length]; view?.rate(r); $('rateBtn').textContent = `${r} epoch${r === 1 ? '' : 's'}/s`; });
+const CATCH = [0, 2, 5]; $('catchBtn').addEventListener('click', () => { catchUp = CATCH[(CATCH.indexOf(catchUp) + 1) % CATCH.length]; $('catchBtn').textContent = catchUp ? `catch-up: ${catchUp}+ reactions` : 'catch-up: off'; $('catchBtn').classList.toggle('on', !!catchUp); view?.touch(); });
+$('resetBtn').addEventListener('click', () => view?.reset());
+window.addEventListener('resize', () => view?.resize());
+document.addEventListener('keydown', e => { if (e.key === ' ' && view && view.state().armed && !e.target?.closest?.('input, textarea')) { e.preventDefault(); $('playBtn').click(); } });
+window.lattice = { get lattice() { return lattice; }, get view() { return view; } };
+if (new URLSearchParams(location.search).get('sim') !== '0') setTimeout(() => $('simBtn').click(), 200);
+</script>
+</body>
+</html>
