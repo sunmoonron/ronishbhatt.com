@@ -7805,7 +7805,14 @@ async function resolve(to) {
   if (to.startsWith('nprofile1')) { const d = T.nip19.decode(to); return d.data.pubkey; }
   if (/^[0-9a-f]{64}$/i.test(to)) return to.toLowerCase();
   const [name, domain] = to.split('@'); if (!domain) throw new Error('give a NIP-05 like name@domain or an npub');
-  const r = await fetch(`https://${domain}/.well-known/nostr.json?name=${encodeURIComponent(name)}`); const j = await r.json(); const pk = j.names?.[name]; if (!pk) throw new Error('no such NIP-05 name'); return pk;
+  let blocked = false;
+  try { const r = await fetch(`https://${domain}/.well-known/nostr.json?name=${encodeURIComponent(name)}`); const j = await r.json(); const pk = j.names?.[name]; if (!pk) throw new Error('no such NIP-05 name'); return pk; }
+  catch (e) { if (/no such NIP-05/.test(e.message)) throw e; blocked = true; }
+  // the domain serves its NIP-05 file without the header that lets a browser read it, so it cannot be verified from here;
+  // ask the search relay which profiles claim the name and hand the answer to a human instead of sending to it blindly
+  const hits = (await query('wss://relay.nostr.band', { kinds: [0], search: to, limit: 20 })).filter(ev => { try { return (JSON.parse(ev.content).nip05 || '').toLowerCase() === to.toLowerCase(); } catch { return false; } }).sort((a, b) => b.created_at - a.created_at);
+  if (hits.length) { const c = JSON.parse(hits[0].content); throw new Error(`${domain} does not let browsers read its NIP-05 file, so the name cannot be verified here. A profile on the relays claims it: "${c.display_name || c.name || '?'}", ${T.nip19.npubEncode(hits[0].pubkey)}. If that is the right person, paste that npub into the "to" field and send again.`); }
+  throw new Error(`${domain} does not let browsers read its NIP-05 file and no profile claiming ${to} was found; paste their npub instead`);
 }
 document.getElementById('go_profile').onclick = async () => { out.textContent = ''; try {
   const c = {}; for (const k of ['name', 'display_name', 'about', 'website', 'picture', 'nip05']) { const v = document.getElementById('p_' + k).value.trim(); if (v) c[k] = v; }
