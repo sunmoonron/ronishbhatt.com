@@ -1,0 +1,233 @@
+// walk.js: a Nostr client with no feed. You stand inside a cube. The wall ahead is a note. The
+// other walls are doors with previews of what is through them: a reply, the author, what this
+// answers, newer, older. Flick to walk through the front door; the walk never ends because a dead
+// end jumps you to a random note from someone you follow, or from the world, and starts a new trail.
+// Everything is O(1) per step: one room rendered, five previews, the next room fetched ahead.
+// Identity, keys, relays and the cache are shared with /cube/ through the same worker and storage.
+const $ = id => document.getElementById(id);
+const NT = window.NostrTools;
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const THIN = !!(navigator.connection && (navigator.connection.saveData || /(^|-)2g$/.test(navigator.connection.effectiveType || '')));
+const DEFAULT_RELAYS = ['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.primal.net', 'wss://relay.nostr.band'];
+const HEX = /^[0-9a-f]{64}$/;
+const now = () => Math.floor(Date.now() / 1000);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const hexOf = b => Array.from(b, x => x.toString(16).padStart(2, '0')).join('');
+const bytesOf = h => new Uint8Array(h.match(/../g).map(x => parseInt(x, 16)));
+const ago = t => { const d = now() - t; if (d < 45) return 'now'; if (d < 3600) return Math.floor(d / 60) + 'm'; if (d < 86400) return Math.floor(d / 3600) + 'h'; if (d < 7 * 86400) return Math.floor(d / 86400) + 'd'; return new Date(t * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); };
+const clock = t => new Date(t * 1000).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+const store = { get(k, d) { try { const v = localStorage.getItem('cube.' + k); return v == null ? d : JSON.parse(v); } catch { return d; } }, set(k, v) { try { if (v == null) localStorage.removeItem('cube.' + k); else localStorage.setItem('cube.' + k, JSON.stringify(v)); } catch {} } };
+const toast = (msg, ms = 2200) => { const t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => { t.hidden = true; }, ms); };
+const pick = a => a[Math.floor(Math.random() * a.length)];
+
+// ---- state ----------------------------------------------------------------------------------------
+const S = {
+  me: store.get('me', null), follows: store.get('follows', []), relays: store.get('relays', DEFAULT_RELAYS), langs: store.get('langs', [(navigator.language || 'en').slice(0, 2)]), bookmarks: new Set(store.get('bookmarks', [])),
+  events: new Map(), profiles: new Map(), counts: new Map(), mine: new Map(), byAuthor: new Map(), repliesOf: new Map(), world: [], followsNotes: null,
+  room: null, doors: null, ctx: { type: 'world' }, trail: [], visited: new Set(), pool: [], moving: false, h: 600, subs: new Map(), lastJump: 0, steps: 0,
+};
+const isMe = pk => !!(S.me && S.me.pk === pk); const isFollow = pk => S.follows.includes(pk);
+const W = new Worker('/cube/worker.js?v=2'); const H = {}; W.onmessage = ({ data }) => H[data.type]?.(data); const send = m => W.postMessage(m);
+let subN = 0; const subscribe = (filters, o = {}) => { const id = o.id || 'w' + (++subN); send({ type: 'sub', id, filters, live: !!o.live, relays: o.relays || null, timeout: o.timeout || 8000 }); if (o.tag) S.subs.set(id, o.tag); return id; };
+const profileQueue = new Set(); let profileTimer = 0;
+function needProfile(pk) { if (!pk || !HEX.test(pk) || S.profiles.has(pk) || profileQueue.has(pk)) return; profileQueue.add(pk); clearTimeout(profileTimer); profileTimer = setTimeout(() => { const pks = [...profileQueue]; profileQueue.clear(); send({ type: 'profiles', pks }); }, 100); }
+const prof = pk => S.profiles.get(pk) || {};
+const name = pk => { if (!pk || !HEX.test(pk)) return pk === 'me' ? (S.me?.name || 'you') : '?'; const p = prof(pk); return p.name || (isMe(pk) ? (S.me.name || 'you') : NT.nip19.npubEncode(pk).slice(0, 12) + '…'); };
+const initial = pk => (name(pk).replace(/^@/, '')[0] || '?').toUpperCase();
+const avatarHTML = pk => { const p = prof(pk); return p.pic && !THIN ? `<span class="av" data-pk="${pk}"><img src="${esc(p.pic)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()"></span>` : `<span class="av" data-pk="${pk}">${esc(initial(pk))}</span>`; };
+
+H.cached = ({ events, profiles }) => { for (const p of profiles) S.profiles.set(p.pubkey, p); for (const ev of events) ingest(ev); if (S.room === 'home') renderHome(); };
+let profileRefresh = 0; H.profile = ({ profile }) => { const old = S.profiles.get(profile.pubkey); if (old && old.t > profile.t) return; S.profiles.set(profile.pubkey, profile); clearTimeout(profileRefresh); profileRefresh = setTimeout(refreshWalls, 150); };
+H.events = ({ sub, events }) => { let touched = false; for (const ev of events) { if (ingest(ev)) touched = true; } const tag = S.subs.get(sub); if (tag === 'pool') { for (const ev of events) if (poolWorthy(ev)) S.pool.push(ev); poolWaiters.splice(0).forEach(f => f()); } if (touched && S.room && S.room !== 'home' && (tag === S.room.id || sub === 'get' || tag === 'live')) refreshDoors(); if (touched && S.room === 'home') renderHome(); };
+H.eose = ({ sub }) => { if (S.subs.get(sub) === 'pool') poolWaiters.splice(0).forEach(f => f()); };
+H.sent = ({ id, relays }) => { setTimeout(() => toast(relays ? `sent to ${relays} relay${relays === 1 ? '' : 's'}` : 'no relay connected'), 300); };
+
+// ---- ingest and indexes ----------------------------------------------------------------------------
+function ingest(ev) {
+  if (!ev || S.events.has(ev.id)) return false; ev.tags = Array.isArray(ev.tags) ? ev.tags : [];
+  if (ev.kind === 3) { if (isMe(ev.pubkey) && ev.created_at > (S.contactsAt || 0)) { S.contactsAt = ev.created_at; S.follows = [...new Set(ev.tags.filter(t => t[0] === 'p' && HEX.test(t[1] || '')).map(t => t[1]))]; store.set('follows', S.follows); S.followsNotes = null; } return false; }
+  const target = replyTarget(ev);
+  if (ev.kind === 7 || ev.kind === 9735 || ev.kind === 6 || (ev.kind === 1 && target)) countInteraction(ev, target);
+  if (ev.kind !== 1 && ev.kind !== 6) { if (ev.kind === 7 || ev.kind === 9735) S.events.set(ev.id, { id: ev.id, kind: ev.kind, pubkey: ev.pubkey }); return false; }
+  S.events.set(ev.id, ev); needProfile(ev.pubkey);
+  let a = S.byAuthor.get(ev.pubkey); if (!a) S.byAuthor.set(ev.pubkey, a = []); a.splice(lower(a, ev.created_at), 0, ev); if (isFollow(ev.pubkey)) S.followsNotes = null;
+  if (ev.kind === 1 && target) { let r = S.repliesOf.get(target); if (!r) S.repliesOf.set(target, r = []); r.push(ev.id); }
+  if (ev.kind === 1 && !target && !botlike(ev)) { S.world.splice(lower(S.world, ev.created_at), 0, ev); if (S.world.length > 600) S.world.shift(); }
+  return true;
+}
+function lower(a, t) { let lo = 0, hi = a.length; while (lo < hi) { const mid = (lo + hi) >> 1; if (a[mid].created_at < t) lo = mid + 1; else hi = mid; } return lo; }
+function replyTarget(ev) { const es = ev.tags.filter(t => t[0] === 'e' && HEX.test(t[1] || '')); if (!es.length) return null; return (es.find(t => t[3] === 'reply') || es.find(t => t[3] === 'root') || es[es.length - 1])[1]; }
+function rootOf(ev) { const es = ev.tags.filter(t => t[0] === 'e' && HEX.test(t[1] || '')); const r = es.find(t => t[3] === 'root'); return r ? r[1] : es[0]?.[1] || null; }
+const satsOf = ev => { const b = ev.tags.find(t => t[0] === 'bolt11')?.[1] || ''; const m = b.match(/^lnbc(\d+)([munp]?)/i); if (!m) return 0; const mult = { '': 1e8, m: 1e5, u: 100, n: 0.1, p: 0.0001 }[m[2].toLowerCase()] || 1; return Math.round(Number(m[1]) * mult); };
+function countInteraction(ev, id) { if (!id) return; const c = S.counts.get(id) || { likes: 0, reposts: 0, replies: 0, zaps: 0, sats: 0, who: new Map() }; S.counts.set(id, c); if (ev.kind === 7) { c.likes++; if (isMe(ev.pubkey)) mark(id, 'liked'); } else if (ev.kind === 6) { c.reposts++; if (isMe(ev.pubkey)) mark(id, 'reposted'); } else if (ev.kind === 9735) { c.zaps++; c.sats += satsOf(ev); } else if (ev.kind === 1) c.replies++; if (ev.kind !== 1) c.who.set(ev.pubkey, (c.who.get(ev.pubkey) || 0) + (ev.kind === 9735 ? 3 : 1)); }
+function mark(id, what) { const m = S.mine.get(id) || {}; m[what] = true; S.mine.set(id, m); }
+const score = ev => { const c = S.counts.get(ev.id); return c ? c.replies * 2 + c.likes + c.reposts * 2 + c.zaps * 3 : 0; };
+const botlike = ev => { const t = ev.content || ''; if (ev.kind !== 1) return false; if (/^[\[{]/.test(t) || /channel:__|"type":|\[broadcast:/.test(t)) return true; const letters = (t.match(/\p{L}/gu) || []).length; return t.length > 20 && letters < t.length * 0.3 && !/https?:\/\//.test(t); };
+const authorNotes = pk => S.byAuthor.get(pk) || [];
+function followsNotes() { if (!S.followsNotes) { S.followsNotes = S.follows.flatMap(pk => authorNotes(pk)).sort((a, b) => a.created_at - b.created_at); } return S.followsNotes; }
+const replies = ev => (S.repliesOf.get(ev.id) || []).map(id => S.events.get(id)).filter(r => r && r.kind === 1 && !botlike(r)).sort((a, b) => score(b) - score(a) || a.created_at - b.created_at);
+
+// ---- content --------------------------------------------------------------------------------------
+const TOK = /(https?:\/\/[^\s<>"']+|nostr:[a-z0-9]+|#[\p{L}\p{N}_]{1,50}|\n)/giu;
+const IMG_RE = /\.(png|jpe?g|gif|webp|avif)$/i, VID_RE = /\.(mp4|webm|mov|m4v)$/i;
+function classify(url) { const u = url.replace(/[.,;:!?)\]]+$/, ''); const path = u.split('?')[0].split('#')[0]; if (IMG_RE.test(path)) return { kind: 'img', url: u }; if (VID_RE.test(path)) return { kind: 'vid', url: u }; return { kind: 'link', url: u }; }
+function imeta(ev) { const m = new Map(); for (const t of ev.tags) if (t[0] === 'imeta') { const o = {}; for (const kv of t.slice(1)) { const i = kv.indexOf(' '); if (i > 0) o[kv.slice(0, i)] = kv.slice(i + 1); } if (o.url) m.set(o.url, o); } return m; }
+function parse(ev) {
+  const media = [], quotes = [], meta = imeta(ev); let html = '', plain = '';
+  for (const tok of (ev.content || '').split(TOK)) {
+    if (!tok) continue;
+    if (/^https?:\/\//i.test(tok)) { const c = classify(tok); if (c.kind === 'link') { let host = ''; try { host = new URL(c.url).hostname.replace(/^www\./, ''); } catch {} html += `<a class="link" href="${esc(c.url)}" target="_blank" rel="noopener noreferrer">${esc(host || c.url.slice(0, 40))} ↗</a>`; plain += ' ' + host + ' '; } else if (media.length < 3 && !media.some(x => x.url === c.url)) media.push({ ...c, ...(meta.get(tok) || meta.get(c.url) || {}) }); continue; }
+    if (/^nostr:/i.test(tok)) { let d = null; try { d = NT.nip19.decode(tok.slice(6)); } catch {} if (!d) { html += esc(tok); continue; } if (d.type === 'npub' || d.type === 'nprofile') { const pk = d.type === 'npub' ? d.data : d.data.pubkey; needProfile(pk); html += `<span class="mn" data-pk="${pk}">@${esc(name(pk))}</span>`; plain += ' @' + name(pk); } else if (d.type === 'note' || d.type === 'nevent') { const id = d.type === 'note' ? d.data : d.data.id; if (quotes.length < 1) quotes.push(id); } else html += esc(tok); continue; }
+    if (tok[0] === '#' && tok.length > 1) { html += `<span class="tag">${esc(tok)}</span>`; plain += ' ' + tok; continue; }
+    html += esc(tok); plain += tok;
+  }
+  for (const [url, o] of meta) if (media.length < 3 && !media.some(x => x.url === url) && (o.m || '').startsWith('image')) media.push({ kind: 'img', url, ...o });
+  return { html: html.trim(), plain: plain.replace(/\s+/g, ' ').trim(), media, quotes };
+}
+const blurCache = new Map(); const B83 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz#$%*+,-.:;=?@[]^_{|}~';
+const d83 = s => { let v = 0; for (const c of s) v = v * 83 + B83.indexOf(c); return v; }; const toLin = v => { const x = v / 255; return x <= 0.04045 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); }; const toSRGB = v => { const x = Math.max(0, Math.min(1, v)); return Math.round((x <= 0.0031308 ? x * 12.92 : 1.055 * Math.pow(x, 1 / 2.4) - 0.055) * 255); }; const sPow = (v, e) => Math.sign(v) * Math.pow(Math.abs(v), e);
+function blurhash(hash) { if (blurCache.has(hash)) return blurCache.get(hash); let out = null; try { const sz = d83(hash[0]), ny = Math.floor(sz / 9) + 1, nx = (sz % 9) + 1; if (hash.length === 4 + 2 * nx * ny) { const max = (d83(hash[1]) + 1) / 166, cols = []; const v = d83(hash.slice(2, 6)); cols.push([toLin(v >> 16), toLin((v >> 8) & 255), toLin(v & 255)]); for (let i = 1; i < nx * ny; i++) { const q = d83(hash.slice(4 + i * 2, 6 + i * 2)); cols.push([sPow((Math.floor(q / 361) - 9) / 9, 2) * max, sPow((Math.floor(q / 19) % 19 - 9) / 9, 2) * max, sPow((q % 19 - 9) / 9, 2) * max]); } const w = 24, h = 24, c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'), img = g.createImageData(w, h); for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { let r = 0, gg = 0, b = 0; for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) { const k = Math.cos(Math.PI * x * i / w) * Math.cos(Math.PI * y * j / h), col = cols[i + j * nx]; r += col[0] * k; gg += col[1] * k; b += col[2] * k; } const p = 4 * (x + y * w); img.data[p] = toSRGB(r); img.data[p + 1] = toSRGB(gg); img.data[p + 2] = toSRGB(b); img.data[p + 3] = 255; } g.putImageData(img, 0, 0); out = c.toDataURL(); } } catch { out = null; } if (blurCache.size > 300) blurCache.clear(); blurCache.set(hash, out); return out; }
+function mediaHTML(media) { if (!media.length) return ''; return `<div class="media n${Math.min(2, media.length)}">` + media.slice(0, 2).map(m => { const dim = (m.dim || '').match(/^(\d+)x(\d+)$/); const ar = dim ? `--ar:${dim[1]}/${dim[2]};` : ''; const blur = m.blurhash && !THIN ? blurhash(m.blurhash) : null; const bg = blur ? `background-image:url(${blur});` : ''; if (m.kind === 'img') return `<figure class="ph" style="${ar}${bg}" data-full="${esc(m.url)}"><img src="${esc(m.url)}" alt="${esc(m.alt || '')}" decoding="async" referrerpolicy="no-referrer" onload="this.classList.add('ok')"></figure>`; return `<figure class="ph vid" style="${ar}${bg}"><video src="${esc(m.url)}" preload="metadata" playsinline loop onloadeddata="this.classList.add('ok')"></video></figure>`; }).join('') + '</div>'; }
+function quoteHTML(id) { const q = S.events.get(id); if (!q || !q.created_at) { send({ type: 'get', ids: [id] }); return `<div class="quote" data-quote="${id}">quoted note · loading</div>`; } return `<div class="quote" data-quote="${id}"><b>${esc(name(q.pubkey))}</b> · ${ago(q.created_at)}<div>${esc(parse(q).plain.slice(0, 240))}</div></div>`; }
+const STOP = { en: 'the and is are you this that with for was have not but they from what just like about your'.split(' '), es: 'que de la el en los es por un una para con del las como pero más'.split(' '), pt: 'que não de um uma para com os das dos mais mas você isso está'.split(' '), fr: 'les des est une pour dans que qui pas sur avec vous nous mais'.split(' '), de: 'und der die das ist nicht ich mit ein auf für von sie wir auch'.split(' '), it: 'che non una per con sono del della gli anche come più questo'.split(' '), nl: 'het een van niet dat met zijn voor maar ook naar'.split(' '), tr: 'bir ve bu için ile çok daha gibi ama değil'.split(' '), id: 'yang dan untuk dengan tidak ini itu dari akan saya'.split(' ') }; for (const k in STOP) STOP[k] = new Set(STOP[k]);
+function detectLang(t) { if (!t) return 'und'; const s = t.replace(/https?:\/\/\S+|@\S+|[\d\p{P}\p{S}]/gu, ' '); const n = s.replace(/\s/g, '').length; if (n < 3) return 'und'; const cnt = re => (s.match(re) || []).length; if (cnt(/[぀-ヿ]/g) / n > 0.08) return 'ja'; if (cnt(/[가-힯]/g) / n > 0.2) return 'ko'; if (cnt(/[一-鿿]/g) / n > 0.3) return 'zh'; if (cnt(/[Ѐ-ӿ]/g) / n > 0.4) return 'ru'; if (cnt(/[؀-ۿ]/g) / n > 0.4) return 'ar'; if (cnt(/[֐-׿]/g) / n > 0.4) return 'he'; if (cnt(/[฀-๿]/g) / n > 0.4) return 'th'; if (cnt(/[ऀ-ॿ]/g) / n > 0.3) return 'hi'; if (cnt(/[Ͱ-Ͽ]/g) / n > 0.4) return 'el'; const words = s.toLowerCase().split(/\s+/).filter(Boolean); let best = 'und', bh = 1; for (const [lang, set] of Object.entries(STOP)) { let h = 0; for (const w of words) if (set.has(w)) h++; if (h > bh) { bh = h; best = lang; } } if (best !== 'und') return best; return /^[\x00-\x7f\s]*$/.test(s) && words.length >= 3 ? 'en' : 'und'; }
+const trCache = new Map();
+async function translate(text, from, to) { const key = to + ':' + text.slice(0, 200); if (trCache.has(key)) return trCache.get(key); let out = null; const within = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('slow')), ms))]); try { if ('Translator' in self && from !== 'und') { const a = await within(self.Translator.availability({ sourceLanguage: from, targetLanguage: to }), 1200); if (a === 'available') { const tr = await within(self.Translator.create({ sourceLanguage: from, targetLanguage: to }), 3000); out = await within(tr.translate(text), 8000); } } } catch {} if (!out) try { const r = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=${from === 'und' ? 'auto' : from}&tl=${to}&dt=t&q=${encodeURIComponent(text.slice(0, 2000))}`); if (r.ok) { const j = await r.json(); out = (j[0] || []).map(x => x[0]).join(''); } } catch {} if (!out) try { const r = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text.slice(0, 500))}&langpair=${from === 'und' ? 'en' : from}|${to}`); const j = await r.json(); if (j.responseStatus === 200) out = j.responseData.translatedText; } catch {} if (out) trCache.set(key, out); return out; }
+
+// ---- doors: what is through each wall ----------------------------------------------------------------
+function ctxList() { return S.ctx.type === 'author' ? authorNotes(S.ctx.pk) : S.ctx.type === 'follows' ? followsNotes() : S.world; }
+function ctxNext(ev, dir) { const list = ctxList(); if (!list.length) return null; let i = list.findIndex(e => e.id === ev.id); if (i < 0) { i = lower(list, ev.created_at); if (dir < 0) i--; else i--; } for (let j = i + dir; j >= 0 && j < list.length; j += dir) { const e = list[j]; if (e.id !== ev.id && !S.visited.has(e.id) && !botlike(e)) return e; } return null; }
+function latestOf(pk, except) { const a = authorNotes(pk); for (let i = a.length - 1; i >= 0; i--) if (a[i].id !== except && !S.visited.has(a[i].id) && !botlike(a[i])) return a[i]; return null; }
+function doorsFor(ev) {
+  const reps = replies(ev).filter(r => !S.visited.has(r.id)); const mine = authorNotes(ev.pubkey); const i = mine.findIndex(e => e.id === ev.id);
+  let olderA = null; for (let j = (i < 0 ? lower(mine, ev.created_at) : i) - 1; j >= 0; j--) if (!S.visited.has(mine[j].id) && !botlike(mine[j])) { olderA = mine[j]; break; }
+  const newerCtx = ctxNext(ev, +1), olderCtx = ctxNext(ev, -1);
+  const parentId = replyTarget(ev), parent = parentId && S.events.get(parentId); const q = parse(ev).quotes[0]; const quote = q && S.events.get(q);
+  const c = S.counts.get(ev.id); let answerer = null; if (c && c.who.size) { answerer = [...c.who.entries()].sort((a, b) => b[1] - a[1]).map(x => x[0]).find(pk => pk !== ev.pubkey && !isMe(pk)); }
+  const jump = { kind: 'jump' };
+  return {
+    front: reps[0] ? { kind: 'reply', ev: reps[0] } : olderA ? { kind: 'older-author', ev: olderA } : newerCtx ? { kind: 'newer', ev: newerCtx } : jump,
+    left: { kind: 'author', pk: ev.pubkey, ev: latestOf(ev.pubkey, ev.id) },
+    right: parent && parent.created_at ? { kind: 'parent', ev: parent } : quote && quote.created_at ? { kind: 'quote', ev: quote } : reps[1] ? { kind: 'reply', ev: reps[1] } : answerer ? { kind: 'person', pk: answerer, ev: latestOf(answerer) } : jump,
+    top: newerCtx ? { kind: 'newer', ev: newerCtx } : jump, bottom: olderCtx ? { kind: 'older', ev: olderCtx } : jump,
+  };
+}
+const ROLE = { reply: 'a reply', 'older-author': 'their older note', author: 'the author', parent: 'what this answers', quote: 'the quoted note', person: 'someone who answered', newer: 'newer', older: 'older', jump: 'somewhere new' };
+const ARROW = { front: '↑', left: '←', right: '→', top: '↑', bottom: '↓' };
+function doorHTML(d, side) {
+  if (!d) return `<div class="door dim" data-side="${side}"><div class="role"><i>${ARROW[side]}</i>nothing this way</div></div>`;
+  const cls = d.kind === 'jump' ? ' jump' : (d.kind === 'newer' || d.kind === 'older') ? ' time' : '';
+  let body = '';
+  if (d.kind === 'jump') body = `<div class="s">${S.follows.length ? 'a random note from someone you follow · the trail starts over' : 'a random note from the world · the trail starts over'}</div>`;
+  else if (d.ev) { const { plain, media } = parse(d.ev); body = `<div class="w">${avatarHTML(d.ev.pubkey)}<span>${esc(name(d.ev.pubkey))}</span><span style="opacity:.6;font-weight:400;font-size:.85em">${ago(d.ev.created_at)}</span></div><div class="s">${esc(plain.slice(0, 220) || (media.length ? '[picture]' : '…'))}</div>`; }
+  else if (d.pk) body = `<div class="w">${avatarHTML(d.pk)}<span>${esc(name(d.pk))}</span></div><div class="s">${esc((prof(d.pk).about || '').slice(0, 160) || 'their notes, fetched as you step in')}</div>`;
+  return `<div class="door${cls}" data-side="${side}" role="button" tabindex="0"><div class="role"><i>${ARROW[side]}</i>${ROLE[d.kind] || d.kind}</div>${body}</div>`;
+}
+function cardHTML(ev) {
+  const { html, plain, media, quotes } = parse(ev), p = prof(ev.pubkey), c = S.counts.get(ev.id) || {}, m = S.mine.get(ev.id) || {}, lang = detectLang(plain), foreign = lang !== 'und' && !S.langs.includes(lang);
+  const target = replyTarget(ev), tp = ev.tags.find(t => t[0] === 'p' && t[1] !== ev.pubkey)?.[1];
+  return `<div class="card" data-id="${ev.id}" data-lang="${lang}"><div class="who">${avatarHTML(ev.pubkey)}<div><div class="nm" data-pk="${ev.pubkey}">${esc(name(ev.pubkey))}</div><div class="meta">${ago(ev.created_at)} · ${clock(ev.created_at)}${lang !== 'und' ? ` · <b>${lang}</b>` : ''}${p.nip05 ? ' · ✓' : ''}${target ? ` · ↩ reply${tp ? ' to ' + esc(name(tp)) : ''}` : ''}${ev.kind === 6 ? ' · ↻ repost' : ''}</div></div></div><div class="txt">${html || (media.length ? '' : '…')}</div><div class="tr" hidden></div>${mediaHTML(media)}${quotes.map(quoteHTML).join('')}<div class="acts"><button class="act" data-act="reply">↩ <span class="cnt">${c.replies || ''}</span></button><button class="act${m.reposted ? ' on' : ''}" data-act="repost">↻ <span class="cnt">${c.reposts || ''}</span></button><button class="act${m.liked ? ' on' : ''}" data-act="like">♥ <span class="cnt">${c.likes || ''}</span></button><span class="act">⚡ <span class="cnt">${c.sats ? (c.sats >= 1000 ? Math.round(c.sats / 1000) + 'k' : c.sats) : c.zaps || ''}</span></span><button class="act" data-act="translate" ${lang === 'und' ? 'hidden' : ''}>${foreign ? 'translate' : 'tr'}</button><button class="act" data-act="bookmark">${S.bookmarks.has(ev.id) ? '★' : '☆'}</button>${isMe(ev.pubkey) ? '' : `<button class="act" data-act="follow">${isFollow(ev.pubkey) ? 'following' : '+ follow'}</button>`}</div><div class="reply" hidden><textarea placeholder="your reply"></textarea><div class="row"><button class="mb" data-act="cancel">cancel</button><button class="mb pri" data-act="send">send</button></div></div></div>`;
+}
+const WALLS = ['front', 'left', 'right', 'top', 'bottom'];
+function renderRoom(el, ev, doors, facing) {
+  const d = { ...doors }; if (facing && facing !== 'front') { const back = S.trail.length ? { kind: 'back', ev: S.events.get(S.trail[S.trail.length - 1].id) } : null; const f = d[facing]; if (facing === 'left') { d.right = d.front; d.left = back; } else if (facing === 'right') { d.left = d.front; d.right = back; } else if (facing === 'top') { d.bottom = d.front; d.top = back; } else { d.top = d.front; d.bottom = back; } d.front = f; }
+  el.innerHTML = WALLS.map(w => `<div class="wall ${w}">${w === 'front' ? (facing && facing !== 'front' ? `<div style="width:60%">${doorHTML(d.front, 'front')}</div>` : cardHTML(ev) + aheadHTML(d.front)) : doorHTML(d[w], w)}</div>`).join('');
+}
+function aheadHTML(d) { const who = d?.ev ? ` · ${esc(name(d.ev.pubkey))}` : d?.pk ? ` · ${esc(name(d.pk))}` : ''; return `<div class="ahead" data-side="front"><span>↑ ahead</span> ${ROLE[d?.kind] || 'nothing'}${who}<small>enter · flick up</small></div>`; }
+function refreshDoors() { if (!S.room || S.room === 'home' || S.moving) return; S.doors = doorsFor(S.room); const A = $('roomA'); for (const w of WALLS.slice(1)) { const wall = A.querySelector('.wall.' + w); if (wall) wall.innerHTML = doorHTML(S.doors[w], w); } const ah = A.querySelector('.ahead'); if (ah) ah.outerHTML = aheadHTML(S.doors.front); const front = S.doors.front; if (front?.ev && !front.ev.fetched) prefetch(front.ev); hud(); }
+function refreshWalls() { if (!S.room || S.moving) return; if (S.room === 'home') { renderHome(); return; } refreshDoors(); const card = $('roomA').querySelector('.card'); if (card) { const nm = card.querySelector('.nm'); if (nm) nm.textContent = name(S.room.pubkey); } }
+
+// ---- moving -------------------------------------------------------------------------------------------
+function fetchContext(ev) { if (ev.fetched) return; ev.fetched = true; subscribe([{ kinds: [1, 6, 7, 9735], '#e': [ev.id], limit: 150 }, { kinds: [1], authors: [ev.pubkey], limit: 20 }], { tag: ev.id, timeout: 8000 }); const ids = [replyTarget(ev), parse(ev).quotes[0]].filter(id => id && !S.events.get(id)?.created_at); if (ids.length) send({ type: 'get', ids }); }
+function prefetch(ev) { if (ev.fetched) return; ev.fetched = true; subscribe([{ kinds: [1, 7], '#e': [ev.id], limit: 60 }, { kinds: [1], authors: [ev.pubkey], limit: 12 }], { tag: ev.id, timeout: 8000 }); const { media } = parse(ev); if (media[0]?.kind === 'img' && !THIN) { const im = new Image(); im.referrerPolicy = 'no-referrer'; im.src = media[0].url; } }
+async function through(side) {
+  if (S.moving || !S.doors) return; const d = S.doors[side]; if (!d) { toast('nothing this way'); return; } const fromCtx = S.ctx;
+  if (d.kind === 'jump') return jump(side);
+  if (d.kind === 'author' || d.kind === 'person') { let ev = d.ev || latestOf(d.pk, S.room?.id); if (!ev) { toast(`fetching ${name(d.pk)}…`); await fetchAuthor(d.pk); ev = latestOf(d.pk, S.room?.id); if (!ev) { toast('nothing from them on these relays'); return; } } S.ctx = { type: 'author', pk: d.pk }; return enter(ev, side, { fromCtx }); }
+  return enter(d.ev, side, { fromCtx });
+}
+function fetchAuthor(pk) { return new Promise(res => { const id = subscribe([{ kinds: [1], authors: [pk], limit: 15 }], { tag: 'author:' + pk, timeout: 6000 }); const prev = H.eose; H.eose = d => { prev?.(d); if (d.sub === id) { H.eose = prev; res(); } }; setTimeout(() => { if (H.eose !== prev) H.eose = prev; res(); }, 6500); }); }
+async function enter(ev, side = 'front', o = {}) {
+  if (S.moving) return; S.moving = true;
+  if (o.reset) S.trail = []; else if (S.room && S.room !== 'home' && !o.isBack) S.trail.push({ id: S.room.id, ctx: o.fromCtx || S.ctx });
+  S.visited.add(ev.id); const prev = S.room; S.room = ev; const doors = doorsFor(ev);
+  renderRoom($('roomB'), ev, doors, 'front'); fetchContext(ev);
+  if (side !== 'front' && prev && prev !== 'home' && !REDUCED) { renderRoom($('roomA'), prev, S.doors || doorsFor(prev), side); await turn(side); }
+  await dolly(); S.doors = doors; S.moving = false; refreshDoors(); hud(); if (++S.steps > 1) $('hint').classList.add('gone');
+}
+function turn(side) { return new Promise(res => { const rig = $('rig'); const rot = { left: 'rotateY(-90deg)', right: 'rotateY(90deg)', top: 'rotateX(90deg)', bottom: 'rotateX(-90deg)' }[side]; let done = false; const end = () => { if (done) return; done = true; rig.removeEventListener('transitionend', end); rig.classList.add('snap'); rig.style.transform = ''; rig.classList.remove('turn'); requestAnimationFrame(() => rig.classList.remove('snap')); res(); }; rig.classList.add('turn'); rig.addEventListener('transitionend', end); requestAnimationFrame(() => { rig.style.transform = rot; }); setTimeout(end, 520); }); }
+function dolly() { return new Promise(res => { const rig = $('rig'), A = $('roomA'), B = $('roomB'); let done = false; const end = () => { if (done) return; done = true; rig.removeEventListener('transitionend', end); rig.classList.add('snap'); rig.style.transform = ''; A.id = 'roomB'; B.id = 'roomA'; A.className = 'room next'; B.className = 'room'; A.innerHTML = ''; requestAnimationFrame(() => rig.classList.remove('snap')); res(); }; if (REDUCED) { end(); return; } rig.addEventListener('transitionend', end); requestAnimationFrame(() => { A.classList.add('passing'); rig.style.transform = `translateZ(${2 * S.h}px)`; }); setTimeout(end, 750); }); }
+function back() { if (S.moving || !S.trail.length) { if (!S.trail.length) toast('this is where the trail starts'); return; } const t = S.trail.pop(); const ev = S.events.get(t.id); if (!ev) return; S.ctx = t.ctx || S.ctx; enter(ev, 'front', { isBack: true }); }
+// ---- the jump: a dead end is never the end -----------------------------------------------------------------
+const poolWaiters = []; const poolWorthy = ev => ev.kind === 1 && !replyTarget(ev) && !botlike(ev) && !S.visited.has(ev.id) && !isMe(ev.pubkey) && ev.created_at > now() - 30 * 86400;
+function refillPool() { return new Promise(res => { if (S.follows.length) { const pks = [...new Set(Array.from({ length: 4 }, () => pick(S.follows)))]; subscribe([{ kinds: [1], authors: pks, limit: 20 }], { tag: 'pool', timeout: 6000 }); } else { subscribe([{ kinds: [1], limit: 60, until: now() - Math.floor(Math.random() * 86400) }], { tag: 'pool', timeout: 6000 }); } poolWaiters.push(res); setTimeout(res, 5000); }); }
+function takeFromPool() { S.pool = S.pool.filter(poolWorthy); if (S.pool.length) return S.pool.splice(Math.floor(Math.random() * S.pool.length), 1)[0]; const local = S.follows.length ? followsNotes().filter(poolWorthy) : S.world.filter(poolWorthy); return local.length ? pick(local.slice(-120)) : null; }
+async function jump(side = 'front') { if (S.moving) return; let ev = takeFromPool(); if (!ev) { toast('finding somewhere new…'); await refillPool(); ev = takeFromPool(); } if (!ev) { toast('the relays gave nothing yet; try again in a moment'); return; } S.ctx = { type: S.follows.length ? 'follows' : 'world' }; S.lastJump = now(); if (S.pool.length < 6) refillPool(); await enter(ev, side, { reset: true }); }
+function hud() { $('depth').textContent = S.room === 'home' ? '' : `${S.trail.length + 1} deep`; $('where').textContent = S.room === 'home' ? 'home' : S.ctx.type === 'author' ? `· walking ${name(S.ctx.pk)}'s notes` : S.ctx.type === 'follows' ? '· walking the people you follow' : '· walking the world'; $('backBtn').disabled = !S.trail.length; }
+
+// ---- home: your cube, and the first minute --------------------------------------------------------------
+function renderHome() {
+  S.room = 'home'; S.doors = null; const me = S.me; const A = $('roomA'); A.className = 'room';
+  const world = S.world.slice(-1)[0], fn = S.follows.length ? followsNotes().slice(-1)[0] : null, own = me?.pk ? latestOf(me.pk) : null;
+  const doors = { left: fn ? { kind: 'newer', ev: fn } : null, right: null, top: world ? { kind: 'newer', ev: world } : null, bottom: own ? { kind: 'older-author', ev: own } : null };
+  const front = me ? `<h1>walk</h1><p>you are standing inside a cube. the wall ahead is a note; the other walls are doors. flick up or press enter to walk through the front door. arrows take the others. a dead end jumps you somewhere new.</p><p style="color:#7a6a3c">${esc(me.name || 'you')}${me.pk ? (me.mode === 'read' ? ' · looking around without a key' : ' · with a key') : ' · without a key'} · ${S.follows.length} followed</p><div class="row"><button class="mb pri" data-home="jump">step in</button><a class="mb" href="/cube/">the feed version</a></div>` : `<h1>walk</h1><p>a client with no feed. before you step in, what should people call you?</p><input id="obName" maxlength="40" placeholder="a name" autocomplete="nickname"><div class="row"><button class="mb pri" data-home="look">look around</button><button class="mb" data-home="key">make me a key</button>${window.nostr ? '<button class="mb" data-home="ext">use my extension</button>' : ''}</div><p style="font-size:.85em">a key stays in this browser. it is shared with the feed version at /cube/.</p>`;
+  const homeDoor = (d, side, label) => d ? doorHTML(d, side).replace(/<div class="role">.*?<\/div>/, `<div class="role"><i>${ARROW[side]}</i>${label}</div>`) : `<div class="door dim" data-side="${side}"><div class="role"><i>${ARROW[side]}</i>${label}</div><div class="s">${side === 'left' ? 'follow someone and they appear here' : side === 'right' ? 'mentions need a key' : side === 'bottom' ? 'nothing of yours yet' : 'the world is loading'}</div></div>`;
+  A.innerHTML = `<div class="wall front"><div class="card home">${front}</div></div><div class="wall left">${homeDoor(doors.left, 'left', 'the people you follow')}</div><div class="wall right">${homeDoor(doors.right, 'right', 'mentions')}</div><div class="wall top">${homeDoor(doors.top, 'top', 'newest in the world')}</div><div class="wall bottom">${homeDoor(doors.bottom, 'bottom', 'your notes')}</div>`;
+  S.homeDoors = doors; hud();
+}
+async function homeAction(what) {
+  if (what === 'jump') return jump('front');
+  const nm = $('obName')?.value.trim().slice(0, 40) || 'someone'; let me = { name: nm, about: '', pic: '', mode: 'read', pk: null, sk: null };
+  if (what === 'key') { const sk = NT.generateSecretKey(); me.sk = hexOf(sk); me.pk = NT.getPublicKey(sk); me.mode = 'local'; }
+  if (what === 'ext') { try { me.pk = await window.nostr.getPublicKey(); me.mode = 'nip07'; } catch { toast('the extension said no'); } }
+  S.me = me; store.set('me', me); if (me.pk && me.mode !== 'read') publish({ kind: 0, content: JSON.stringify({ name: me.name, display_name: me.name }) }); if (me.pk) bootMe(); toast(`hello, ${me.name}`); jump('front');
+}
+function homeThrough(side) { const d = S.homeDoors?.[side]; if (!d) { toast('nothing this way yet'); return; } if (side === 'left') S.ctx = { type: 'follows' }; else if (side === 'bottom') S.ctx = { type: 'author', pk: S.me.pk }; else S.ctx = { type: 'world' }; enter(d.ev, side); }
+function goHome() { if (S.moving) return; S.trail = []; S.ctx = { type: 'world' }; renderHome(); }
+
+// ---- acting -------------------------------------------------------------------------------------------------
+async function sign(t) { const me = S.me; if (!me?.pk || me.mode === 'read') { toast('you are looking around without a key; make one at home'); return null; } const ev = { kind: t.kind, created_at: now(), tags: t.tags || [], content: t.content || '', pubkey: me.pk }; try { if (me.mode === 'nip07') return await window.nostr.signEvent(ev); return NT.finalizeEvent(ev, bytesOf(me.sk)); } catch (e) { toast('signing failed'); return null; } }
+async function publish(t) { const ev = await sign(t); if (!ev) return null; send({ type: 'publish', event: ev }); ingest(ev); return ev; }
+async function act(what, card) {
+  const ev = S.room; if (!ev || ev === 'home') return;
+  if (what === 'like') { if (S.mine.get(ev.id)?.liked) return; const r = await publish({ kind: 7, content: '+', tags: [['e', ev.id], ['p', ev.pubkey], ['k', String(ev.kind)]] }); if (r) { card.querySelector('[data-act="like"]').classList.add('on'); toast('liked'); } }
+  else if (what === 'repost') { if (S.mine.get(ev.id)?.reposted) return; const r = await publish({ kind: 6, content: JSON.stringify(ev), tags: [['e', ev.id], ['p', ev.pubkey]] }); if (r) { card.querySelector('[data-act="repost"]').classList.add('on'); toast('reposted'); } }
+  else if (what === 'reply') { const box = card.querySelector('.reply'); box.hidden = !box.hidden; if (!box.hidden) box.querySelector('textarea').focus(); }
+  else if (what === 'cancel') card.querySelector('.reply').hidden = true;
+  else if (what === 'send') { const text = card.querySelector('textarea').value.trim(); if (!text) return; const tags = []; const root = rootOf(ev); if (root && root !== ev.id) { tags.push(['e', root, '', 'root']); tags.push(['e', ev.id, '', 'reply']); } else tags.push(['e', ev.id, '', 'root']); for (const p of new Set([ev.pubkey, ...ev.tags.filter(t => t[0] === 'p' && HEX.test(t[1] || '')).map(t => t[1])])) if (!isMe(p)) tags.push(['p', p]); const r = await publish({ kind: 1, content: text, tags }); if (r) { card.querySelector('.reply').hidden = true; toast('reply sent · it is the door ahead now'); refreshDoors(); } }
+  else if (what === 'bookmark') { if (S.bookmarks.has(ev.id)) S.bookmarks.delete(ev.id); else S.bookmarks.add(ev.id); store.set('bookmarks', [...S.bookmarks]); card.querySelector('[data-act="bookmark"]').textContent = S.bookmarks.has(ev.id) ? '★' : '☆'; }
+  else if (what === 'follow') { const on = !isFollow(ev.pubkey); S.follows = on ? [ev.pubkey, ...S.follows] : S.follows.filter(p => p !== ev.pubkey); store.set('follows', S.follows); S.followsNotes = null; card.querySelector('[data-act="follow"]').textContent = on ? 'following' : '+ follow'; if (S.me?.pk && S.me.mode !== 'read') publish({ kind: 3, content: '', tags: S.follows.map(p => ['p', p]) }); toast(on ? `following ${name(ev.pubkey)}: jumps can land on them now` : 'unfollowed'); }
+  else if (what === 'translate') { const box = card.querySelector('.tr'); if (!box.hidden) { box.hidden = true; return; } const { plain } = parse(ev); const from = card.dataset.lang, to = S.langs[0] || 'en'; box.hidden = false; box.innerHTML = `<small>translating from ${esc(from)}…</small>`; card.animate([{ transform: 'rotateY(0)' }, { transform: 'rotateY(360deg)' }], { duration: 650, easing: 'ease-in-out' }); const out = await translate(plain, from, to); box.innerHTML = out ? `<small>translated from ${esc(from)}</small>${esc(out)}` : '<small>translation unavailable right now</small>'; }
+}
+
+// ---- input --------------------------------------------------------------------------------------------------
+document.addEventListener('click', e => {
+  const ah = e.target.closest('.ahead'); if (ah) { through('front'); return; }
+  const door = e.target.closest('.door'); if (door && !door.classList.contains('dim')) { const side = door.dataset.side; if (S.room === 'home') homeThrough(side); else if (side === 'front' && S.rigFacing) through(S.rigFacing); else through(side); return; }
+  const hb = e.target.closest('[data-home]'); if (hb) { homeAction(hb.dataset.home); return; }
+  const a = e.target.closest('[data-act]'); const card = e.target.closest('.card'); if (a && card) { act(a.dataset.act, card); return; }
+  const mn = e.target.closest('.mn[data-pk], .nm[data-pk], .av[data-pk]'); if (mn && S.room !== 'home') { const pk = mn.dataset.pk; if (pk === S.room?.pubkey) through('left'); else { S.doors.right = { kind: 'person', pk, ev: latestOf(pk) }; through('right'); } return; }
+  const ph = e.target.closest('.ph'); if (ph) { if (ph.classList.contains('vid')) { const v = ph.querySelector('video'); if (v.paused) { v.muted = false; v.play().catch(() => {}); ph.classList.add('playing'); } else { v.pause(); ph.classList.remove('playing'); } } else if (ph.dataset.full) { $('lightbox').innerHTML = `<img src="${esc(ph.dataset.full)}" alt="">`; $('lightbox').hidden = false; } return; }
+  const q = e.target.closest('.quote[data-quote]'); if (q) { const qe = S.events.get(q.dataset.quote); if (qe?.created_at) enter(qe, 'front'); }
+});
+$('lightbox').addEventListener('click', () => { $('lightbox').hidden = true; $('lightbox').innerHTML = ''; });
+$('backBtn').addEventListener('click', back); $('jumpBtn').addEventListener('click', () => jump('front')); $('home').addEventListener('click', goHome);
+document.addEventListener('keydown', e => {
+  if (e.target.closest('input, textarea')) { if (e.key === 'Enter' && e.target.id === 'obName') homeAction('look'); return; }
+  const k = e.key; if (k === 'Escape') { $('lightbox').hidden = true; return; }
+  if (S.room === 'home') { if (k === 'Enter' || k === ' ' || k === 'ArrowUp' && e.shiftKey) { e.preventDefault(); if (S.me) jump('front'); } else if (k === 'ArrowLeft') homeThrough('left'); else if (k === 'ArrowRight') homeThrough('right'); else if (k === 'ArrowUp') homeThrough('top'); else if (k === 'ArrowDown') homeThrough('bottom'); else if (k === 'r') jump('front'); return; }
+  if (k === 'Enter' || k === ' ' || k === 'w') { e.preventDefault(); through('front'); } else if (k === 'ArrowLeft' || k === 'a') through('left'); else if (k === 'ArrowRight' || k === 'd') through('right'); else if (k === 'ArrowUp') { e.preventDefault(); through('top'); } else if (k === 'ArrowDown') { e.preventDefault(); through('bottom'); } else if (k === 'Backspace' || k === 's') { e.preventDefault(); back(); } else if (k === 'r') jump('front'); else if (k === 'h') goHome(); else if (k === 'l') { const c = $('roomA').querySelector('.card'); if (c) act('like', c); } else if (k === 't') { const c = $('roomA').querySelector('.card'); if (c) act('translate', c); }
+});
+let wheelAt = 0; document.addEventListener('wheel', e => { if (e.target.closest('.card')) { const c = e.target.closest('.card'); if (c.scrollHeight > c.clientHeight + 4 && !((e.deltaY > 0 && c.scrollTop + c.clientHeight >= c.scrollHeight - 2) || (e.deltaY < 0 && c.scrollTop <= 0))) return; } const t = Date.now(); if (t - wheelAt < 900 || Math.abs(e.deltaY) < 30) return; wheelAt = t; if (S.room === 'home') { if (e.deltaY > 0 && S.me) jump('front'); return; } if (e.deltaY > 0) through('front'); else back(); }, { passive: true });
+let touch = null; document.addEventListener('touchstart', e => { if (e.touches.length === 1) touch = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now(), card: e.target.closest('.card') }; }, { passive: true });
+document.addEventListener('touchend', e => { if (!touch) return; const dx = e.changedTouches[0].clientX - touch.x, dy = e.changedTouches[0].clientY - touch.y; const c = touch.card; touch = null; if (Math.max(Math.abs(dx), Math.abs(dy)) < 48) return; if (Math.abs(dy) > Math.abs(dx)) { if (c && c.scrollHeight > c.clientHeight + 4 && ((dy < 0 && c.scrollTop + c.clientHeight < c.scrollHeight - 2) || (dy > 0 && c.scrollTop > 0))) return; if (S.room === 'home') { if (dy < 0 && S.me) jump('front'); return; } if (dy < 0) through('front'); else back(); } else { const side = dx < 0 ? 'right' : 'left'; if (S.room === 'home') homeThrough(side); else through(side); } }, { passive: true });
+
+// ---- size and boot --------------------------------------------------------------------------------------------
+// a box, not a cube: the far wall matches the screen's shape and leaves a tenth of the height above and below for the time doors
+function size() { const vmin = Math.min(innerWidth, innerHeight); const P = Math.max(600, Math.min(1100, Math.round(vmin * 1.15))), d = Math.round(vmin * 0.55), k = (P + d) / P; const w = Math.round(innerWidth * 0.42 * k), h = Math.round(innerHeight * 0.40 * k); S.h = d; const r = document.documentElement.style; r.setProperty('--p', P + 'px'); r.setProperty('--w', w + 'px'); r.setProperty('--h', h + 'px'); r.setProperty('--d', d + 'px'); r.setProperty('--scale', k.toFixed(3)); }
+addEventListener('resize', size); size();
+function bootMe() { if (!S.me?.pk) return; subscribe([{ kinds: [3], authors: [S.me.pk], limit: 2 }], { timeout: 8000 }); needProfile(S.me.pk); }
+send({ type: 'start', relays: S.relays, profileRelays: ['wss://purplepag.es'] });
+subscribe([{ kinds: [1], limit: 80 }], { live: true, tag: 'live', id: 'live' });
+bootMe(); renderHome(); refillPool();
+window.walk = { S, through, jump, back, enter, goHome, doorsFor, renderHome };
