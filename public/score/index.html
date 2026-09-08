@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Score</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="A Nostr feed read like a score: every person you follow is a stave, time runs left to right, replies are ties between staves, and the world runs underneath as foam. Live from the relays.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/theme.css">
+<style>
+html,body{height:100%}body{margin:0;overflow:hidden;font-family:var(--mono);background:var(--bg);color:var(--fg)}
+#app{display:grid;grid-template-rows:auto auto auto minmax(0,1fr) auto;height:100dvh}
+.bar{display:flex;flex-wrap:wrap;gap:.35rem;align-items:center;padding:.4rem .7rem;border-bottom:1px solid var(--line);background:var(--card);font-size:.7rem}
+.bar input{width:19rem;max-width:40vw;font-size:.74rem;padding:.3rem .5rem}
+.mb{background:var(--bg);border:1px solid var(--line);color:var(--mute);border-radius:.4rem;padding:.28rem .55rem;font:.64rem var(--mono);cursor:pointer;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap}.mb.on{color:var(--accent);border-color:var(--accent)}.mb.pri{background:var(--deep);color:var(--accent-ink);border-color:var(--accent);font-weight:700}.mb:disabled{opacity:.4;cursor:default}
+.bar .grow{flex:1}.bar small{color:var(--mute)}.bar b{color:var(--accent);font-weight:400}
+#note{color:var(--mute);font-size:.68rem;padding:0 .7rem;min-height:1.1rem}#note b{color:var(--accent);font-weight:400}
+#score{position:relative;overflow:auto;overscroll-behavior:contain;background:var(--bg);perspective:1100px;perspective-origin:50% 40%}
+#score.depth .stave .cards{transform-style:preserve-3d}#score.depth .card{transform:translateZ(calc(var(--z,0) * 1px))}
+#ruler{position:sticky;top:0;z-index:5;height:22px;margin-left:170px;background:linear-gradient(var(--card),var(--card) 80%,transparent);border-bottom:1px solid var(--line);overflow:hidden;font-size:.6rem;color:var(--mute)}
+#ruler span{position:absolute;top:3px;transform:translateX(-50%);white-space:nowrap}#ruler span::before{content:'';position:absolute;left:50%;top:-3px;height:3px;width:1px;background:var(--mute)}
+#staves{position:relative}
+.stave{position:relative;display:grid;grid-template-columns:170px 1fr;border-bottom:1px solid var(--line);min-height:16px}.stave.quiet{min-height:16px}.stave.quiet .who{padding:0 .5rem;font-size:.56rem;opacity:.55}.stave.quiet .who img,.stave.quiet .who i{width:12px;height:12px;font-size:.5rem}.stave.silent .who{justify-content:center;font-size:.58rem}.stave.me{background:color-mix(in srgb,var(--accent) 6%,transparent)}.stave.candidate{border-bottom-style:dashed}.stave.candidate .who{opacity:.75}
+.who{position:sticky;left:0;z-index:4;display:flex;align-items:center;gap:.45rem;padding:.25rem .5rem;background:var(--card);border-right:1px solid var(--line);font-size:.66rem;min-width:0}
+.who img,.who i{width:24px;height:24px;border-radius:50%;object-fit:cover;flex:none;background:var(--soft);display:inline-flex;align-items:center;justify-content:center;font-style:normal;color:var(--accent);font-size:.7rem}
+.who .n{color:var(--fg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.who .u{color:var(--accent);font-size:.6rem;margin-left:auto;flex:none}.who .u:empty{display:none}
+.who button{background:none;border:0;color:var(--mute);font:.58rem var(--mono);cursor:pointer;padding:.1rem .2rem;flex:none;opacity:0}.who:hover button,.who button:focus-visible{opacity:1}.who button:hover{color:var(--accent)}
+.cards{position:relative;overflow:visible;min-height:inherit}
+.card{position:absolute;top:4px;width:230px;box-sizing:border-box;background:var(--card);border:1px solid var(--line);border-radius:.5rem;padding:.35rem .5rem;font-size:.7rem;line-height:1.35;cursor:pointer;overflow:hidden;transition:box-shadow .15s}.card:hover,.card:focus-visible{border-color:var(--accent);z-index:3;outline:none}
+.card .t{color:var(--fg);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}.card .m{display:flex;gap:.5rem;font-size:.58rem;color:var(--mute);margin-top:.2rem;white-space:nowrap;overflow:hidden}.card .m b{color:var(--accent);font-weight:400}
+.card.unread{border-left:3px solid var(--mint)}.card.tome{box-shadow:0 0 0 1px #e9c46a inset}.card.reply .t::before{content:'↩ ';color:var(--mute)}.card.repost .t::before{content:'↻ ';color:var(--mute)}
+.card .pic{float:right;width:44px;height:44px;object-fit:cover;border-radius:.3rem;margin:0 0 .2rem .4rem;background:var(--soft)}
+.card.stack::after{content:attr(data-n);position:absolute;right:4px;top:3px;font-size:.56rem;color:var(--accent);background:var(--bg);border:1px solid var(--line);border-radius:.6rem;padding:0 .3rem}
+.chip{position:absolute;top:5px;height:18px;width:120px;box-sizing:border-box;padding:0 .35rem;border-radius:.3rem;background:var(--card);border:1px solid var(--line);font-size:.58rem;line-height:16px;color:var(--fg);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer}.chip.unread{border-left:2px solid var(--mint)}.chip.tome{border-color:#e9c46a}.chip:hover{border-color:var(--accent);z-index:3}
+canvas#ties,canvas#ticks{position:absolute;left:170px;top:0;pointer-events:none}canvas#ties{z-index:2}
+#seenBand{position:absolute;top:0;bottom:0;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--mint) 7%,transparent) 8%);border-left:1px dashed var(--mint);pointer-events:none;z-index:1}
+#nowLine{position:absolute;top:0;bottom:0;width:1px;background:var(--accent);opacity:.6;pointer-events:none;z-index:1}#nowLine::after{content:'now';position:absolute;top:24px;left:4px;font-size:.55rem;color:var(--accent)}
+#foam{border-top:1px solid var(--line);background:var(--card);height:118px;display:grid;grid-template-columns:170px 1fr;font-size:.64rem}
+#foam .who{border-right:1px solid var(--line);flex-direction:column;align-items:flex-start;justify-content:center;gap:.2rem;position:static}#foam .who small{color:var(--mute);font-size:.58rem;line-height:1.3}
+#foamList{overflow:hidden;position:relative;padding:.2rem .5rem;display:flex;flex-direction:column;justify-content:flex-end}
+#foamList p{margin:0;flex:none;line-height:1.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--mute);animation:rise .3s ease}#foamList p b{color:var(--fg);font-weight:400}#foamList p button{background:none;border:0;color:var(--accent);font:.58rem var(--mono);cursor:pointer;padding:0 .3rem}#foamList p.cand b{color:var(--accent)}
+@keyframes rise{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+#panel{position:fixed;right:0;top:0;bottom:0;width:min(30rem,92vw);background:var(--card);border-left:1px solid var(--line);z-index:20;overflow:auto;padding:.8rem 1rem;box-shadow:-10px 0 30px rgba(0,0,0,.4);font-size:.76rem}#panel[hidden]{display:none}
+#panel h3{font:.66rem var(--mono);color:var(--accent);margin:0 0 .5rem;font-weight:400;display:flex;gap:.6rem;align-items:center}#panel h3 .x{margin-left:auto;cursor:pointer;color:var(--mute)}
+#panel article{border:1px solid var(--line);border-radius:.5rem;padding:.5rem .6rem;margin:.4rem 0;line-height:1.45;word-break:break-word}#panel article.reply{margin-left:1rem;color:var(--mute)}#panel article .h{font-size:.6rem;color:var(--mute);margin-bottom:.2rem}#panel article .h b{color:var(--accent);font-weight:400}#panel article img{max-width:100%;border-radius:.3rem;display:block;margin-top:.3rem}
+#text{overflow:auto;padding:.6rem;font-size:.7rem}#text[hidden]{display:none}#text table{border-collapse:collapse;width:100%}#text th,#text td{border:1px solid var(--line);padding:.2rem .35rem;text-align:left;vertical-align:top}#text th{color:var(--accent);font-weight:400;position:sticky;top:0;background:var(--card)}#text td.c{text-align:center;color:var(--mute);min-width:1.4rem}#text td.last{color:var(--fg);max-width:32rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#tip{position:fixed;pointer-events:none;z-index:30;background:var(--card);border:1px solid var(--line);border-radius:.5rem;padding:.4rem .6rem;font-size:.66rem;max-width:20rem;opacity:0;transition:opacity .1s}#tip.on{opacity:1}#tip b{color:var(--accent);font-weight:400}
+@media (max-width:640px){.stave{grid-template-columns:110px 1fr}#ruler,canvas#ties,canvas#ticks{margin-left:110px;left:110px}#foam{grid-template-columns:110px 1fr}.bar input{max-width:55vw}}
+</style>
+</head>
+<body class="rb">
+<div id="app">
+<nav class="rb-bar"><a href="/"><img src="/favicon.svg" alt="">ronishbhatt.com</a><span class="sep">/</span><span>score</span><span class="grow"></span><span class="tag">live</span></nav>
+<div class="bar">
+  <input id="npub" placeholder="your npub: the people you follow become staves" aria-label="npub"><button class="mb pri" id="loadBtn">open</button><button class="mb" id="worldBtn" title="no key: the world alone, follow people out of the foam">no key</button>
+  <span class="grow"></span>
+  <button class="mb" data-zoom="1800">30 min</button><button class="mb on" data-zoom="10800">3 h</button><button class="mb" data-zoom="86400">day</button><button class="mb" data-zoom="604800">week</button><button class="mb" id="nowBtn">now</button>
+  <span class="grow"></span>
+  <small id="unread"></small><button class="mb" id="readBtn" title="everything before now is read">mark read</button><button class="mb" id="mergeBtn" title="all staves as one: the flat feed">merge</button><button class="mb" id="depthBtn" title="notes that got answers come forward">depth</button><button class="mb" id="textBtn">text</button><button class="mb" id="forgetBtn" title="clear what this device remembers about this feed">forget</button>
+</div>
+<div id="note">nothing open</div>
+<div id="score" tabindex="0" aria-label="the score: staves are people, time runs left to right">
+  <div id="ruler"></div>
+  <div id="staves" role="grid" aria-label="staves"></div>
+  <canvas id="ticks"></canvas><canvas id="ties"></canvas><div id="seenBand" hidden></div><div id="nowLine"></div>
+</div>
+<section id="text" hidden aria-label="text mode"></section>
+<div id="foam"><div class="who"><span>the world</span><small id="foamNote">the firehose, one line each</small></div><div id="foamList" aria-live="off"></div></div>
+</div>
+<aside id="panel" hidden aria-label="thread"></aside>
+<div id="tip"></div>
+<script src="/vendor/nostr-tools-2.25.2.bundle.js"></script>
+<script type="module" src="./score.js"></script>
+</body>
+</html>
