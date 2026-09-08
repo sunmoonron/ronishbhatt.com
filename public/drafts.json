@@ -23,7 +23,7 @@
   {
    "kind": 30078,
    "d": "archive",
-   "content": "{\"slug\": \"archive\", \"type\": \"section\", \"title\": \"Everything else\", \"summary\": \"everything else: older experiments that still work\", \"order\": \"0\", \"display\": \"details\", \"body\": \"- [Bitcoin Key Directory](/bitcoin.html): every private key there is, one page at a time.\\n- [NOSTR ORBIT](/projects/html.html): your Nostr footprint anchored to Bitcoin block heights, a prototype.\\n- [Context Dilution](/gpt.html): a real GPT-2 in your browser, and what distractors do to its next-word odds.\\n- [The Droste brush](/proto1.html) and [Zeno's agreement](/proto5.html): two recursive toys.\"}"
+   "content": "{\"slug\": \"archive\", \"type\": \"section\", \"title\": \"Everything else\", \"summary\": \"everything else: older experiments that still work\", \"order\": \"0\", \"display\": \"details\", \"body\": \"- [Bitcoin Key Directory](/bitcoin.html): every private key there is, one page at a time.\\n- [NOSTR ORBIT](/orbit/): your Nostr footprint anchored to Bitcoin block heights, a prototype.\\n- [Context Dilution](/gpt.html): a real GPT-2 in your browser, and what distractors do to its next-word odds.\\n- [The Droste brush](/proto1.html) and [Zeno's agreement](/proto5.html): two recursive toys.\"}"
   },
   {
    "kind": 30078,

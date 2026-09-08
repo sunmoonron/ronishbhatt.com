@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>NOSTR ORBIT, Timechain Analytics</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root {
+      --bg:     #0a0a0a;
+      --card:   #111118;
+      --border: #1c1c2e;
+      --accent: #f7931a;
+      --green:  #22c55e;
+      --blue:   #38bdf8;
+      --purple: #a78bfa;
+      --text:   #e5e7eb;
+      --muted:  #6b7280;
+      --mono:   'SF Mono', Monaco, 'Fira Code', monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ─────────────────────────────────────────────────── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.25rem 2rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .logo { display: flex; align-items: center; gap: 0.75rem; }
+    .logo-icon {
+      width: 34px; height: 34px;
+      background: var(--accent);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 0.95rem; color: #000;
+      flex-shrink: 0;
+    }
+    .logo h1 {
+      font-size: 1.1rem; font-weight: 800; letter-spacing: 0.14em;
+      background: linear-gradient(90deg, var(--accent), var(--blue));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .logo p { font-size: 0.65rem; color: var(--muted); font-family: var(--mono); letter-spacing: 0.07em; }
+    .header-right { font-family: var(--mono); font-size: 0.7rem; color: var(--muted); text-align: right; line-height: 1.6; }
+    .header-right a { color: var(--accent); text-decoration: none; }
+
+    /* ── HERO ───────────────────────────────────────────────────── */
+    .hero {
+      max-width: 660px; margin: 0 auto;
+      padding: 3.5rem 2rem 2rem; text-align: center;
+    }
+    .hero h2 { font-size: 2.1rem; font-weight: 800; line-height: 1.2; margin-bottom: 0.75rem; }
+    .hero h2 em { font-style: normal; color: var(--accent); }
+    .hero p { color: var(--muted); font-size: 0.9rem; line-height: 1.7; margin-bottom: 2rem; }
+    .input-row { display: flex; gap: 0.5rem; }
+    .input-row input {
+      flex: 1; background: var(--card); border: 1px solid var(--border);
+      border-radius: 0.5rem; padding: 0.75rem 1rem;
+      color: var(--text); font-size: 0.85rem; font-family: var(--mono);
+      transition: border-color 0.15s;
+    }
+    .input-row input:focus { outline: none; border-color: var(--accent); }
+    .input-row input::placeholder { color: var(--muted); }
+    .btn {
+      background: var(--accent); border: none; border-radius: 0.5rem;
+      padding: 0.75rem 1.4rem; font-weight: 700; font-size: 0.85rem;
+      color: #000; cursor: pointer; letter-spacing: 0.06em;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .btn:hover { opacity: 0.88; }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+    .hint { margin-top: 0.75rem; font-size: 0.7rem; color: var(--muted); font-family: var(--mono); }
+    .hint a { color: var(--accent); cursor: pointer; text-decoration: underline; }
+
+    /* ── STATUS / LOADING ───────────────────────────────────────── */
+    #status {
+      text-align: center; padding: 0.5rem; min-height: 2rem;
+      font-family: var(--mono); font-size: 0.78rem; color: var(--accent);
+    }
+    .loader { display: none; justify-content: center; padding: 2.5rem; }
+    .loader.on { display: flex; }
+    .rings {
+      position: relative; width: 72px; height: 72px;
+    }
+    .rings span {
+      position: absolute; inset: 0; border: 2px solid transparent; border-radius: 50%;
+      border-top-color: var(--accent);
+      animation: spin 1.4s linear infinite;
+    }
+    .rings span:nth-child(2) { inset: 12px; border-top-color: var(--blue); animation-duration: 1s; animation-direction: reverse; }
+    .rings span:nth-child(3) { inset: 24px; border-top-color: var(--purple); animation-duration: 0.7s; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── DASHBOARD ──────────────────────────────────────────────── */
+    #dashboard { display: none; padding: 0 2rem 4rem; max-width: 1200px; margin: 0 auto; }
+    #dashboard.on { display: block; }
+
+    .profile-bar {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 0.75rem; padding: 1rem 1.5rem;
+      display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+      margin-bottom: 1.25rem;
+    }
+    .profile-bar .npub-info { flex: 1; }
+    .profile-bar .npub-info strong { display: block; font-size: 0.875rem; margin-bottom: 0.15rem; }
+    .profile-bar .npub-info span { font-family: var(--mono); font-size: 0.7rem; color: var(--muted); }
+    .og-badge {
+      padding: 0.3rem 0.8rem; border-radius: 2rem;
+      font-size: 0.75rem; font-weight: 600; border: 1px solid; white-space: nowrap;
+    }
+    .est-note { font-family: var(--mono); font-size: 0.65rem; color: var(--muted); }
+
+    /* stat cards */
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap: 1rem; margin-bottom: 1.25rem; }
+    .sc {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 0.75rem; padding: 1.2rem;
+    }
+    .sc .lbl { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; font-family: var(--mono); margin-bottom: 0.4rem; }
+    .sc .val { font-size: 1.7rem; font-weight: 800; font-family: var(--mono); line-height: 1; }
+    .sc .sub { font-size: 0.67rem; color: var(--muted); margin-top: 0.3rem; }
+
+    /* main grid */
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 1.25rem; }
+    @media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } }
+
+    .panel { background: var(--card); border: 1px solid var(--border); border-radius: 0.75rem; overflow: hidden; }
+    .ph {
+      padding: 0.9rem 1.2rem; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .ph h3 { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); font-family: var(--mono); }
+    .ph span { font-size: 0.65rem; color: var(--muted); font-family: var(--mono); }
+    .pb { padding: 1.2rem; }
+
+    canvas#orbitCanvas { width: 100%; aspect-ratio: 1; display: block; cursor: crosshair; }
+    canvas#tlCanvas    { width: 100%; height: 130px; display: block; }
+
+    /* era bars */
+    .era-list { display: flex; flex-direction: column; gap: 0.55rem; }
+    .era-row  { display: flex; align-items: center; gap: 0.65rem; font-size: 0.78rem; }
+    .era-dot  { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+    .era-name { min-width: 88px; font-family: var(--mono); font-size: 0.72rem; }
+    .era-track { flex: 1; height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+    .era-fill  { height: 100%; border-radius: 3px; transition: width 0.9s cubic-bezier(.4,0,.2,1); }
+    .era-ct    { font-family: var(--mono); font-size: 0.68rem; color: var(--muted); min-width: 2.8rem; text-align: right; }
+
+    /* kind grid */
+    .kind-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; margin-top: 0.2rem; }
+    .ki { text-align: center; padding: 0.65rem; background: var(--bg); border-radius: 0.5rem; }
+    .ki .kv { font-size: 1.15rem; font-weight: 700; font-family: var(--mono); }
+    .ki .kl { font-size: 0.62rem; color: var(--muted); margin-top: 0.15rem; }
+
+    /* tooltip */
+    #tip {
+      position: fixed; pointer-events: none; z-index: 999;
+      background: #1a1a2e; border: 1px solid var(--border); border-radius: 0.5rem;
+      padding: 0.55rem 0.75rem; font-size: 0.7rem; font-family: var(--mono);
+      color: var(--text); max-width: 230px;
+      opacity: 0; transition: opacity 0.12s;
+    }
+    #tip.on { opacity: 1; }
+    #tip .tip-block { color: var(--accent); margin-bottom: 3px; }
+    #tip .tip-date  { color: var(--muted); margin-bottom: 5px; font-size: 0.65rem; }
+    #tip .tip-text  { color: var(--text); word-break: break-word; }
+    #tip { max-width: 290px; }
+    #tipMedia { display: flex; gap: 4px; }
+    #tipMedia:not(:empty) { margin-top: 6px; }
+    #tipMedia img { height: 72px; max-width: 136px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border); }
+    canvas#orbitCanvas { touch-action: none; }
+    #orbitWrap.voxel canvas#orbitCanvas { aspect-ratio: 4 / 5; }
+    canvas#orbitCanvas.armed { box-shadow: 0 0 0 2px var(--accent) inset; cursor: grab; }
+    .viewpanel { margin-bottom: 1.25rem; }
+    #orbitWrap { padding: 0.75rem 0.75rem 0.25rem; }
+    #orbitWrap canvas#orbitCanvas { width: 100%; aspect-ratio: 16 / 10; max-height: 78vh; display: block; }
+    #orbitWrap.voxel canvas#orbitCanvas { aspect-ratio: 16 / 9; }
+    #scrubRow { padding: 0 0.75rem; }
+    canvas#tlCanvas { width: 100%; height: 76px; display: block; cursor: pointer; }
+    .crumb { padding: 0.5rem 0.9rem 0; font: 0.62rem var(--mono); color: var(--muted); }
+    .crumb[hidden] { display: none; }
+    .crumb b { color: var(--accent); font-weight: 400; }
+    .crumb a { color: var(--text); cursor: pointer; text-decoration: underline dotted; }
+    .caption { display: grid; grid-template-columns: auto 1fr; gap: 0.9rem; align-items: center; margin: 0.45rem 0.75rem 0; padding: 0.55rem 0.8rem; background: var(--bg); border: 1px solid var(--border); border-left: 3px solid #e9c46a; border-radius: 0.5rem; font-size: 0.8rem; min-height: 3.2rem; }
+    .caption[hidden] { display: none; }
+    .caption .cwhen { font: 0.62rem/1.5 var(--mono); color: var(--accent); white-space: pre; }
+    .caption .ctext { color: var(--text); line-height: 1.45; max-height: 3.6em; overflow: hidden; word-break: break-word; }
+    .legend { display: flex; flex-wrap: wrap; gap: 0.4rem 0.9rem; padding: 0.55rem 0.9rem 0; font: 0.62rem var(--mono); color: var(--muted); }
+    .legend[hidden] { display: none; }
+    .legend .lk::before { content: ''; display: inline-block; width: 9px; height: 9px; border-radius: 2px; background: var(--k); margin-right: 5px; vertical-align: -1px; }
+    .legend .dimk::before { background: #1a3f2c; opacity: .6; }
+    .legend .mining::before { background: none; border: 1px dashed var(--mint); box-sizing: border-box; }
+    @media (max-width: 640px) { .caption { grid-template-columns: 1fr; gap: 0.3rem; } }
+    .modes { display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap; }
+    .mb { background: var(--bg); border: 1px solid var(--border); color: var(--muted); border-radius: 0.4rem; padding: 0.25rem 0.55rem; font: 0.62rem var(--mono); cursor: pointer; letter-spacing: 0.06em; text-transform: uppercase; }
+    .mb.on { color: var(--accent); border-color: var(--accent); }
+    #playBtn { background: var(--deep); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
+    #playBtn:hover { background: var(--accent); color: var(--accent-ink); }
+    .mb:hover { color: var(--text); }
+    .mb[hidden] { display: none; }
+    #timeRow { display: flex; align-items: center; gap: 0.6rem; padding: 0 0.9rem 0.6rem; font: 0.6rem var(--mono); color: var(--muted); }
+    #timeRow[hidden] { display: none; }
+    #timeSlider { flex: 1; accent-color: var(--accent); min-width: 0; }
+    .hint-row { padding: 0 0.9rem 0.7rem; font: 0.62rem var(--mono); color: var(--muted); }
+    #focus { position: fixed; right: 1rem; bottom: 1rem; width: min(440px, calc(100vw - 2rem)); max-height: 70vh; overflow: auto; background: var(--card); border: 1px solid var(--accent); border-radius: 0.75rem; padding: 1rem 1.1rem; z-index: 1200; font-size: 0.82rem; line-height: 1.55; box-shadow: 0 20px 50px -20px #000; }
+    #focus[hidden] { display: none; }
+    #focus .fh { display: flex; justify-content: space-between; gap: 0.5rem; align-items: center; font: 0.65rem var(--mono); color: var(--accent); margin-bottom: 0.4rem; }
+    #focus .fh button { background: none; border: 0; color: var(--muted); font-size: 1rem; cursor: pointer; }
+    #focus .fd { font: 0.62rem var(--mono); color: var(--muted); margin-bottom: 0.6rem; }
+    #focus .ft { white-space: pre-wrap; word-break: break-word; }
+    #focus .ft a { color: var(--accent); }
+    #focus .fm { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; }
+    #focus .fm:not(:empty) { margin-top: 0.6rem; }
+    #focus .fm img { width: 100%; border-radius: 0.4rem; border: 1px solid var(--border); }
+    #focus .fl { margin-top: 0.6rem; font: 0.65rem var(--mono); }
+    #focus .fl a { color: var(--accent); margin-right: 0.8rem; }
+    .oicon { width: 40px; height: 40px; border-radius: 9px; flex-shrink: 0; background: #101318; }
+    .oicon-wrap { display: flex; align-items: center; gap: 0.5rem; font: 0.62rem var(--mono); color: var(--muted); line-height: 1.5; }
+    .oicon-wrap a { color: var(--accent); cursor: pointer; }
+    #blocksPanel { margin-bottom: 1.25rem; }
+    .blk-row { display: flex; align-items: flex-start; gap: 30px; overflow-x: auto; padding: 38px 28px 18px; perspective: 1100px; perspective-origin: 50% 30%; --tilt: 0deg; scrollbar-width: thin; }
+    .blk { flex: 0 0 auto; width: 96px; cursor: pointer; transition: opacity .25s; }
+    .blk.faint { opacity: .3; }
+    .cube { position: relative; width: 96px; height: 96px; transform-style: preserve-3d; transform: rotateY(calc(-24deg + var(--tilt))) rotateX(-12deg); transition: transform .25s; }
+    .blk:hover .cube, .cube.open { transform: rotateY(calc(-24deg + var(--tilt))) rotateX(-12deg) translateZ(26px); }
+    .cube .f { position: absolute; left: 0; top: 0; width: 96px; height: 96px; border: 1px solid color-mix(in srgb, var(--c) 45%, transparent); background: var(--c); }
+    .cube .front { overflow: hidden; background: #0b0e0d; }
+    .cube .front canvas { width: 100%; height: 100%; display: block; }
+    .cube .top { height: var(--d); transform-origin: top; transform: rotateX(-90deg); background: color-mix(in srgb, var(--c) 70%, #fff 8%); filter: brightness(1.15); }
+    .cube .side { width: var(--d); left: auto; right: 0; transform-origin: right; transform: rotateY(-90deg); filter: brightness(.55); }
+    .cube.open .f { box-shadow: 0 0 0 2px var(--mint), 0 0 26px color-mix(in srgb, var(--accent) 50%, transparent); }
+    .cube.mining .f { border-style: dashed; background: transparent; }
+    .cube.mining .front { background: rgba(125,211,168,.06); }
+    .cube.mining .fill { position: absolute; left: 0; right: 0; bottom: 0; background: color-mix(in srgb, var(--accent) 35%, transparent); border-top: 1px dashed var(--accent); }
+    .blk-label { margin-top: 26px; font: 0.6rem var(--mono); color: var(--muted); line-height: 1.5; text-align: center; }
+    .blk-label .l1 { color: var(--text); }
+    .blk-label .l2 { color: var(--accent); }
+    .blk-divider { flex: 0 0 1px; align-self: stretch; border-left: 1px dashed var(--border); margin: 0 4px; }
+    .blk-open { border-top: 1px solid var(--border); padding: 0.9rem 1rem 1rem; }
+    .blk-open[hidden] { display: none; }
+    .bh { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; flex-wrap: wrap; margin-bottom: 0.7rem; }
+    .bt .b1 { font: 700 0.95rem var(--mono); color: var(--text); }
+    .bt .b2 { font: 0.68rem var(--mono); color: var(--accent); margin-top: 0.15rem; }
+    .bt .b3 { font: 0.64rem var(--mono); color: var(--muted); margin-top: 0.15rem; }
+    .bl { display: flex; gap: 0.5rem; align-items: center; font: 0.65rem var(--mono); }
+    .bl a { color: var(--accent); }
+    .bm { position: relative; width: 100%; height: clamp(300px, 46vw, 540px); background: #0b0e0d; border: 1px solid var(--border); border-radius: 0.5rem; overflow: hidden; }
+    .tile { position: absolute; box-sizing: border-box; border: 1px solid #0b0e0d; overflow: hidden; cursor: pointer; transition: transform .55s cubic-bezier(.2,.8,.2,1), opacity .4s, filter .2s; }
+    .tile:hover { filter: brightness(1.25); z-index: 2; outline: 1px solid var(--mint); }
+    .tile.dim { opacity: .18; }
+    .tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .tile.media { border: 2px solid #e9c46a; }
+    .tile .tx { padding: 4px 5px; font: 0.62rem/1.35 var(--mono); color: #08150e; word-break: break-word; overflow: hidden; max-height: 100%; }
+    .tile .badge { position: absolute; right: 3px; bottom: 3px; font: 0.56rem var(--mono); color: var(--mint); background: rgba(11,14,13,.8); padding: 1px 5px; border-radius: 999px; }
+    .bempty { padding: 2rem; font: 0.7rem var(--mono); color: var(--muted); text-align: center; }
+    @media (max-width: 760px) { .blk, .cube, .cube .f { width: 78px; } .cube, .cube .f { height: 78px; } .blk-row { gap: 22px; } }
+    .tstack { display: grid; gap: 2px; font: 0.66rem/1.35 var(--mono); }
+    .tstack .tr { display: grid; grid-template-columns: 1.1rem 1fr; gap: 0.35rem; align-items: baseline; }
+    .tstack .tr b { font-weight: 400; text-align: center; opacity: .8; }
+    .tstack .chain { color: var(--accent); }
+    .tstack .human { color: var(--text); }
+    .tstack .raw { color: var(--muted); }
+    .tstack .tr span { white-space: nowrap; }
+    .tstack.now { text-align: left; margin-top: 0.35rem; min-width: 21rem; }
+    .header-right { line-height: 1.4; flex-shrink: 0; }
+    @media (max-width: 640px) { .tstack.now { min-width: 0; } .tstack.now .tr span { white-space: normal; } }
+    #tipWhen:not(:empty) { margin: 3px 0 6px; }
+    #focus .fd .tstack { font-size: 0.64rem; }
+    .blk-caps { display: flex; justify-content: space-between; padding: 0.6rem 1.2rem 0; font: 0.6rem var(--mono); color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+    .blk:focus-visible { outline: none; } .blk:focus-visible .cube .f { box-shadow: 0 0 0 2px var(--accent); }
+    .blegend { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.9rem; margin-top: 0.45rem; font: 0.62rem var(--mono); color: var(--muted); }
+    .blegend .lk::before { content: ''; display: inline-block; width: 9px; height: 9px; border-radius: 2px; background: var(--k); margin-right: 5px; vertical-align: -1px; }
+    .blegend .lscale { display: inline-flex; align-items: center; gap: 5px; }
+    .blegend .lbar { width: 70px; height: 7px; border-radius: 4px; background: linear-gradient(90deg, #2b6849, #5ab384, #a4e9bf); }
+    .bstrip { position: relative; height: 46px; margin: 0 0 6px; border-bottom: 1px solid var(--border); }
+    .bstrip .tick { position: absolute; bottom: 0; width: 1px; height: 6px; background: var(--border); }
+    .bstrip .tick.major { height: 12px; background: var(--muted); }
+    .bstrip .tick .tl { position: absolute; top: -14px; left: 3px; white-space: nowrap; font: 0.58rem var(--mono); color: var(--muted); }
+    .bstrip .tick:last-of-type .tl, .bstrip .tick:nth-of-type(15) .tl { left: auto; right: 3px; }
+    .bstrip .bev { position: absolute; bottom: 0; width: 2px; margin-left: -1px; opacity: .85; cursor: pointer; transition: transform .15s, opacity .15s; }
+    .bstrip .bev:hover, .bstrip .bev.hi { transform: scaleX(3); opacity: 1; z-index: 2; box-shadow: 0 0 6px var(--mint); }
+    .tile.hi { outline: 2px solid var(--mint); z-index: 2; filter: brightness(1.2); }
+  </style>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/theme.css">
+<style id="rb-theme">body{font-family:var(--mono)}:root{--bg:#0b0e0d;--card:#111814;--border:#1f2b25;--accent:#7dd3a8;--green:#8dddae;--blue:#4ea477;--purple:#a4e9bf;--text:#e6efe9;--muted:#8aa094}</style>
+</head>
+<body class="rb">
+<nav class="rb-bar"><a href="/"><img src="/favicon.svg" alt="">ronishbhatt.com</a><span class="sep">/</span><span>nostr orbit</span><span class="grow"></span><span class="tag">project</span></nav>
+
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">₿</div>
+    <div>
+      <h1>NOSTR ORBIT</h1>
+      <p>TIMECHAIN-ANCHORED SOCIAL ANALYTICS</p>
+    </div>
+  </div>
+  <div class="header-right"><a href="/">← back to site</a><div id="now"></div><span id="tipH" hidden></span></div>
+</header>
+
+<section class="hero">
+  <h2>Your social footprint<br>on the <em>timechain</em>.</h2>
+  <p>Anchor your Nostr history to Bitcoin block heights, see which halving era you joined in, then walk it block by block. Timestamps are claims; NIP-03 proofs are counted on their own.</p>
+  <div class="input-row">
+    <input id="npubIn" type="text" placeholder="npub1..." autocomplete="off" spellcheck="false">
+    <button class="btn" id="analyzeBtn">ANALYZE</button>
+  </div>
+  <p class="hint">try: <a id="demoA">jack (npub1sg6plz...)</a> · or paste any npub · the link you get is shareable</p>
+</section>
+
+<div id="status"></div>
+
+<div class="loader" id="loader">
+  <div class="rings"><span></span><span></span><span></span></div>
+</div>
+
+<div id="dashboard">
+  <div class="profile-bar">
+    <div class="npub-info">
+      <strong id="pName">-</strong>
+      <span id="pNpub">-</span>
+    </div>
+    <span class="og-badge" id="ogBadge">-</span>
+    <span class="oicon-wrap"><img class="oicon" id="oicon" alt=""><span>your orbit as an icon<br><a id="oiconDl" download>download svg</a> · <a id="shareBtn">copy link</a></span></span>
+    <span class="est-note" id="estNote">⛓ heights interpolated inside real difficulty epochs (±5 blocks)</span>
+  </div>
+
+  <div class="stats">
+    <div class="sc"><div class="lbl">Total Events</div><div class="val" id="sTotal" style="color:var(--accent)">-</div><div class="sub" id="sSub">-</div></div>
+    <div class="sc"><div class="lbl">Blocks Active</div><div class="val" id="sBlocks" style="color:var(--blue)">-</div><div class="sub">unique blocks</div></div>
+    <div class="sc"><div class="lbl">Block Streak</div><div class="val" id="sStreak" style="color:var(--green)">-</div><div class="sub">consecutive active</div></div>
+    <div class="sc"><div class="lbl">Block Range</div><div class="val" id="sRange" style="color:var(--purple);font-size:1rem;padding-top:4px">-</div><div class="sub" id="sRangeSub">first → last</div></div>
+    <div class="sc"><div class="lbl">OTS proofs</div><div class="val" id="sOts" style="color:var(--green)">-</div><div class="sub" id="sOtsSub">NIP-03 attestations</div></div>
+    <div class="sc"><div class="lbl">Halving eras</div><div class="val" id="sEras" style="color:var(--mint);font-size:0.9rem;padding-top:6px;line-height:1.5;white-space:pre-line">-</div><div class="sub">events per era</div></div>
+  </div>
+
+  <div class="panel" id="blocksPanel">
+    <div class="ph"><h3>Your Blocks</h3><div class="modes" id="goggles"></div></div>
+    <div id="blocks"></div>
+    <div class="hint-row">one cube per difficulty epoch you were active in · thickness = how much · newest sits beside the epoch still being mined · click a cube to open it · goggles light up a kind of note across every block</div>
+  </div>
+
+  <div class="panel viewpanel">
+    <div class="ph"><h3 id="viewTitle">Orbital View</h3><div class="modes"><button class="mb on" id="modeOrbit">orbit</button><button class="mb" id="modeTower">voxels 3D</button><button class="mb" id="playBtn">▶ play</button><button class="mb" id="rateBtn" hidden title="playback speed">1 epoch/s</button><button class="mb" id="camBtn" hidden title="camera angle">top view</button><button class="mb" id="resetBtn" hidden>reset</button></div></div>
+    <div id="crumb" class="crumb" hidden></div>
+    <div id="orbitWrap"><canvas id="orbitCanvas"></canvas></div>
+    <div id="scrubRow"><canvas id="tlCanvas"></canvas></div>
+    <div id="caption" class="caption" hidden><div class="cwhen" id="capWhen"></div><div class="ctext" id="capText"></div></div>
+    <div class="legend" id="voxLegend" hidden><span class="lk" style="--k:#a4e9bf">note</span><span class="lk" style="--k:#e9c46a">media</span><span class="lk" style="--k:#b4f5d1">engaged</span><span class="lk" style="--k:#255a3f">reaction · repost</span><span class="lk dimk">dim = ahead of the playhead</span><span class="lk mining">dashed = the epoch being mined</span></div>
+    <div class="hint-row" id="viewHint">hover a dot · click for the note</div>
+  </div>
+</div>
+
+<div id="tip">
+  <div class="tip-block" id="tipBlock"></div>
+  <div class="tip-date" id="tipDate"></div>
+  <div id="tipWhen"></div>
+  <div class="tip-text" id="tipText"></div>
+  <div id="tipMedia"></div>
+</div>
+
+<div id="focus" hidden>
+  <div class="fh"><span id="fKind"></span><button id="fClose" aria-label="close">✕</button></div>
+  <div class="fd" id="fDate"></div>
+  <div class="ft" id="fText"></div>
+  <div class="fm" id="fMedia"></div>
+  <div class="fl" id="fLinks"></div>
+</div>
+
+<script src="/vendor/nostr-tools-2.25.2.bundle.js"></script>
+<script type="module">
+import { anchorEventsFast, blockToDate, addRows, setTip, tipHeight, BLOCKS_PER_EPOCH } from '/projects/js/orbit/anchor.js';
+import { computeMetrics, eraMeta }                            from '/projects/js/orbit/analytics.js';
+import { drawOrbit, hitTest, blockAngle }                     from '/projects/js/orbit/orbit.js';
+import { createVoxels }                                       from '/projects/js/orbit/voxel.js?v=4';
+import { getTipHeight, getDifficultyAdjustments }             from '/projects/js/orbit/mempool.js';
+import { createBlocks, GOGGLES, topTags, hasTag }             from '/projects/js/orbit/blocks.js?v=3';
+import { stack, nowStack, H, clock, dayShort }                from '/projects/js/orbit/time.js?v=2';
+
+const $ = id => document.getElementById(id);
+const JACK = 'npub1sg6plzptd64u62a878hep2kev88swjh3tw00gjsfl8f237lmu63q0uf63m';
+const RELAYS = ['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.primal.net'];
+const POTATO = (navigator.hardwareConcurrency || 4) <= 2 || (navigator.deviceMemory || 4) <= 2;
+const GREENS = ['#0b1a12','#10261a','#153223','#1a3f2c','#1f4c35','#255a3f','#2b6849','#327754','#3a865f','#43956b','#4ea477','#5ab384','#68c291','#79d09f','#8dddae','#a4e9bf'];
+const KINDS = { 1: 'note', 6: 'repost', 7: 'reaction' };
+const PARAMS = new URLSearchParams(location.search); // read once: the URL is rewritten after a run
+
+let anchored = [], metrics = null, dots = [], mode = 'orbit', vox = null, hover = null, sweep = 0, audio = null, npub = '', blocks = null;
+const chainChange = new Map(); // epoch start height -> difficulty change for that adjustment
+let orbitC = $('orbitCanvas');
+const wrap = $('orbitWrap'); // 2D interaction lives on the wrapper because the canvas element is swapped between views
+const tlC = $('tlCanvas'), tip = $('tip'), npubIn = $('npubIn'), analyzeBtn = $('analyzeBtn'), loader = $('loader'), dashboard = $('dashboard');
+
+// chain facts: the tip and the newest difficulty rows, awaited briefly before anchoring
+const chain = Promise.allSettled([
+  getTipHeight().then(h => { setTip(h); $('tipH').textContent = Number(h).toLocaleString(); }),
+  getDifficultyAdjustments().then(rows => { addRows(rows.map(([ts, h]) => [h, ts])); for (const [, h, , change] of rows) chainChange.set(h, change - 1); /* the API gives a ratio, 0.92 = minus 8% */ }),
+]);
+$('now').append(nowStack());
+
+$('demoA').addEventListener('click', () => { npubIn.value = JACK; run(); });
+analyzeBtn.addEventListener('click', run);
+npubIn.addEventListener('keydown', e => e.key === 'Enter' && run());
+
+function setStatus(msg) { $('status').textContent = msg; }
+
+function fetchRelay(url, filters, timeoutMs = 6000) {
+  return new Promise(resolve => {
+    const events = [], sub = 'orb_' + Math.random().toString(36).slice(2);
+    let ws, timer;
+    const done = () => { clearTimeout(timer); try { ws.close(); } catch {} resolve(events); };
+    timer = setTimeout(done, timeoutMs);
+    try { ws = new WebSocket(url); } catch { return resolve(events); }
+    ws.onopen = () => ws.send(JSON.stringify(['REQ', sub, ...filters]));
+    ws.onmessage = ({ data }) => {
+      try {
+        const msg = JSON.parse(data);
+        if (msg[0] === 'EVENT' && msg[1] === sub) events.push(msg[2]);
+        if (msg[0] === 'EOSE') done();
+      } catch {}
+    };
+    ws.onerror = () => done();
+  });
+}
+
+// up to four pages of 500 per relay, walking back with `until`; NIP-03 proofs ride on the first page
+const PAGES = 4;
+async function fetchHistory(url, hex, onPage) {
+  const out = []; let until;
+  for (let page = 0; page < PAGES; page++) {
+    const filters = [{ authors: [hex], kinds: [1, 6, 7], limit: 500, ...(until ? { until } : {}) }];
+    if (page === 0) filters.push({ authors: [hex], kinds: [1040], limit: 200 });
+    const evs = await fetchRelay(url, filters);
+    const main = evs.filter(e => e.kind !== 1040);
+    out.push(...evs); onPage?.(out.length);
+    if (main.length < 500) break;
+    until = Math.min(...main.map(e => e.created_at)) - 1;
+    if (page === PAGES - 1) out.truncated = true;
+  }
+  return out;
+}
+
+const IMG = /https?:\/\/[^\s<>"')]+\.(?:png|jpe?g|gif|webp|avif)(?:\?[^\s<>"')]*)?/gi;
+const VID = /https?:\/\/[^\s<>"')]+\.(?:mp4|webm|mov|m4v)(?:\?[^\s<>"')]*)?/gi;
+function decorate(e) {
+  e.media = (e.content?.match(IMG) || []).slice(0, 4);
+  e.videos = (e.content?.match(VID) || []).slice(0, 2);
+  return e;
+}
+
+async function run() {
+  const raw = npubIn.value.trim();
+  if (!raw) return;
+  let hex;
+  try { const d = window.NostrTools.nip19.decode(raw); if (d.type !== 'npub') throw 0; hex = d.data; }
+  catch { setStatus('⚠ invalid npub, paste a valid npub1… string'); return; }
+
+  analyzeBtn.disabled = true;
+  dashboard.classList.remove('on'); loader.classList.add('on'); closeFocus(); stopPlay();
+  if (vox) { orbitC = vox.destroy(); vox = null; }
+  setStatus('connecting to 3 relays…');
+
+  const counts = RELAYS.map(() => 0);
+  const src = PARAMS.get('src'); // a saved event file can stand in for the relays (same origin, used by the harness)
+  const batches = src && /^\/[\w./-]+\.json$/.test(src) ? [await fetch(src).then(r => r.json())] : await Promise.all(RELAYS.map((r, i) => fetchHistory(r, hex, n => {
+    counts[i] = n; setStatus(`${counts.reduce((a, b) => a + b, 0).toLocaleString()} events so far from ${counts.filter(Boolean).length} relays…`);
+  })));
+  const seen = new Set();
+  const all = batches.flat().filter(e => !seen.has(e.id) && seen.add(e.id));
+  const ots = all.filter(e => e.kind === 1040);
+  const events = all.filter(e => e.kind !== 1040).map(e => { delete e.anchor; return decorate(e); });
+
+  if (!events.length) {
+    setStatus('no events found, try a different npub or check relay connectivity');
+    loader.classList.remove('on'); analyzeBtn.disabled = false; return;
+  }
+  await Promise.race([chain, new Promise(r => setTimeout(r, 4000))]);
+  setStatus(`${events.length.toLocaleString()} events from ${batches.filter(b => b.length).length} relays, anchoring to blocks…`);
+
+  anchored = anchorEventsFast(events);
+  metrics = computeMetrics(anchored);
+  const stamped = new Set(ots.flatMap(o => o.tags.filter(t => t[0] === 'e').map(t => t[1])));
+  metrics.ots = [...stamped].filter(id => seen.has(id)).length;
+  metrics.otsTotal = ots.length;
+  metrics.truncated = batches.some(b => b.truncated);
+  npub = raw;
+  history.replaceState(null, '', '?npub=' + raw + (PARAMS.get('view') === 'orbit' ? '&view=orbit' : ''));
+
+  loader.classList.remove('on'); setStatus('');
+  render(raw, hex);
+  analyzeBtn.disabled = false;
+}
+
+const fmt = n => n?.toLocaleString() ?? '-';
+const monthYear = d => d.toLocaleString('default', { month: 'short', year: 'numeric' });
+
+function render(npub, hex) {
+  const m = metrics;
+  $('pName').textContent = `₿ ${hex.slice(0, 12)}…`;
+  $('pNpub').textContent = npub.length > 32 ? npub.slice(0, 20) + '…' + npub.slice(-8) : npub;
+  const badge = $('ogBadge');
+  badge.textContent = m.og.label; badge.style.color = badge.style.borderColor = m.og.color;
+
+  $('sTotal').textContent = fmt(m.total);
+  $('sSub').textContent = `${fmt(m.notes)} notes · ${fmt(m.reactions)} reactions${m.media ? ` · ${fmt(m.media)} with media` : ''}`;
+  $('sBlocks').textContent = fmt(m.blocksActive);
+  $('sStreak').textContent = fmt(m.maxStreak);
+  $('sRange').textContent = `${H(m.firstBlock)} → ${H(m.lastBlock)}`;
+  $('sRangeSub').textContent = `${monthYear(blockToDate(m.firstBlock))} → ${monthYear(blockToDate(m.lastBlock))}`;
+  $('sOts').textContent = fmt(m.ots);
+  $('estNote').textContent = m.truncated ? `⛓ heights interpolated inside real difficulty epochs (±5 blocks) · newest ${(PAGES * 500).toLocaleString()} events per relay, older history not fetched` : '⛓ heights interpolated inside real difficulty epochs (±5 blocks)';
+  $('sOtsSub').textContent = m.otsTotal ? `${fmt(m.otsTotal)} kind-1040 proofs published, ${fmt(m.ots)} on events here` : 'NIP-03 attestations, none published';
+  $('sEras').textContent = [...m.eraMap.entries()].sort((a, b) => a[0] - b[0]).map(([era, ct]) => `${eraMeta(era).name} · ${fmt(ct)}`).join('\n');
+  scrub = { e0: Math.min(...m.epochMap.keys()), e1: Math.floor(tipHeight() / BLOCKS_PER_EPOCH), head: null, hover: null };
+
+  // the history as an icon: 64 cells across the active span, brighter = busier; it becomes this tab's favicon
+  const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(orbitIcon());
+  $('oicon').src = url; $('oiconDl').href = url; $('oiconDl').download = `orbit-${npub.slice(5, 13)}.svg`;
+  document.querySelectorAll('link[rel="icon"]').forEach(l => { l.href = url; l.type = 'image/svg+xml'; });
+
+
+  if (!vox && !sweepRaf) mode = PARAMS.get('view') === 'orbit' ? 'orbit' : 'voxel'; // the voxel chain is the default; ?view=orbit brings the rings
+  dashboard.classList.add('on');
+  // synchronous on purpose (a background tab never gets an animation frame), and each view on its own so one cannot sink the others
+  safe(showView); safe(drawScrub); safe(buildBlocks);
+}
+function safe(fn) { try { fn(); } catch (e) { console.warn('view skipped:', e.message); } }
+document.addEventListener('visibilitychange', () => { if (!document.hidden && metrics) { safe(showView); safe(drawScrub); } });
+
+// the blocks panel: cubes per epoch, goggles, engagement fetched when a block opens
+function buildBlocks() {
+  blocks = createBlocks($('blocks'), anchored, { tip: showTip, pick, engage: engagement, change: h => chainChange.get(h), onOpen: (ep, quiet) => { if (!quiet && mode === 'voxel') vox?.flyTo(ep); }, onEngage: (ep, counts) => vox?.engage(counts) });
+  const g = $('goggles'); g.textContent = '';
+  const chips = [...Object.keys(GOGGLES).map(k => [k, GOGGLES[k]]), ...topTags(anchored).map(([t]) => ['#' + t, hasTag(t)])];
+  for (const [name, fn] of chips) {
+    const b = document.createElement('button'); b.className = 'mb' + (name === 'all' ? ' on' : ''); b.textContent = name;
+    b.addEventListener('click', () => { for (const o of g.children) o.classList.toggle('on', o === b); blocks.setGoggle(fn); vox?.setGoggle(name === 'all' ? null : fn); });
+    g.append(b);
+  }
+}
+function satsFromZap(ev) {
+  const m = /^ln(?:bc|tb|bcrt)(\d+)([munp])?1/i.exec(ev.tags.find(t => t[0] === 'bolt11')?.[1] || '');
+  if (!m) return 0;
+  return Math.round(Number(m[1]) * ({ m: 1e5, u: 1e2, n: 1e-1, p: 1e-4 }[m[2]?.toLowerCase()] ?? 1e8));
+}
+async function engagement(ids) {
+  const out = new Map(ids.map(id => [id, { replies: 0, reactions: 0, zaps: 0, sats: 0 }])), seen = new Set();
+  const batches = await Promise.all(RELAYS.map(r => fetchRelay(r, [{ kinds: [1, 7, 9735], '#e': ids, limit: 500 }], 5000)));
+  for (const ev of batches.flat()) {
+    if (seen.has(ev.id)) continue; seen.add(ev.id);
+    const targets = new Set(ev.tags.filter(t => t[0] === 'e' && out.has(t[1])).map(t => t[1]));
+    for (const id of targets) { const c = out.get(id); if (ev.kind === 7) c.reactions++; else if (ev.kind === 1) c.replies++; else { c.zaps++; c.sats += satsFromZap(ev); } }
+  }
+  return out;
+}
+
+function orbitIcon() {
+  const { firstBlock, lastBlock } = metrics, spanB = Math.max(1, lastBlock - firstBlock + 1), bins = new Array(64).fill(0);
+  for (const e of anchored) bins[Math.min(63, Math.floor((e.anchor.height - firstBlock) / spanB * 64))]++;
+  const max = Math.max(...bins);
+  const cells = bins.map((n, i) => {
+    const r = Math.floor(i / 8), c = i % 8, s = 6.5, x = 6 + c * s + 0.55, y = 6 + r * s + 0.55;
+    const idx = n ? 3 + Math.round(12 * Math.log(1 + n) / Math.log(1 + max)) : 0;
+    return `<rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="5.4" height="5.4" rx="1.4" fill="${GREENS[idx]}"/>`;
+  }).join('');
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="15" fill="#101318"/>${cells}</svg>`;
+}
+
+// views
+function showView() {
+  wrap.classList.toggle('voxel', mode === 'voxel');
+  if (mode === 'voxel') {
+    if (!vox) vox = createVoxels(orbitC, anchored, { potato: POTATO, truncated: metrics.truncated, onHover: showTip, onBlock: pickBlock, onEpoch: ep => blocks?.open(ep, true), onHead: headCaption, onView: crumbs });
+    for (const id of ['resetBtn', 'rateBtn', 'camBtn', 'voxLegend', 'crumb']) $(id).hidden = false;
+    $('viewTitle').textContent = 'Voxel Chain';
+    $('viewHint').textContent = 'every cube is a Bitcoin block: 12 × 12 make a day, 14 days make an epoch, the lit ones hold your notes · click a brick to zoom in, a cube to open its block, double-click to back out · click once to take the controls, then scroll zooms and drag orbits';
+  } else {
+    if (vox) { orbitC = vox.destroy(); vox = null; }
+    for (const id of ['resetBtn', 'rateBtn', 'camBtn', 'voxLegend', 'crumb', 'caption']) $(id).hidden = true;
+    $('viewTitle').textContent = 'Orbital View';
+    $('viewHint').textContent = 'every halving era since genesis is a ring, 12 o\'clock is the halving · hover a dot · click for the note';
+    if (orbitC.clientWidth) dots = drawOrbit(orbitC, anchored, metrics, { hover });
+  }
+  $('modeOrbit').classList.toggle('on', mode === 'orbit');
+  $('modeTower').classList.toggle('on', mode === 'voxel');
+}
+$('modeOrbit').addEventListener('click', () => { if (mode !== 'orbit') { stopPlay(); mode = 'orbit'; showView(); } });
+$('modeTower').addEventListener('click', () => { if (mode !== 'voxel') { stopPlay(); mode = 'voxel'; showView(); } });
+$('resetBtn').addEventListener('click', () => vox?.reset());
+const RATES = [1, 2, 5];
+$('rateBtn').addEventListener('click', () => { const r = RATES[(RATES.indexOf(vox?.rate() || 1) + 1) % RATES.length]; vox?.rate(r); $('rateBtn').textContent = `${r} epoch${r === 1 ? '' : 's'}/s`; });
+$('camBtn').addEventListener('click', () => { const top = $('camBtn').textContent === 'top view'; vox?.setView(top ? 'top' : 'iso'); $('camBtn').textContent = top ? 'angled view' : 'top view'; });
+
+// the scrubber under the canvas: one bar per epoch from your first to the one being mined, years and halvings marked, the playhead on top
+let scrub = null, scrubDrag = false;
+const ERA_BLOCKS = 210000;
+function drawScrub() {
+  if (!scrub || !metrics) return;
+  const c = tlC, dpr = Math.min(devicePixelRatio || 1, 2), W = c.clientWidth, Hh = c.clientHeight; if (!W || !Hh) return;
+  c.width = W * dpr; c.height = Hh * dpr; const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.fillStyle = '#0b0e0d'; g.fillRect(0, 0, W, Hh);
+  const { e0, e1 } = scrub, n = e1 - e0 + 1, bw = W / n, max = Math.max(1, ...metrics.epochMap.values()), base = Hh - 16, top = 14;
+  g.font = '9px ui-monospace, Menlo, monospace'; g.textBaseline = 'alphabetic';
+  let lastYear = null;
+  for (let k = e0; k <= e1; k++) {
+    const x = (k - e0) * bw, cnt = metrics.epochMap.get(k) || 0, era = Math.floor(k * BLOCKS_PER_EPOCH / ERA_BLOCKS), h = cnt ? Math.max(2, cnt / max * (base - top)) : 1;
+    const ahead = scrub.head != null && k * BLOCKS_PER_EPOCH > scrub.head;
+    g.fillStyle = eraMeta(era).color + (cnt ? (ahead ? '55' : 'cc') : '26'); g.fillRect(x, base - h, Math.max(1, bw - (bw > 3 ? 1 : 0)), h);
+    if (k === scrub.hover) { g.fillStyle = 'rgba(180,245,209,.14)'; g.fillRect(x, top - 4, Math.max(1, bw), base - top + 6); }
+    const y = blockToDate(k * BLOCKS_PER_EPOCH).getFullYear();
+    if (y !== lastYear) { g.fillStyle = '#8aa094'; g.fillRect(x, base, 1, 6); g.fillText(String(y), x + 3, Hh - 3); lastYear = y; }
+    if ((k * BLOCKS_PER_EPOCH) % ERA_BLOCKS < BLOCKS_PER_EPOCH && k > e0) { g.strokeStyle = '#b4f5d1'; g.setLineDash([2, 3]); g.beginPath(); g.moveTo(x, top - 2); g.lineTo(x, base); g.stroke(); g.setLineDash([]); g.fillStyle = '#b4f5d1'; g.fillText(eraMeta(era).name, x + 3, top + 6); }
+  }
+  if (scrub.hover != null) { const k = scrub.hover, h0 = k * BLOCKS_PER_EPOCH, cnt = metrics.epochMap.get(k) || 0; g.fillStyle = '#e6efe9'; const label = `E${k} · ${dayShort(blockToDate(h0))} → ${dayShort(blockToDate(h0 + BLOCKS_PER_EPOCH - 1))} · ${cnt} event${cnt === 1 ? '' : 's'}`; const tw = g.measureText(label).width, lx = Math.min(Math.max(2, (k - e0) * bw - tw / 2), W - tw - 2); g.fillText(label, lx, top - 4); }
+  if (scrub.head != null) { const x = (scrub.head / BLOCKS_PER_EPOCH - e0) * bw; g.strokeStyle = '#e9c46a'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x, top - 6); g.lineTo(x, base + 2); g.stroke(); g.fillStyle = '#e9c46a'; g.beginPath(); g.moveTo(x - 5, top - 10); g.lineTo(x + 5, top - 10); g.lineTo(x, top - 4); g.closePath(); g.fill(); }
+}
+function scrubHeight(ev) { const r = tlC.getBoundingClientRect(); if (!r.width) return null; const frac = Math.min(1, Math.max(0, (ev.clientX - r.left) / r.width)); return Math.round((scrub.e0 + frac * (scrub.e1 - scrub.e0 + 1)) * BLOCKS_PER_EPOCH); }
+tlC.addEventListener('pointermove', ev => { if (!scrub) return; const h = scrubHeight(ev); if (h == null) return; scrub.hover = Math.floor(h / BLOCKS_PER_EPOCH); if (scrubDrag) setHead(h); drawScrub(); });
+tlC.addEventListener('pointerleave', () => { if (scrub) { scrub.hover = null; drawScrub(); } });
+tlC.addEventListener('pointerdown', ev => { if (!scrub) return; scrubDrag = true; try { tlC.setPointerCapture(ev.pointerId); } catch {} setHead(scrubHeight(ev)); });
+tlC.addEventListener('pointerup', ev => { if (!scrub) return; scrubDrag = false; const h = scrubHeight(ev); if (h != null) blocks?.open(Math.floor(h / BLOCKS_PER_EPOCH), true); });
+tlC.addEventListener('dblclick', ev => { if (!scrub) return; const h = scrubHeight(ev); if (h != null && mode === 'voxel') vox?.flyTo(Math.floor(h / BLOCKS_PER_EPOCH)); });
+function setHead(h) { if (!Number.isFinite(h)) return; scrub.head = h; if (mode === 'voxel') vox?.setHead(h, true); drawScrub(); }
+
+// the caption under the canvas reads out whatever the playhead just crossed
+function headCaption(v, playing) {
+  const cap = $('caption'); cap.hidden = false;
+  const first = v.events.find(e => e.kind === 1) || v.events[0];
+  $('capWhen').textContent = `${H(v.h)} · E${v.epoch} day ${v.layer + 1}\n${clock(new Date(first.created_at * 1000))}`;
+  $('capText').textContent = v.events.map(e => e.kind === 1 ? (e.content || '').slice(0, 220) : e.kind === 6 ? '↻ repost' : `♥ ${(e.content || '+').slice(0, 4)}`).join('   ·   ');
+  if (scrub) { scrub.head = v.h; if (!headCaption.t) headCaption.t = setTimeout(() => { headCaption.t = 0; drawScrub(); }, 80); }
+  if (playing) for (const e of v.events) blip(e.kind, e.anchor.era);
+}
+function crumbs(st) {
+  const c = $('crumb'), text = `${st.level === 'chain' ? `chain · ${st.inView} epochs in view` : `${st.level} › E${st.epoch}`}${Number.isFinite(st.head) ? ` › playhead ${H(Math.round(st.head))}` : ''}`;
+  if (c.dataset.text !== text) { c.dataset.text = text; c.textContent = ''; const a = document.createElement('a'); a.textContent = 'chain'; a.addEventListener('click', () => vox?.reset()); const b = document.createElement('b'); b.textContent = text.startsWith('chain') ? text.slice(5) : ` › ${text.replace(/^\w+ › /, '')}`; c.append(a, b); }
+  if (st.head != null && scrub && scrub.head !== st.head) { scrub.head = st.head; if (!crumbs.t) crumbs.t = setTimeout(() => { crumbs.t = 0; drawScrub(); }, 120); }
+}
+document.addEventListener('keydown', e => { if (e.key === ' ' && mode === 'voxel' && vox?.state().armed && !e.target?.closest?.('input, textarea')) { e.preventDefault(); $('playBtn').click(); } });
+
+const local = ev => { const r = orbitC.getBoundingClientRect(); return [ev.clientX - r.left, ev.clientY - r.top]; };
+wrap.addEventListener('mousemove', ev => {
+  if (mode !== 'orbit' || !dots.length) return;
+  const [mx, my] = local(ev), hit = hitTest(dots, mx, my);
+  if (hit !== hover) { hover = hit; dots = drawOrbit(orbitC, anchored, metrics, { hover, sweep: sweep || null }); }
+  showTip(hit, ev);
+});
+wrap.addEventListener('mouseleave', () => { if (mode === 'orbit' && hover) { hover = null; showTip(null); dots = drawOrbit(orbitC, anchored, metrics, {}); } });
+wrap.addEventListener('click', ev => {
+  if (mode !== 'orbit' || !dots.length) return;
+  const [mx, my] = local(ev), hit = hitTest(dots, mx, my);
+  if (hit) pick(hit);
+});
+
+// tooltip: block, date, text, up to two thumbnails
+function showTip(e, ev) {
+  if (!e) { tip.classList.remove('on'); return; }
+  const media = $('tipMedia'); media.textContent = ''; const when = $('tipWhen'); when.textContent = '';
+  if (e.block) {
+    const v = e.block, first = v.events.find(x => x.kind === 1) || v.events[0];
+    $('tipBlock').textContent = `block ${H(v.h)} · ${v.n} event${v.n === 1 ? '' : 's'} · day ${v.layer + 1} of E${v.epoch}`;
+    $('tipDate').textContent = '';
+    when.append(stack(first.created_at, v.h));
+    $('tipText').textContent = v.events.map(x => x.kind === 1 ? (x.content || '').slice(0, 90) : x.kind === 6 ? '↻ repost' : `♥ ${(x.content || '+').slice(0, 4)}`).join('  ·  ').slice(0, 220);
+    for (const u of v.events.flatMap(x => x.media || []).slice(0, 2)) { const img = new Image(); img.src = u; img.loading = 'lazy'; img.decoding = 'async'; img.referrerPolicy = 'no-referrer'; media.append(img); }
+  } else if (e.brick) {
+    const b = e.brick, h0 = b.epoch * BLOCKS_PER_EPOCH;
+    $('tipBlock').textContent = `E${b.epoch} · ${H(h0)} → ${H(h0 + BLOCKS_PER_EPOCH - 1)} · ${b.n} event${b.n === 1 ? '' : 's'}${b.media ? ` · ${b.media} with media` : ''}`;
+    $('tipDate').textContent = `${blockToDate(h0).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} → ${blockToDate(h0 + BLOCKS_PER_EPOCH - 1).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })} · click to zoom in`;
+    $('tipText').textContent = '';
+  } else if (e.cluster) {
+    const c = e.cluster;
+    $('tipBlock').textContent = `epoch ${Math.floor(c.u)} · ${c.n} events${c.media ? ` · ${c.media} with media` : ''}`;
+    $('tipDate').textContent = monthYear(blockToDate(c.u * BLOCKS_PER_EPOCH)) + ' · click to zoom in';
+    $('tipText').textContent = (c.items.find(x => x.kind === 1)?.content || '').slice(0, 120);
+  } else {
+    $('tipBlock').textContent = KINDS[e.kind] || 'kind ' + e.kind;
+    $('tipDate').textContent = '';
+    when.append(stack(e.created_at, e.anchor.height));
+    $('tipText').textContent = (e.content || '[no text]').slice(0, 160) + (e.content?.length > 160 ? '…' : '');
+    for (const u of e.media.slice(0, 2)) { const img = new Image(); img.src = u; img.loading = 'lazy'; img.decoding = 'async'; img.referrerPolicy = 'no-referrer'; media.append(img); }
+  }
+  if (ev) {
+    const x = ev.clientX + 14 + 300 > innerWidth ? ev.clientX - 306 : ev.clientX + 14;
+    const y = Math.min(ev.clientY - 12, innerHeight - 200);
+    tip.style.left = x + 'px'; tip.style.top = y + 'px';
+  }
+  tip.classList.add('on');
+}
+
+// the focus card: the whole note, its media, and a way out to njump
+const URLRX = /https?:\/\/[^\s<>"']+/g;
+function pick(e) {
+  if (e.cluster) { vox?.focus(e.cluster.u); return; }
+  const f = $('focus'), meta = eraMeta(e.anchor.era);
+  $('fKind').textContent = `${KINDS[e.kind] || 'kind ' + e.kind} · id ${e.id.slice(0, 12)}…`;
+  const fd = $('fDate'); fd.textContent = ''; fd.append(stack(e.created_at, e.anchor.height));
+  const text = $('fText'); text.textContent = '';
+  const content = e.content || (e.kind === 7 ? '[reaction]' : e.kind === 6 ? '[repost]' : '[no text]');
+  let last = 0;
+  for (const mt of content.matchAll(URLRX)) {
+    text.append(content.slice(last, mt.index));
+    const a = document.createElement('a'); a.href = mt[0]; a.textContent = mt[0]; a.target = '_blank'; a.rel = 'noopener noreferrer'; text.append(a);
+    last = mt.index + mt[0].length;
+  }
+  text.append(content.slice(last));
+  const fm = $('fMedia'); fm.textContent = '';
+  for (const u of e.media) { const img = new Image(); img.src = u; img.loading = 'lazy'; img.decoding = 'async'; img.referrerPolicy = 'no-referrer'; fm.append(img); }
+  const fl = $('fLinks'); fl.textContent = '';
+  try {
+    const nevent = window.NostrTools.nip19.neventEncode({ id: e.id, author: e.pubkey, kind: e.kind });
+    const a = document.createElement('a'); a.href = 'https://njump.me/' + nevent; a.textContent = 'open on njump ↗'; a.target = '_blank'; a.rel = 'noopener noreferrer'; fl.append(a);
+  } catch {}
+  for (const v of e.videos || []) { const a = document.createElement('a'); a.href = v; a.textContent = 'video ↗'; a.target = '_blank'; a.rel = 'noopener noreferrer'; fl.append(a); }
+  f.hidden = false;
+}
+function pickBlock(v) {
+  blocks?.open(v.epoch, true); blocks?.highlight(v.events);
+  if (v.events.length === 1) pick(v.events[0]);
+}
+function closeFocus() { $('focus').hidden = true; }
+$('fClose').addEventListener('click', closeFocus);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFocus(); });
+
+// play: a sweep through the history with a blip per event (radar hand in 2D, a rising plane in 3D)
+function blip(kind, era) {
+  if (!audio) return;
+  const t = audio.currentTime;
+  if (t < blip.next) return; blip.next = t + 0.035;
+  const o = audio.createOscillator(), g = audio.createGain();
+  o.type = kind === 1 ? 'triangle' : 'sine';
+  o.frequency.value = (kind === 1 ? 440 : kind === 6 ? 330 : 660) * Math.pow(2, (era % 3) / 12) * (1 + (Math.random() - 0.5) * 0.02);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(kind === 1 ? 0.12 : 0.05, t + 0.005); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.07);
+  o.connect(g).connect(audio.destination); o.start(t); o.stop(t + 0.08);
+}
+blip.next = 0;
+let sweepRaf = 0, sweepStart = 0;
+function stopPlay() {
+  if (sweepRaf) { cancelAnimationFrame(sweepRaf); sweepRaf = 0; sweep = 0; if (mode === 'orbit' && metrics) dots = drawOrbit(orbitC, anchored, metrics, {}); }
+  vox?.pause();
+  $('playBtn').textContent = '▶ play';
+}
+$('playBtn').addEventListener('click', () => {
+  if (!metrics) return;
+  if (sweepRaf) { stopPlay(); return; }
+  if (mode === 'voxel' && vox?.playing()) { vox.pause(); $('playBtn').textContent = '▶ play'; return; }
+  try { audio ||= new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch {}
+  $('playBtn').textContent = '■ stop';
+  if (mode === 'voxel') { $('playBtn').textContent = '❚❚ pause'; vox.play(() => { $('playBtn').textContent = '▶ play'; }); return; }
+  const passed = new Set(); sweepStart = performance.now();
+  const step = now => {
+    const k = Math.min(1, (now - sweepStart) / 8000), a = -Math.PI / 2 + k * Math.PI * 2;
+    sweep = a;
+    for (const e of anchored) { if (!passed.has(e) && blockAngle(e.anchor.height) <= a) { passed.add(e); blip(e.kind, e.anchor.era); } }
+    dots = drawOrbit(orbitC, anchored, metrics, { sweep: a, hover });
+    if (k < 1) sweepRaf = requestAnimationFrame(step); else { sweepRaf = 0; sweep = 0; dots = drawOrbit(orbitC, anchored, metrics, {}); $('playBtn').textContent = '▶ play'; }
+  };
+  sweepRaf = requestAnimationFrame(step);
+});
+
+$('shareBtn').addEventListener('click', async () => {
+  const url = location.origin + location.pathname + '?npub=' + npub + (mode === 'orbit' ? '&view=orbit' : '');
+  try { await navigator.clipboard.writeText(url); $('shareBtn').textContent = 'copied'; setTimeout(() => { $('shareBtn').textContent = 'copy link'; }, 1500); }
+  catch { prompt('copy this link', url); }
+});
+
+let rTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(rTimer);
+  rTimer = setTimeout(() => {
+    if (!metrics) return;
+    if (mode === 'voxel') vox?.resize(); else dots = drawOrbit(orbitC, anchored, metrics, { hover });
+    drawScrub(); blocks?.relayout();
+  }, 250);
+});
+window.orbit = { get anchored() { return anchored; }, get metrics() { return metrics; }, get vox() { return vox; }, get blocks() { return blocks; }, run, mode: m => { mode = m; showView(); } };
+
+// a shared link runs on arrival (last, so every binding above exists)
+const qs = PARAMS.get('npub');
+if (qs) { npubIn.value = qs; run(); }
+</script>
+</body>
+</html>

@@ -45,7 +45,7 @@ export function createVoxels(canvas, anchored, opts = {}) {
   const cam = { yaw: 0.9, pitch: 0.55, t: { ...centre }, dist: 0 };
   let W = 0, H_ = 0, f = 0, dpr = 1, camPos = { x: 0, y: 0, z: 0 }, projected = [], hover = null, dirty = true, raf = 0;
   let armed = false, fly = null, play = null, slow = 0, autorotUntil = 0;
-  let head = null, rate = 2, headIdx = 0, lastHead = 0;  // playhead in block height, epochs per second, voxel cursor
+  let head = null, rate = 1, headIdx = 0, lastHead = 0;  // playhead in block height, epochs per second, voxel cursor
   const flash = new Map();                                 // voxel -> time it was crossed
 
   function resize() {
