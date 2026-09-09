@@ -4,6 +4,7 @@
 // ciphertext, hover to re-veil, the relays orbiting the key, and a HUD that
 // counts hashes while a message mines. On by default; "calm" is a per-browser
 // preference (nothing is published either way).
+import { LOG } from './store.js';
 const P = ['#0b1a12', '#10261a', '#153223', '#1a3f2c', '#1f4c35', '#255a3f', '#2b6849', '#327754', '#3a865f', '#43956b', '#4ea477', '#5ab384', '#68c291', '#79d09f', '#8dddae', '#a4e9bf'];
 const CSS = `html.wild body{background:#050806;color:#d8f3e3}html.wild #rain{position:fixed;inset:0;z-index:0;opacity:.5;pointer-events:none}
 html.wild main{position:relative;z-index:1}html.wild header.me{background:linear-gradient(135deg,rgba(11,26,18,.88),rgba(5,8,6,.92));border-color:#3a865f;box-shadow:0 0 40px rgba(125,211,168,.25),inset 0 0 60px rgba(125,211,168,.06)}
@@ -15,7 +16,7 @@ html.wild body::after{content:"";position:fixed;inset:0;z-index:2;pointer-events
 html.wild .veil{color:#43956b!important;text-shadow:none!important}html.wild #wildpill{font-size:0}html.wild #wildpill::before{content:"calm";font-size:.74rem}
 .term{position:fixed;inset:0;z-index:60;background:rgba(3,6,4,.95);color:#a4e9bf;font:13px/1.55 var(--mono);padding:2rem;overflow:hidden;transition:inset .6s ease,padding .6s ease,font-size .6s ease;cursor:pointer}
 .term.min{inset:auto 1rem 1rem auto;width:min(27rem,92vw);max-height:8.5rem;padding:.55rem .8rem;background:rgba(3,6,4,.88);border:1px solid rgba(125,211,168,.35);border-radius:10px;overflow:auto;font-size:11px;cursor:default}
-.term .l{white-space:pre-wrap;word-break:break-all}.term .ok{color:#7dd3a8}.term .dim{color:#43956b}.term .cur{display:inline-block;width:.6em;height:1em;background:#a4e9bf;vertical-align:-2px;animation:blink 1s steps(2) infinite}@keyframes blink{50%{opacity:0}}
+.term .l{white-space:pre-wrap;word-break:break-all}.term .ok{color:#7dd3a8}.term .dim{color:#43956b}.term .err{color:#e5484d}.term .cur{display:inline-block;width:.6em;height:1em;background:#a4e9bf;vertical-align:-2px;animation:blink 1s steps(2) infinite}@keyframes blink{50%{opacity:0}}
 .term .bar{display:flex;gap:.5rem;justify-content:flex-end;margin-top:.35rem}.term button{font:11px var(--mono);padding:.15rem .5rem;background:rgba(125,211,168,.12);border:1px solid rgba(125,211,168,.35);color:#a4e9bf;border-radius:6px}
 .hud{position:fixed;left:1rem;bottom:1rem;z-index:61;font:12px var(--mono);color:#a4e9bf;background:rgba(3,6,4,.88);border:1px solid rgba(125,211,168,.35);border-radius:10px;padding:.5rem .8rem;display:none;max-width:16rem}.hud.on{display:block}.hud canvas{display:block;width:100%;height:auto;margin-bottom:.35rem}
 html.booting::before{content:"";position:fixed;inset:0;z-index:59;background:rgba(3,6,4,.97)}html.booting::after{content:"> boot \\25AE";position:fixed;left:2rem;top:2rem;z-index:59;color:#a4e9bf;font:13px/1.55 var(--mono)}
@@ -27,9 +28,10 @@ const $ = s => document.querySelector(s), sleep = ms => new Promise(r => setTime
 const rnd = n => Math.floor(Math.random() * n);
 const blip = f => { if (!soundOn || !ctx) return; const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine'; o.frequency.value = f; g.gain.value = .05; o.connect(g); g.connect(ctx.destination); o.start(); g.gain.exponentialRampToValueAtTime(.0005, ctx.currentTime + .14); o.stop(ctx.currentTime + .15); };
 
-export async function start() {
+export async function start(opts = {}) {
   const html = document.documentElement; html.classList.add('wild');
   if (!document.getElementById('wild')?.textContent) { const style = document.createElement('style'); style.textContent = CSS; document.head.append(style); } // the shell usually carries it already
+  if (opts.live) { cipher = 'QWxs'; rain(); orbit(); hud(); liveTerminal(); watchBlocks(); return; } // the strict entry: the terminal prints what is actually happening
   const snap = await fetch('/site.json', { cache: 'no-cache' }).then(r => r.json()).catch(() => null);
   events = (snap?.events || []).filter(e => e.kind === 30078);
   cipher = events.map(e => e.content).join('') || 'QWxs';
@@ -79,6 +81,67 @@ async function terminal() {
   await line(`> key: reading favicon.svg … 64 squares, 32 bytes`, 'ok');
   await line(`> unveil ×${events.length} … ok`, 'ok'); await line('> render', 'ok'); blip(880);
   await sleep(skip ? 0 : 350); t.classList.add('min'); t.style.cursor = 'default';
+}
+
+// ---- live terminal: the strict entry's real sequence, line by line as it happens ----
+function liveTerminal() {
+  const t = document.createElement('div'); t.className = 'term'; document.body.append(t);
+  document.documentElement.classList.remove('booting');
+  const out = document.createElement('div'); t.append(out);
+  const bar = document.createElement('div'); bar.className = 'bar';
+  const snd = document.createElement('button'); snd.textContent = 'sound'; snd.onclick = e => { e.stopPropagation(); soundOn = !soundOn; if (soundOn && !ctx) ctx = new (window.AudioContext || window.webkitAudioContext)(); snd.textContent = soundOn ? 'mute' : 'sound'; blip(660); };
+  const calm = document.createElement('button'); calm.textContent = 'calm'; calm.onclick = e => { e.stopPropagation(); localStorage.setItem('rb.wild', '0'); location.href = location.pathname; };
+  bar.append(snd, calm); t.append(bar);
+  let skip = !!sessionStorage.getItem('rb.booted'); try { sessionStorage.setItem('rb.booted', '1'); } catch {}
+  const started = performance.now(); t.addEventListener('click', () => { skip = true; }, { once: true });
+  t.addEventListener('click', e => { if (t.classList.contains('min') && !e.target.closest('button')) t.classList.toggle('open'); });
+  if (skip) t.classList.add('min');
+  const line = async (text, cls = '') => { const l = document.createElement('div'); l.className = 'l ' + cls; out.append(l);
+    if (skip || performance.now() - started > 3000) { l.textContent = text; if (t.scrollHeight > t.clientHeight) t.scrollTop = t.scrollHeight; return; }
+    const cur = document.createElement('span'); cur.className = 'cur'; l.append(cur);
+    for (let i = 0; i < text.length && !skip && performance.now() - started < 3000; i += 4) { l.insertBefore(document.createTextNode(text.slice(i, i + 4)), cur); await sleep(8); }
+    l.textContent = text; if (t.scrollHeight > t.clientHeight) t.scrollTop = t.scrollHeight; };
+  const short = u => String(u).replace(/^wss?:\/\//, '').replace(/\/$/, ''), ms = d => `${String(d.t).padStart(5)} ms`;
+  const fmt = d => { switch (d.stage) {
+    case 'shell': return [`${ms(d)}  shell ${d.bytes} B, ${d.scripts} script tag${d.scripts === 1 ? '' : 's'} under integrity hashes, no content`, 'ok'];
+    case 'libs': return [`${ms(d)}  nostr-tools, preact … integrity ok`, 'ok'];
+    case 'icon': return [d.error ? `${ms(d)}  key: ${d.error}` : `${ms(d)}  key: favicon.svg … 64 squares, 32 bytes`, d.error ? 'err' : 'ok'];
+    case 'cache': return [`${ms(d)}  cache: ${d.n} verified event${d.n === 1 ? '' : 's'} from this browser`, d.n ? 'ok' : 'dim'];
+    case 'render': return [`${ms(d)}  render, ${d.events} event${d.events === 1 ? '' : 's'} so far; the rest lands as it arrives`, 'ok'];
+    case 'relay': return [`${ms(d)}  ${short(d.url)} … ${d.open ? 'open' : 'closed'}`, d.open ? 'ok' : 'err'];
+    case 'raw': return [`${ms(d)}  ← EVENT ${d.id.slice(0, 12)}… kind ${d.kind}, ${d.bytes} B from ${short(d.url)}, buffered`, 'dim'];
+    case 'eose-raw': return [`${ms(d)}  EOSE ${short(d.url)} … ${d.n} event${d.n === 1 ? '' : 's'} buffered`, 'dim'];
+    case 'verified': return [`${ms(d)}  schnorr verify ×${d.n} … ok${d.bad ? `, ${d.bad} rejected` : ''}${d.fresh ? `, ${d.fresh} new` : ', nothing newer than the cache'}`, d.bad ? 'err' : 'ok'];
+    case 'bad': return [`${ms(d)}  REJECTED ${d.id.slice(0, 12)}… bad signature from ${short(d.url)}`, 'err'];
+    case 'event': return [`${ms(d)}  ← EVENT ${d.id.slice(0, 12)}… kind ${d.kind}, ${d.bytes} B, ${d.veiled ? 'veiled' : 'plain'}, schnorr ok${d.fresh ? '' : ', already had it'}`, 'dim'];
+    case 'css': return [`${ms(d)}  theme: css block unveiled and applied`, 'ok'];
+    case 'eose': return [`${ms(d)}  EOSE … ${d.n} signed event${d.n === 1 ? '' : 's'} on the page`, 'ok'];
+    case 'error': return [`${ms(d)}  ${d.message}`, 'err'];
+    default: return null; } };
+  const q = []; let typing = false, minimised = false, settleTimer = null, seen = 0;
+  const minimise = () => { if (minimised) return; minimised = true; setTimeout(() => { t.classList.add('min'); t.style.cursor = 'default'; }, skip ? 0 : 350); };
+  const drain = async () => { if (typing) return; typing = true; while (q.length) { const [text, cls] = q.shift(); await line(text, cls); } typing = false; };
+  const relayState = new Map(); // the early socket and the pool both report a relay; print each state change once
+  const on = d => { if (d.stage === 'relay') { const k = short(d.url); if (relayState.get(k) === d.open) return; relayState.set(k, d.open); }
+    const f = fmt(d); if (f) { q.push(f); drain(); }
+    if (d.stage === 'event' || d.stage === 'raw') { seen++; if (d.veiled && d.sample) cipher = (cipher === 'QWxs' ? '' : cipher) + d.sample; blip(220 + parseInt(d.id.slice(8, 10), 16) * 3);
+      clearTimeout(settleTimer); settleTimer = setTimeout(() => { q.push([`${String(Math.round(performance.now())).padStart(5)} ms  quiet: ${seen} events, nothing newer`, 'ok']); drain(); minimise(); }, 1500); }
+    if (d.stage === 'eose' || d.stage === 'verified') { clearTimeout(settleTimer); blip(880); if (d.stage === 'eose') minimise(); else settleTimer = setTimeout(minimise, 900); }
+    if (d.stage === 'error') minimise(); };
+  for (const d of LOG) on(d);
+  document.addEventListener('rb:progress', e => on(e.detail));
+  setTimeout(minimise, 7000); // whatever the relays do, the page is yours after 7 s
+}
+// blocks that preact adds while events arrive descramble from ciphertext the moment they appear
+function watchBlocks() {
+  const root = document.getElementById('app'); if (!root) return;
+  const SEL = 'main > header, main > section, main > details, .item', seen = new WeakSet();
+  const obs = new MutationObserver(muts => { const fresh = [];
+    for (const m of muts) for (const n of m.addedNodes) { if (n.nodeType !== 1) continue;
+      for (const el of [n, ...n.querySelectorAll(SEL)]) if (el.matches(SEL) && !seen.has(el)) { seen.add(el); fresh.push(el); } }
+    if (fresh.length) descramble(fresh, 600, 60); });
+  obs.observe(root, { childList: true, subtree: true });
+  document.addEventListener('pointerenter', e => { const b = e.target.closest?.('main > section, main > details, .item'); if (b && !b.dataset.glitching) { b.dataset.glitching = '1'; descramble([b], 260, 0).then(() => delete b.dataset.glitching); } }, true);
 }
 
 // ---- descramble: from the relay's bytes to the words ----

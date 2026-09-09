@@ -5,7 +5,7 @@ import { render } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
 import { html, Page, Toasts, bindNotify } from './ui.js';
 import { Garden } from './garden.js';
-import { env, init, sel, onChange, notify, loadSnapshot, loadCache, keepCache, connect, reverify, owner, storedKey, restore, decodeIcon, subscribeWraps } from './store.js';
+import { env, init, sel, onChange, notify, loadSnapshot, loadCache, keepCache, connect, reverify, owner, storedKey, restore, decodeIcon, subscribeWraps, progress, apply } from './store.js';
 import { Chat, chat, chatConfigure, send as chatSend, setNick } from './chat.js';
 
 const meta = n => document.querySelector(`meta[name="${n}"]`)?.content?.trim() || '';
@@ -22,7 +22,7 @@ function App() {
   const [unlockOpen, setUnlockOpen] = useState(initial.unlockOpen), [editing, setEditing] = useState(null), [consoleOpen, setConsoleOpen] = useState(false);
   const isOwner = !!(Owner && owner.sk), cfg = sel.config();
   useEffect(() => { document.title = cfg.title; }, [cfg.title]);
-  useEffect(() => { const el = document.getElementById('theme'), css = sel.themeCss(); if (el && css && el.textContent !== css) el.textContent = css; });
+  useEffect(() => { const el = document.getElementById('theme'), css = sel.themeCss(); if (el && css && el.textContent !== css) { el.textContent = css; if (sel.css()) progress('css', { bytes: css.length }); } });
   useEffect(() => { chatConfigure(isOwner); }, [isOwner]);
   const edit = isOwner ? (kind, ev, preset) => html`<button class="sm edit" onClick=${e => { e.preventDefault(); e.stopPropagation(); setEditing({ kind, ev, preset }); }}>edit</button>` : null;
   const openUnlock = async () => { if (!Owner) Owner = await import('./owner.js'); setUnlockOpen(true); };
@@ -37,16 +37,23 @@ function App() {
 
 export async function start(opts = {}) {
   if (started) return; started = true;
+  const strict = !!opts.strict, t0 = performance.now(); // strict: no baked snapshot, the relays and this browser's verified cache are the only sources
   const seedText = document.querySelector('#chat textarea')?.value || '', seedNick = document.querySelector('#chat .who input')?.value || '';
-  const [snap, svg] = await Promise.all([fetch('/site.json', { cache: 'no-cache' }).then(r => r.json()).catch(() => null), fetch(iconHref).then(r => r.text()), script('/vendor/nostr-tools-2.25.2.bundle.js')]);
-  env.NT = window.NostrTools; // the crypto is needed before anything is read: identifiers are hashed, bodies veiled
-  try { init({ veil: decodeIcon(svg) }); } catch (e) { console.warn('icon is not a key:', e.message); }
-  loadSnapshot(snap); loadCache(); keepCache(); bindNotify(notify);
+  const [snap, svg] = await Promise.all([strict ? Promise.resolve(null) : fetch('/site.json', { cache: 'no-cache' }).then(r => r.json()).catch(() => null), fetch(iconHref).then(r => r.text()), script('/vendor/nostr-tools-2.25.2.bundle.js')]);
+  env.NT = window.NostrTools; progress('libs', { ms: Math.round(performance.now() - t0) }); // the crypto is needed before anything is read: identifiers are hashed, bodies veiled
+  try { init({ veil: decodeIcon(svg) }); progress('icon', {}); } catch (e) { console.warn('icon is not a key:', e.message); progress('icon', { error: e.message }); }
+  if (snap) loadSnapshot(snap); loadCache(); progress('cache', { n: sel.signed() }); keepCache(); bindNotify(notify);
+  const pre = opts.prefetch; // the strict shell asked the relays before the crypto existed: verify what it buffered, then take the rest live until the pool replaces the early sockets
+  if (pre) { let fresh = 0, bad = 0;
+    const take = (ev, url) => { if (!env.NT.verifyEvent(ev)) { bad++; progress('bad', { id: ev.id, url }); return; } const isNew = apply(ev, { verified: true }); if (isNew) fresh++; return isNew; };
+    for (const ev of pre.events.values()) take(ev);
+    progress('verified', { n: pre.events.size, fresh, bad });
+    pre.onEvent = (ev, url) => { const isNew = take(ev, url); progress('event', { id: ev.id, kind: ev.kind, bytes: ev.content.length, veiled: ev.kind === 30078, sample: ev.kind === 30078 ? ev.content.slice(0, 240) : '', fresh: isNew, url }); }; }
   script('/vendor/dompurify-3.4.14.min.c2f26ea4.js').then(notify).catch(() => {});
   connect(); chatConfigure(false); if (sel.sections().includes('mural')) subscribeWraps();
   if (seedNick) setNick(seedNick);
   chat.seed = opts.send ? '' : seedText;
   if (opts.unlock || storedKey()) { Owner = await import('./owner.js'); if (storedKey()) { try { restore(); } catch {} } else initial.unlockOpen = true; }
-  const root = document.getElementById('app'); root.textContent = ''; render(html`<${App} />`, root);
+  const root = document.getElementById('app'); root.textContent = ''; render(html`<${App} />`, root); progress('render', { events: sel.signed() });
   if (opts.focus === 'chat') { document.querySelector('#chat textarea')?.focus(); if (opts.send && seedText.trim()) chatSend(env.SITE, seedText); }
 }

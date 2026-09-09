@@ -35,6 +35,13 @@ export const text = ev => ev.plain ?? ev.content;
 export const meta = ev => { if (ev.meta === undefined) { try { ev.meta = JSON.parse(text(ev)); } catch { ev.meta = null; } } return ev.meta; };
 
 export const store = { events: new Map(), dels: [], ready: false, status: new Map(), drafts: [], wraps: new Map(), words: new Map() };
+// ---- progress: what the strict entry did and when. Kept in LOG so a late listener (the wild terminal) can replay it. ----
+export const LOG = [];
+export function progress(stage, detail = {}) {
+  const d = { stage, t: Math.round(typeof performance !== 'undefined' ? performance.now() : 0), ...detail }; LOG.push(d);
+  try { performance.mark('rb:' + stage); } catch {}
+  if (typeof document !== 'undefined') document.dispatchEvent(new CustomEvent('rb:progress', { detail: d }));
+}
 // Experiments. The mural needs only ids: leading zero bits and a time, nothing decrypted, nobody named.
 export const powBits = id => { let b = 0; for (const ch of id) { const n = parseInt(ch, 16); if (Number.isNaN(n)) return b; if (n === 0) { b += 4; continue; } return b + Math.clz32(n) - 28; } return b; };
 export function applyWrap(ev) { if (ev?.kind !== K.wrap || store.wraps.has(ev.id)) return false; store.wraps.set(ev.id, { id: ev.id, created_at: ev.created_at, bits: powBits(ev.id) }); notify(); return true; }
@@ -121,8 +128,11 @@ function pollStatus() {
 }
 export function connect() {
   pool = new env.NT.SimplePool({ enableReconnect: true }); pool.trackRelays = true;
+  for (const url of env.RELAYS) pool.ensureRelay(url, { connectionTimeout: 8000 }).then(() => progress('relay', { url, open: true }), e => progress('relay', { url, open: false, why: e?.message || 'closed' }));
   pool.subscribe(env.RELAYS, { authors: [env.SITE], kinds: [K.note, K.del, K.block], limit: 300 },
-    { label: 'site', onevent: ev => apply(ev, { verified: true }), oneose: () => { store.ready = true; notify(); } });
+    { label: 'site',
+      onevent: ev => { const fresh = apply(ev, { verified: true }); if (fresh) progress('event', { id: ev.id, kind: ev.kind, bytes: ev.content.length, veiled: ev.kind === K.block, sample: ev.kind === K.block ? ev.content.slice(0, 240) : '', fresh }); },
+      oneose: () => { store.ready = true; progress('eose', { n: sel.signed() }); notify(); } });
   pollStatus(); setInterval(pollStatus, 3000);
 }
 let wrapsSub = false, wordsSub = false;
