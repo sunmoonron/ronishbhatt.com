@@ -30,7 +30,7 @@ export const keyOf = ev => !replaceable(ev.kind) ? ev.id : ev.kind >= 30000 ? ad
 // identifiers are hashes of the slug and the site key, so a relay learns nothing from the d tag
 export const h = slug => env.NT.getEventHash({ kind: 0, pubkey: env.SITE, created_at: 0, tags: [], content: `ronishbhatt.com:${slug}` }).slice(0, 16);
 export const veil = text => env.NT.nip44.v2.encrypt(text, env.VEIL);
-const unveil = text => env.NT.nip44.v2.decrypt(text, env.VEIL);
+export const unveil = text => env.NT.nip44.v2.decrypt(text, env.VEIL);
 export const text = ev => ev.plain ?? ev.content;
 export const meta = ev => { if (ev.meta === undefined) { try { ev.meta = JSON.parse(text(ev)); } catch { ev.meta = null; } } return ev.meta; };
 
@@ -95,6 +95,27 @@ export const sel = {
   sections: () => { const cfg = sel.config(), list = [...(cfg.sections || [])], exp = Array.isArray(cfg.experiments) ? cfg.experiments : DEFAULT_CFG.experiments;
     for (const x of exp) if (!list.includes(x)) { const at = list.indexOf('archive'); at >= 0 ? list.splice(at, 0, x) : list.push(x); } return list; },
 };
+
+// ---- deploy-time work the owner signs with one click ----------------
+// A seed marked {update: true} in drafts.json is a change the deployer wants published over the live block:
+// only those, and only while they still differ, so nothing the owner edited by hand is ever clobbered.
+export function pendingUpdates(snap) {
+  const out = [];
+  for (const s of snap?.drafts || []) {
+    let d = s; if (typeof s === 'string') { try { d = JSON.parse(unveil(s)); } catch { continue; } }
+    if (!d.update || d.kind !== K.block) continue;
+    let seed; try { seed = JSON.parse(d.content); } catch { continue; }
+    const live = sel.section(d.d); if (!live) continue; // no signed version: that is a draft, not an update
+    const lm = meta(live) || {}, diff = Object.keys(seed).filter(k => JSON.stringify(seed[k]) !== JSON.stringify(lm[k]));
+    if (diff.length) out.push({ slug: d.d, live, seed, diff });
+  }
+  return out;
+}
+// Notes by the site key that nothing renders: garden words it planted while testing, and plain notes when the layout shows no notes section.
+export function prunable() {
+  const shown = (sel.config().sections || []).includes('notes');
+  return [...store.events.values()].filter(e => !e.draft && e.kind === K.note && (e.tags.some(t => t[0] === 't' && t[1] === 'plant') || !shown));
+}
 
 // ---- snapshot: signed events from the relay plus the seed drafts ----------------
 // A seed draft is {kind, d?, content} in plain text; it gets a hashed d and the site key here.

@@ -16,7 +16,7 @@ html.wild body::after{content:"";position:fixed;inset:0;z-index:2;pointer-events
 html.wild .veil{color:#43956b!important;text-shadow:none!important}html.wild #wildpill{font-size:0}html.wild #wildpill::before{content:"calm";font-size:.74rem}
 .term{position:fixed;inset:0;z-index:60;background:rgba(3,6,4,.95);color:#a4e9bf;font:13px/1.55 var(--mono);padding:2rem;overflow:hidden;transition:inset .6s ease,padding .6s ease,font-size .6s ease;cursor:pointer}
 .term.min{inset:auto 1rem 1rem auto;width:min(27rem,92vw);max-height:8.5rem;padding:.55rem .8rem;background:rgba(3,6,4,.88);border:1px solid rgba(125,211,168,.35);border-radius:10px;overflow:auto;font-size:11px;cursor:default}
-.term .l{white-space:pre-wrap;word-break:break-all}.term .ok{color:#7dd3a8}.term .dim{color:#43956b}.term .err{color:#e5484d}.term.alert{border-color:#e5484d;box-shadow:0 0 24px rgba(229,72,77,.35)}.term .cur{display:inline-block;width:.6em;height:1em;background:#a4e9bf;vertical-align:-2px;animation:blink 1s steps(2) infinite}@keyframes blink{50%{opacity:0}}
+.term .l{white-space:pre-wrap;word-break:break-all}.term .ok{color:#7dd3a8}.term .dim{color:#43956b}.term .err{color:#e5484d}.term .load{margin-top:.5rem;color:#a4e9bf;letter-spacing:.04em}.term.alert{border-color:#e5484d;box-shadow:0 0 24px rgba(229,72,77,.35)}.term .cur{display:inline-block;width:.6em;height:1em;background:#a4e9bf;vertical-align:-2px;animation:blink 1s steps(2) infinite}@keyframes blink{50%{opacity:0}}
 .term .bar{display:flex;gap:.5rem;justify-content:flex-end;margin-top:.35rem}.term button{font:11px var(--mono);padding:.15rem .5rem;background:rgba(125,211,168,.12);border:1px solid rgba(125,211,168,.35);color:#a4e9bf;border-radius:6px}
 .hud{position:fixed;left:1rem;bottom:1rem;z-index:61;font:12px var(--mono);color:#a4e9bf;background:rgba(3,6,4,.88);border:1px solid rgba(125,211,168,.35);border-radius:10px;padding:.5rem .8rem;display:none;max-width:16rem}.hud.on{display:block}.hud canvas{display:block;width:100%;height:auto;margin-bottom:.35rem}
 html.booting::before{content:"";position:fixed;inset:0;z-index:59;background:rgba(3,6,4,.97)}html.booting::after{content:"> boot \\25AE";position:fixed;left:2rem;top:2rem;z-index:59;color:#a4e9bf;font:13px/1.55 var(--mono)}
@@ -88,6 +88,7 @@ function liveTerminal() {
   const t = document.createElement('div'); t.className = 'term'; document.body.append(t);
   document.documentElement.classList.remove('booting');
   const out = document.createElement('div'); t.append(out);
+  const load = document.createElement('div'); load.className = 'l load'; const loadText = document.createTextNode('loading, building the page from signed events '); const loadCur = document.createElement('span'); loadCur.className = 'cur'; load.append(loadText, loadCur); t.append(load); // so nobody wonders whether to wait
   const bar = document.createElement('div'); bar.className = 'bar';
   const snd = document.createElement('button'); snd.textContent = 'sound'; snd.onclick = e => { e.stopPropagation(); soundOn = !soundOn; if (soundOn && !ctx) ctx = new (window.AudioContext || window.webkitAudioContext)(); snd.textContent = soundOn ? 'mute' : 'sound'; blip(660); };
   const calm = document.createElement('button'); calm.textContent = 'calm'; calm.onclick = e => { e.stopPropagation(); localStorage.setItem('rb.wild', '0'); location.href = location.pathname; };
@@ -95,7 +96,7 @@ function liveTerminal() {
   let skip = !!sessionStorage.getItem('rb.booted'); try { sessionStorage.setItem('rb.booted', '1'); } catch {}
   const started = performance.now(); t.addEventListener('click', () => { skip = true; }, { once: true });
   t.addEventListener('click', e => { if (t.classList.contains('min') && !e.target.closest('button')) t.classList.toggle('open'); });
-  if (skip) t.classList.add('min');
+  if (skip) { t.classList.add('min'); load.remove(); }
   const line = async (text, cls = '') => { const l = document.createElement('div'); l.className = 'l ' + cls; out.append(l);
     if (skip || minimised || performance.now() - started > 3000) { l.textContent = text; if (t.scrollHeight > t.clientHeight) t.scrollTop = t.scrollHeight; return; } // docked: the log completes at once
     const cur = document.createElement('span'); cur.className = 'cur'; l.append(cur);
@@ -128,13 +129,14 @@ function liveTerminal() {
     default: return null; } };
   const q = []; let typing = false, minimised = false, settleTimer = null, dockTimer = null, seen = 0;
   // the terminal runs its 3 s show and then docks; anything still queued lands in the dock at once
-  const dock = () => { if (minimised) return; minimised = true; clearTimeout(dockTimer); t.classList.add('min'); t.style.cursor = 'default'; t.dataset.dockedAt = Math.round(performance.now()); };
+  const dock = () => { if (minimised) return; minimised = true; clearTimeout(dockTimer); load.remove(); t.classList.add('min'); t.style.cursor = 'default'; t.dataset.dockedAt = Math.round(performance.now()); };
   const minimise = dock;
   const drain = async () => { if (typing) return; typing = true; while (q.length) { const [text, cls] = q.shift(); await line(text, cls); } typing = false; };
   const relayState = new Map(); // the early socket and the pool both report a relay; print each state change once
   const on = d => { if (d.stage === 'relay') { const k = short(d.url); if (relayState.get(k) === d.open) return; relayState.set(k, d.open); }
     const f = fmt(d); if (f) { q.push(f); drain(); }
-    if (d.stage === 'event' || d.stage === 'raw') { seen++; if (d.veiled && d.sample) cipher = (cipher === 'QWxs' ? '' : cipher) + d.sample; blip(220 + parseInt(d.id.slice(8, 10), 16) * 3);
+    if (d.stage === 'render' && d.events > 0) loadText.nodeValue = `loading, ${d.events} signed events on the page, checking the relays `;
+    if (d.stage === 'event' || d.stage === 'raw') { seen++; loadText.nodeValue = `loading, ${seen} event${seen > 1 ? 's' : ''} in `; if (d.veiled && d.sample) cipher = (cipher === 'QWxs' ? '' : cipher) + d.sample; blip(220 + parseInt(d.id.slice(8, 10), 16) * 3);
       clearTimeout(settleTimer); settleTimer = setTimeout(() => { q.push([`${String(Math.round(performance.now())).padStart(5)} ms  quiet: ${seen} events, nothing newer`, 'ok']); drain(); minimise(); }, 1500); }
     if (d.stage === 'eose' || d.stage === 'verified') { clearTimeout(settleTimer); blip(880); } // the terminal holds for its full 3 s whatever the relays do; the page is live underneath
     if (d.stage === 'error') minimise();

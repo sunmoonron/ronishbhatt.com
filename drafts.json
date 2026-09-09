@@ -43,6 +43,7 @@
   {
    "kind": 30078,
    "d": "weight-dictionary",
+   "update": true,
    "content": "{\"slug\": \"weight-dictionary\", \"type\": \"writing\", \"title\": \"Weight-Dictionary Decomposition\", \"summary\": \"Reading a transformer's residual stream with its own writes: a dictionary built from the weights instead of activations, what it can attribute and what it cannot. Eight models up to 7B parameters. September 2026.\", \"r\": \"/weight_dictionary_2026-09.pdf\", \"image\": \"/thumbs/weight_dictionary_2026-09.png\", \"order\": \"10\", \"body\": \"\"}"
   },
   {

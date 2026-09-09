@@ -1,7 +1,7 @@
 // owner.js, loaded only after "unlock": in-place editing of every block (the
 // stylesheet included), drafts, deletions, and the console (/dash.html, same key).
 import { useState, useEffect, useRef } from 'preact/hooks';
-import { env, K, DEFAULT_CFG, store, sel, apply, publish, pool, sign, unlock, lock, now, h, veil, meta, text, dTag, addrOf, keyOf, notify } from './store.js';
+import { env, K, DEFAULT_CFG, store, sel, apply, publish, pool, sign, unlock, lock, now, h, veil, meta, text, dTag, addrOf, keyOf, notify, pendingUpdates, prunable } from './store.js';
 import { html, toast, npub } from './ui.js';
 
 const CSS = `.ownerbar{grid-column:1/-1;position:sticky;top:0;z-index:5;display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;margin:-1.5rem -1.25rem 1.5rem;padding:.55rem 1.25rem;background:var(--card);border-bottom:1px solid var(--accent);font-size:.78rem;color:var(--mute)}.ownerbar .grow{flex:1}.ownerbar code{font:.78rem var(--mono);color:var(--fg)}
@@ -91,6 +91,16 @@ export async function signShell() {
   const shells = [m.shell, m.static].filter(Boolean);
   await publishTemplate({ kind: K.block, tags: [['d', h('shell')]], content: veil(JSON.stringify({ slug: 'shell', type: 'manifest', title: 'shell manifest', shells, sw: m.sw, baked_at: m.baked_at })) });
 }
+// sync: everything a deploy left for the key to sign, in one click. Seed updates the deployer marked, junk notes on the relay, the shell manifest.
+export async function syncAll(pending, junk) {
+  const done = [];
+  for (const u of pending) { const lm = meta(u.live) || {}; const m = { ...lm, ...u.seed, published_at: lm.published_at || now() };
+    const { res } = await publishTemplate({ kind: K.block, tags: [['d', h(u.slug)]], content: veil(JSON.stringify(m)) }); if (res.some(r => r.ok)) done.push(`updated ${u.slug}`); }
+  if (junk.length && confirm(`Delete ${junk.length} note${junk.length > 1 ? 's' : ''} by the site key from every relay?\n\n` + junk.map(e => `${e.id.slice(0, 8)}  ${JSON.stringify(e.content).slice(0, 40)}`).join('\n'))) {
+    const { res } = await publishTemplate({ kind: K.del, tags: junk.map(e => ['e', e.id]), content: '' }, env.RELAYS); if (res.some(r => r.ok)) done.push(`pruned ${junk.length}`); }
+  await signShell(); done.push('shell signed');
+  toast(done.join(' · ') || 'nothing to do'); notify();
+}
 // Blocks published under an earlier scheme (any tag beyond d) get re-signed under the current one.
 export const stale = () => [...store.events.values()].filter(e => !e.draft && e.kind === K.block && e.tags.some(t => t[0] !== 'd'));
 export async function resignAll() {
@@ -108,8 +118,10 @@ export async function retirePlainProfile() {
 
 let retired = false;
 export function OwnerBar({ onEdit, onConsole, unread }) {
-  const drafts = sel.drafts().length, [busy, setBusy] = useState(false);
+  const drafts = sel.drafts().length, [busy, setBusy] = useState(false), [pending, setPending] = useState([]);
   useEffect(() => { if (!retired) { retired = true; retirePlainProfile(); } }, []);
+  useEffect(() => { let on = true; fetch('/site.json', { cache: 'no-cache' }).then(r => r.json()).then(snap => { if (on) setPending(pendingUpdates(snap)); }).catch(() => {}); return () => { on = false; }; }, [store.events.size]);
+  const junk = prunable();
   return html`<div class="ownerbar"><span>unlocked · <code>${npub(env.SITE).slice(0, 16)}…</code></span>
     ${drafts ? html`<button class="sm pri" disabled=${busy} onClick=${async () => { setBusy(true); try { await publishDrafts(); } finally { setBusy(false); } }}>${busy ? html`<span class="spin"></span>` : null}publish ${drafts} draft${drafts > 1 ? 's' : ''}</button>` : null}
     ${stale().length ? html`<button class="sm pri" disabled=${busy} title="these still carry tags from an earlier scheme" onClick=${async () => { setBusy(true); try { await resignAll(); } finally { setBusy(false); } }}>${busy ? html`<span class="spin"></span>` : null}re-sign ${stale().length} block${stale().length > 1 ? 's' : ''}</button>` : null}
@@ -117,7 +129,7 @@ export function OwnerBar({ onEdit, onConsole, unread }) {
     <button class="sm" onClick=${() => onEdit('block', sel.cssEvent(), { slug: 'css' })}>stylesheet</button>
     <button class="sm" onClick=${() => onEdit('block', null, { type: 'section' })}>+ block</button>
     <button class="sm" onClick=${() => onEdit(K.note, null)}>+ note</button>
-    <button class="sm" title="publish the hashes of the shell this deploy serves, so returning browsers can tell a deploy from tampering" disabled=${busy} onClick=${async () => { setBusy(true); try { await signShell(); } catch (e) { toast(e.message, 'err'); } finally { setBusy(false); } }}>sign shell</button>
+    <button class="sm pri" title=${'one click: ' + (pending.length ? pending.map(u => 'update ' + u.slug + ' (' + u.diff.join(', ') + ')').join('; ') + '; ' : '') + (junk.length ? 'prune ' + junk.length + ' note' + (junk.length > 1 ? 's' : '') + '; ' : '') + 'sign the shell manifest'} disabled=${busy} onClick=${async () => { setBusy(true); try { await syncAll(pending, junk); } catch (e) { toast(e.message, 'err'); } finally { setBusy(false); } }}>sync${pending.length ? ` · ${pending.length} update${pending.length > 1 ? 's' : ''}` : ''}${junk.length ? ` · prune ${junk.length}` : ''} · shell</button>
     <button class="sm" onClick=${() => document.getElementById('chat')?.scrollIntoView({ behavior: 'smooth' })}>inbox${unread ? html`<span class="badge">${unread}</span>` : null}</button>
     <span class="grow"></span>
     <button class="sm" title="where publishes go; deletions always go to every relay" onClick=${() => { localStorage.setItem('rb.targets', targets().length === 1 ? 'all' : 'mine'); notify(); }}>publish to: ${targets().length === 1 ? 'my relay only' : 'all relays'}</button>
