@@ -30,19 +30,20 @@ const judge = () => { if (judged || !env.NT) return; let m = null; try { m = sel
 onChange(judge);
 
 // ---- ask the relays now, before the crypto exists; buffer until it does ----
-const pre = { events: new Map(), sockets: [], onEvent: null };
+const pre = { events: new Map(), sockets: [], onEvent: null, maxAt: 0 };
+pre.primaryEose = new Promise(res => { pre.resolvePrimary = res; }); // resolves with the newest created_at once my relay says EOSE, or null if it never does
 for (const url of RELAYS) {
   let ws; try { ws = new WebSocket(url); } catch { continue; }
   pre.sockets.push(ws);
   ws.onopen = () => { progress('relay', { url, open: true, early: true }); ws.send(JSON.stringify(['REQ', 'strict', { authors: [SITE], kinds: [1, 5, 30078], limit: 300 }])); };
-  ws.onerror = ws.onclose = () => { if (!ws.closing) progress('relay', { url, open: false, early: true }); };
+  ws.onerror = ws.onclose = () => { if (!ws.closing) progress('relay', { url, open: false, early: true }); if (url === RELAYS[0]) pre.resolvePrimary(null); };
   ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch { return; }
-    if (m[0] === 'EVENT' && m[2]?.pubkey === SITE) { const ev = m[2]; if (pre.events.has(ev.id)) return; pre.events.set(ev.id, ev);
+    if (m[0] === 'EVENT' && m[2]?.pubkey === SITE) { const ev = m[2]; if (pre.events.has(ev.id)) return; pre.events.set(ev.id, ev); if (ev.created_at > pre.maxAt) pre.maxAt = ev.created_at;
       if (pre.onEvent) pre.onEvent(ev, url); else progress('raw', { id: ev.id, kind: ev.kind, bytes: ev.content.length, url }); }
-    if (m[0] === 'EOSE') { progress('eose-raw', { url, n: pre.events.size }); setTimeout(() => { ws.closing = true; try { ws.close(); } catch {} }, 2500); } }; // the pool's own socket has taken over by then
+    if (m[0] === 'EOSE') { progress('eose-raw', { url, n: pre.events.size }); if (url === RELAYS[0]) pre.resolvePrimary(pre.maxAt); setTimeout(() => { ws.closing = true; try { ws.close(); } catch {} }, 2500); } }; // the pool's own socket has taken over by then
   setTimeout(() => { if (ws.readyState !== 1) { ws.closing = true; try { ws.close(); } catch {} } }, 12000); // never leave a half-open early socket behind
 }
-window.__strict = { log: LOG, pre, marks: () => performance.getEntriesByType('mark').filter(m => m.name.startsWith('rb:')).map(m => [m.name.slice(3), Math.round(m.startTime)]) };
+window.__strict = { log: LOG, pre, store, marks: () => performance.getEntriesByType('mark').filter(m => m.name.startsWith('rb:')).map(m => [m.name.slice(3), Math.round(m.startTime)]) };
 if (wild) import('./wild.js').then(m => m.start({ live: true })).catch(e => console.error('wild failed', e));
 document.addEventListener('click', e => { if (e.target.closest?.('#wildpill')) { localStorage.setItem('rb.wild', wild ? '0' : '1'); location.href = location.pathname; } });
 import('./app.js').then(m => m.start({ strict: true, prefetch: pre })).catch(e => { console.error('strict boot failed', e); progress('error', { message: e.message }); });

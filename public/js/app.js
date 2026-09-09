@@ -39,7 +39,7 @@ export async function start(opts = {}) {
   if (started) return; started = true;
   const strict = !!opts.strict, t0 = performance.now(); // strict: no baked snapshot, the relays and this browser's verified cache are the only sources
   const seedText = document.querySelector('#chat textarea')?.value || '', seedNick = document.querySelector('#chat .who input')?.value || '';
-  const [snap, svg] = await Promise.all([strict ? Promise.resolve(null) : fetch('/site.json', { cache: 'no-cache' }).then(r => r.json()).catch(() => null), fetch(iconHref).then(r => r.text()), script('/vendor/nostr-tools-2.25.2.bundle.js')]);
+  const [snap, svg] = await Promise.all([strict ? Promise.resolve(null) : fetch('/site.json', { cache: 'no-cache' }).then(r => r.json()).catch(() => null), fetch(iconHref, { cache: 'force-cache' }).then(r => r.text()), script('/vendor/nostr-tools-2.25.2.bundle.js')]); // the browser already fetched the icon for the tab; reuse that copy
   env.NT = window.NostrTools; progress('libs', { ms: Math.round(performance.now() - t0) }); // the crypto is needed before anything is read: identifiers are hashed, bodies veiled
   try { init({ veil: decodeIcon(svg) }); progress('icon', {}); } catch (e) { console.warn('icon is not a key:', e.message); progress('icon', { error: e.message }); }
   if (snap) loadSnapshot(snap); loadCache(); progress('cache', { n: sel.signed() }); keepCache(); bindNotify(notify);
@@ -50,7 +50,10 @@ export async function start(opts = {}) {
     progress('verified', { n: pre.events.size, fresh, bad });
     pre.onEvent = (ev, url) => { const isNew = take(ev, url); progress('event', { id: ev.id, kind: ev.kind, bytes: ev.content.length, veiled: ev.kind === 30078, sample: ev.kind === 30078 ? ev.content.slice(0, 240) : '', fresh: isNew, url }); }; }
   script('/vendor/dompurify-3.4.14.min.c2f26ea4.js').then(notify).catch(() => {});
-  connect(); chatConfigure(false); if (sel.sections().includes('mural')) subscribeWraps();
+  const goLive = since => { connect({ since }); if (sel.sections().includes('mural')) subscribeWraps(); };
+  if (pre) Promise.race([pre.primaryEose, new Promise(r => setTimeout(r, 1500, null))]).then(maxAt => { progress('handoff', { since: maxAt || 0 }); goLive(maxAt || undefined); }); // history came through the early sockets; the pool subscribes for anything newer
+  else goLive();
+  chatConfigure(false);
   if (seedNick) setNick(seedNick);
   chat.seed = opts.send ? '' : seedText;
   if (opts.unlock || storedKey()) { Owner = await import('./owner.js'); if (storedKey()) { try { restore(); } catch {} } else initial.unlockOpen = true; }

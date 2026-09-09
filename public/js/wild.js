@@ -4,7 +4,7 @@
 // ciphertext, hover to re-veil, the relays orbiting the key, and a HUD that
 // counts hashes while a message mines. On by default; "calm" is a per-browser
 // preference (nothing is published either way).
-import { LOG } from './store.js';
+import { LOG, env, PALETTE } from './store.js';
 const P = ['#0b1a12', '#10261a', '#153223', '#1a3f2c', '#1f4c35', '#255a3f', '#2b6849', '#327754', '#3a865f', '#43956b', '#4ea477', '#5ab384', '#68c291', '#79d09f', '#8dddae', '#a4e9bf'];
 const CSS = `html.wild body{background:#050806;color:#d8f3e3}html.wild #rain{position:fixed;inset:0;z-index:0;opacity:.5;pointer-events:none}
 html.wild main{position:relative;z-index:1}html.wild header.me{background:linear-gradient(135deg,rgba(11,26,18,.88),rgba(5,8,6,.92));border-color:#3a865f;box-shadow:0 0 40px rgba(125,211,168,.25),inset 0 0 60px rgba(125,211,168,.06)}
@@ -97,7 +97,7 @@ function liveTerminal() {
   t.addEventListener('click', e => { if (t.classList.contains('min') && !e.target.closest('button')) t.classList.toggle('open'); });
   if (skip) t.classList.add('min');
   const line = async (text, cls = '') => { const l = document.createElement('div'); l.className = 'l ' + cls; out.append(l);
-    if (skip || performance.now() - started > 3000) { l.textContent = text; if (t.scrollHeight > t.clientHeight) t.scrollTop = t.scrollHeight; return; }
+    if (skip || minimised || performance.now() - started > 3000) { l.textContent = text; if (t.scrollHeight > t.clientHeight) t.scrollTop = t.scrollHeight; return; } // docked: the log completes at once
     const cur = document.createElement('span'); cur.className = 'cur'; l.append(cur);
     for (let i = 0; i < text.length && !skip && performance.now() - started < 3000; i += 4) { l.insertBefore(document.createTextNode(text.slice(i, i + 4)), cur); await sleep(8); }
     l.textContent = text; if (t.scrollHeight > t.clientHeight) t.scrollTop = t.scrollHeight; };
@@ -117,6 +117,7 @@ function liveTerminal() {
     case 'css': return [`${ms(d)}  theme: css block unveiled and applied`, 'ok'];
     case 'eose': return [`${ms(d)}  EOSE … ${d.n} signed event${d.n === 1 ? '' : 's'} on the page`, 'ok'];
     case 'error': return [`${ms(d)}  ${d.message}`, 'err'];
+    case 'handoff': return [`${ms(d)}  live: the pool subscribes for anything newer${d.since ? '' : ' (no end-of-stream from my relay yet, so it fetches everything)'}`, 'dim'];
     case 'sw': return [d.on ? `${ms(d)}  service worker installed: this browser pins the shell from the next visit on` : `${ms(d)}  service worker unavailable: ${d.why}`, d.on ? 'dim' : 'err'];
     case 'shell-pin': return d.state === 'uncontrolled' ? [`${ms(d)}  shell not pinned yet; the worker takes over from the next visit`, 'dim']
       : d.state === 'pinned-now' ? [`${ms(d)}  shell sha256 ${d.hash.slice(0, 12)}… pinned in this browser (first visit)`, 'ok']
@@ -125,22 +126,25 @@ function liveTerminal() {
     case 'shell-signed': return [`${ms(d)}  manifest: this shell is on the list the site key signed`, 'ok'];
     case 'shell-unsigned': return [d.none ? `${ms(d)}  manifest: none published yet${d.state === 'changed' ? '; the change above is unverified' : ''}` : `${ms(d)}  manifest: the site key's signed list does not include this shell`, d.state === 'changed' ? 'err' : 'dim'];
     default: return null; } };
-  const q = []; let typing = false, minimised = false, wantMin = false, settleTimer = null, seen = 0;
-  // the dock waits for the typewriter: nothing collapses into the corner while a line is still being written
-  const dock = () => { if (minimised) return; minimised = true; setTimeout(() => { t.classList.add('min'); t.style.cursor = 'default'; }, skip ? 0 : 350); };
-  const minimise = () => { wantMin = true; if (!typing && !q.length) dock(); };
-  const drain = async () => { if (typing) return; typing = true; while (q.length) { const [text, cls] = q.shift(); await line(text, cls); } typing = false; if (wantMin) dock(); };
+  const q = []; let typing = false, minimised = false, settleTimer = null, dockTimer = null, seen = 0;
+  // the sweet spot: the terminal docks 300 ms after the page has content, and the rest of the log lands in the dock at once
+  const dock = () => { if (minimised) return; minimised = true; clearTimeout(dockTimer); t.classList.add('min'); t.style.cursor = 'default'; t.dataset.dockedAt = Math.round(performance.now()); };
+  const dockSoon = ms => { if (minimised || dockTimer) return; dockTimer = setTimeout(dock, ms); };
+  const minimise = dock;
+  const drain = async () => { if (typing) return; typing = true; while (q.length) { const [text, cls] = q.shift(); await line(text, cls); } typing = false; };
   const relayState = new Map(); // the early socket and the pool both report a relay; print each state change once
   const on = d => { if (d.stage === 'relay') { const k = short(d.url); if (relayState.get(k) === d.open) return; relayState.set(k, d.open); }
     const f = fmt(d); if (f) { q.push(f); drain(); }
     if (d.stage === 'event' || d.stage === 'raw') { seen++; if (d.veiled && d.sample) cipher = (cipher === 'QWxs' ? '' : cipher) + d.sample; blip(220 + parseInt(d.id.slice(8, 10), 16) * 3);
       clearTimeout(settleTimer); settleTimer = setTimeout(() => { q.push([`${String(Math.round(performance.now())).padStart(5)} ms  quiet: ${seen} events, nothing newer`, 'ok']); drain(); minimise(); }, 1500); }
-    if (d.stage === 'eose' || d.stage === 'verified') { clearTimeout(settleTimer); blip(880); if (d.stage === 'eose') minimise(); else settleTimer = setTimeout(minimise, 900); }
+    if (d.stage === 'render' && d.events > 0) dockSoon(300);                                   // content was already here (cache): dock shortly after
+    if ((d.stage === 'event' && d.fresh) || (d.stage === 'verified' && d.fresh > 0) || d.stage === 'css') dockSoon(300); // content just landed
+    if (d.stage === 'eose' || d.stage === 'verified') { clearTimeout(settleTimer); blip(880); if (d.stage === 'eose') dockSoon(0); }
     if (d.stage === 'error') minimise();
     if (d.stage === 'shell-unsigned' && d.state === 'changed') t.classList.add('alert'); };
   for (const d of LOG) on(d);
   document.addEventListener('rb:progress', e => on(e.detail));
-  setTimeout(minimise, 7000); // whatever the relays do, the page is yours after 7 s
+  setTimeout(dock, 3000); // whatever the relays do, the page is yours after 3 s
 }
 // blocks that preact adds while events arrive descramble from ciphertext the moment they appear
 function watchBlocks() {
@@ -185,8 +189,10 @@ addEventListener('pagehide', settle);
 async function orbit() {
   const box = document.createElement('div'); box.className = 'hud on'; box.id = 'orbit'; box.style.left = '1rem'; box.style.bottom = '1rem'; document.body.append(box);
   const c = document.createElement('canvas'); c.width = 240; c.height = 150; box.append(c); const g = c.getContext('2d');
-  const svg = await fetch(document.querySelector('link[rel="icon"][type="image/svg+xml"]')?.getAttribute('href') || '/favicon.svg').then(r => r.text()).catch(() => '');
-  const cells = [...svg.matchAll(/fill="(#[0-9a-f]{6})"/gi)].map(m => m[1]).filter(f => P.includes(f.toLowerCase()));
+  // the key is the icon: once app.js has decoded it, its 64 nibbles are the 64 squares, so nothing is fetched again here
+  const keyCells = () => env.VEIL ? [...env.VEIL].flatMap(b => [PALETTE[b >> 4], PALETTE[b & 15]]) : null;
+  let cells = keyCells() || [];
+  if (!cells.length) await new Promise(res => { const tick = () => { cells = keyCells() || []; if (cells.length) res(); else setTimeout(tick, 60); }; tick(); setTimeout(res, 4000); });
   const primary = document.querySelector('meta[name="site-relay"]')?.content;
   const relays = [...document.querySelectorAll('footer [data-relay]')].map(el => { const parts = el.dataset.relay.replace(/^wss?:\/\//, '').replace(/\/.*$/, '').split('.'); return { el, name: el.dataset.relay === primary ? 'mine' : parts.length > 1 ? parts[parts.length - 2] : parts[0] }; });
   let t0 = performance.now();

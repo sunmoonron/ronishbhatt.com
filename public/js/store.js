@@ -126,12 +126,13 @@ function pollStatus() {
   }
   if (changed) notify();
 }
-export function connect() {
+export function connect(opts = {}) {
   pool = new env.NT.SimplePool({ enableReconnect: true }); pool.trackRelays = true;
+  const filter = { authors: [env.SITE], kinds: [K.note, K.del, K.block], limit: 300 }; if (opts.since) filter.since = opts.since; // strict: the early sockets already fetched history, the pool only needs what is newer
   for (const url of env.RELAYS) pool.ensureRelay(url, { connectionTimeout: 8000 }).then(() => progress('relay', { url, open: true }), e => progress('relay', { url, open: false, why: e?.message || 'closed' }));
-  pool.subscribe(env.RELAYS, { authors: [env.SITE], kinds: [K.note, K.del, K.block], limit: 300 },
+  pool.subscribe(env.RELAYS, filter,
     { label: 'site',
-      onevent: ev => { const fresh = apply(ev, { verified: true }); if (fresh) progress('event', { id: ev.id, kind: ev.kind, bytes: ev.content.length, veiled: ev.kind === K.block, sample: ev.kind === K.block ? ev.content.slice(0, 240) : '', fresh }); },
+      onevent: ev => { store.live = (store.live || 0) + 1; const fresh = apply(ev, { verified: true }); if (fresh) progress('event', { id: ev.id, kind: ev.kind, bytes: ev.content.length, veiled: ev.kind === K.block, sample: ev.kind === K.block ? ev.content.slice(0, 240) : '', fresh }); },
       oneose: () => { store.ready = true; progress('eose', { n: sel.signed() }); notify(); } });
   pollStatus(); setInterval(pollStatus, 3000);
 }
