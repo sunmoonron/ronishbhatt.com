@@ -18,7 +18,7 @@ const shellHash = meta('shell-sha256'), [pinState, pinnedHash] = (meta('shell-pi
 progress('shell-pin', { hash: shellHash, state: shellHash ? pinState : 'uncontrolled', pinned: pinnedHash });
 if ('serviceWorker' in navigator) {
   if (meta('sw') === 'off') navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister())).catch(() => {}); // kill switch: a shell that says so retires the worker
-  else navigator.serviceWorker.register('/sw.js').then(() => progress('sw', { on: true }), e => progress('sw', { on: false, why: e.message }));
+  else navigator.serviceWorker.register('/sw.js').then(r => { if (r.installing) progress('sw', { on: true }); }, e => progress('sw', { on: false, why: e.message })); // one line on the visit that installs it; later visits get the pin line instead
 }
 // the manifest is a block like any other: {slug:'shell', shells:[sha256...]} signed by the site key; once it is in the store, judge this shell by it
 let judged = false;
