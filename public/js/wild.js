@@ -127,9 +127,8 @@ function liveTerminal() {
     case 'shell-unsigned': return [d.none ? `${ms(d)}  manifest: none published yet${d.state === 'changed' ? '; the change above is unverified' : ''}` : `${ms(d)}  manifest: the site key's signed list does not include this shell`, d.state === 'changed' ? 'err' : 'dim'];
     default: return null; } };
   const q = []; let typing = false, minimised = false, settleTimer = null, dockTimer = null, seen = 0;
-  // the sweet spot: the terminal docks 300 ms after the page has content, and the rest of the log lands in the dock at once
+  // the terminal runs its 3 s show and then docks; anything still queued lands in the dock at once
   const dock = () => { if (minimised) return; minimised = true; clearTimeout(dockTimer); t.classList.add('min'); t.style.cursor = 'default'; t.dataset.dockedAt = Math.round(performance.now()); };
-  const dockSoon = ms => { if (minimised || dockTimer) return; dockTimer = setTimeout(dock, ms); };
   const minimise = dock;
   const drain = async () => { if (typing) return; typing = true; while (q.length) { const [text, cls] = q.shift(); await line(text, cls); } typing = false; };
   const relayState = new Map(); // the early socket and the pool both report a relay; print each state change once
@@ -137,9 +136,7 @@ function liveTerminal() {
     const f = fmt(d); if (f) { q.push(f); drain(); }
     if (d.stage === 'event' || d.stage === 'raw') { seen++; if (d.veiled && d.sample) cipher = (cipher === 'QWxs' ? '' : cipher) + d.sample; blip(220 + parseInt(d.id.slice(8, 10), 16) * 3);
       clearTimeout(settleTimer); settleTimer = setTimeout(() => { q.push([`${String(Math.round(performance.now())).padStart(5)} ms  quiet: ${seen} events, nothing newer`, 'ok']); drain(); minimise(); }, 1500); }
-    if (d.stage === 'render' && d.events > 0) dockSoon(300);                                   // content was already here (cache): dock shortly after
-    if ((d.stage === 'event' && d.fresh) || (d.stage === 'verified' && d.fresh > 0) || d.stage === 'css') dockSoon(300); // content just landed
-    if (d.stage === 'eose' || d.stage === 'verified') { clearTimeout(settleTimer); blip(880); if (d.stage === 'eose') dockSoon(0); }
+    if (d.stage === 'eose' || d.stage === 'verified') { clearTimeout(settleTimer); blip(880); } // the terminal holds for its full 3 s whatever the relays do; the page is live underneath
     if (d.stage === 'error') minimise();
     if (d.stage === 'shell-unsigned' && d.state === 'changed') t.classList.add('alert'); };
   for (const d of LOG) on(d);
