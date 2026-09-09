@@ -93,7 +93,8 @@ export const sel = {
 // A seed draft is {kind, d?, content} in plain text; it gets a hashed d and the site key here.
 export function loadSnapshot(snap) {
   for (const e of snap?.events || []) apply(e, { verified: true });
-  for (const d of snap?.drafts || []) {
+  for (const s of snap?.drafts || []) {
+    let d = s; if (typeof s === 'string') { try { d = JSON.parse(unveil(s)); } catch { continue; } } // baked seeds arrive veiled
     const ev = { kind: d.kind, pubkey: env.SITE, created_at: 0, tags: d.d ? [['d', h(d.d)]] : [], content: d.content, sig: '', plain: d.content };
     ev.id = 'draft:' + keyOf(ev); apply(ev, { draft: true });
   }

@@ -12,7 +12,7 @@ import { render } from 'preact-render-to-string';
 import { verifyEvent, getEventHash } from 'nostr-tools/pure';
 import * as nip44 from 'nostr-tools/nip44';
 import { SimplePool } from 'nostr-tools/pool';
-import { init, env, store, apply, sel, loadSnapshot, decodeIcon, applyWrap, applyWord } from '../public/js/store.js';
+import { init, env, store, apply, sel, loadSnapshot, decodeIcon, applyWrap, applyWord, veil } from '../public/js/store.js';
 import { html, Page } from '../public/js/ui.js';
 import { Chat } from '../public/js/chat.js';
 import { Garden } from '../public/js/garden.js';
@@ -28,7 +28,7 @@ const ASSETS = { engine: '/demos/' + demos.find(f => /^tiny_engine\.[0-9a-f]{8}\
 init({ site: meta('site-pubkey'), relay: meta('site-relay'), backups: meta('site-backups').split(',').map(s => s.trim()).filter(Boolean),
   veil: decodeIcon(svgIcon), icon: `/favicon.svg?v=${iconV}`, assets: ASSETS, NT: { verifyEvent, getEventHash, nip44 } });
 const snap = JSON.parse(fs.readFileSync(PUB + 'site.json', 'utf8'));
-const seed = JSON.parse(fs.readFileSync(PUB + 'drafts.json', 'utf8')).drafts; // permanent seed content
+const seed = JSON.parse(fs.readFileSync(new URL('../drafts.json', import.meta.url), 'utf8')).drafts; // permanent seed content, kept out of public/
 
 const pool = new SimplePool(); let fetched = [];
 try { fetched = await pool.querySync(env.RELAYS, { authors: [env.SITE], kinds: [1, 5, 30078], limit: 500 }, { maxWait: 8000 }); } catch (e) { console.error('relay query failed:', e.message); }
@@ -43,7 +43,7 @@ loadSnapshot({ events: [], drafts: seed });
 
 const events = [...store.events.values()].filter(e => !e.draft).map(({ plain, meta, ...e }) => e).concat(store.dels);
 const baked_at = Math.floor(Date.now() / 1000);
-fs.writeFileSync(PUB + 'site.json', JSON.stringify({ site: env.SITE, baked_at, events, drafts: seed }, null, 1));
+fs.writeFileSync(PUB + 'site.json', JSON.stringify({ site: env.SITE, baked_at, events, drafts: seed.map(d => veil(JSON.stringify(d))) }, null, 1)); // seeds veiled like every block
 
 const cfg = sel.config(), p = sel.profileData();
 const body = render(html`<${Page} Chat=${Chat} chatProps=${{ live: false }} Garden=${Garden} gardenProps=${{ live: false }} />`);
