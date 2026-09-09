@@ -23,10 +23,12 @@ const meta = n => src.match(new RegExp(`<meta name="${n}" content="([^"]*)"`))?.
 const sha = (algo, data) => crypto.createHash(algo).update(data).digest('base64');
 const sri = f => `sha384-${sha('sha384', fs.readFileSync(PUB + f))}`;
 const svgIcon = fs.readFileSync(PUB + 'favicon.svg', 'utf8'), iconV = crypto.createHash('sha256').update(svgIcon).digest('hex').slice(0, 8);
+// the icon is the key, so the key rides inside the shell: the tab icon and the header mark cost no request, and app.js reads it from the link tag
+const iconData = 'data:image/svg+xml,' + encodeURIComponent(svgIcon).replace(/%20/g, ' ');
 const demos = fs.readdirSync(PUB + 'demos');
 const ASSETS = { engine: '/demos/' + demos.find(f => /^tiny_engine\.[0-9a-f]{8}\.js$/.test(f)), model: '/demos/' + demos.find(f => /^bip\.[0-9a-f]{8}\.json$/.test(f)) };
 init({ site: meta('site-pubkey'), relay: meta('site-relay'), backups: meta('site-backups').split(',').map(s => s.trim()).filter(Boolean),
-  veil: decodeIcon(svgIcon), icon: `/favicon.svg?v=${iconV}`, assets: ASSETS, NT: { verifyEvent, getEventHash, nip44 } });
+  veil: decodeIcon(svgIcon), icon: iconData, assets: ASSETS, NT: { verifyEvent, getEventHash, nip44 } });
 const snap = JSON.parse(fs.readFileSync(PUB + 'site.json', 'utf8'));
 const seed = JSON.parse(fs.readFileSync(new URL('../drafts.json', import.meta.url), 'utf8')).drafts; // permanent seed content, kept out of public/
 
@@ -75,7 +77,7 @@ const out = src
   .replace(/<meta name="description" content="[^"]*">/, `<meta name="description" content="${esc(p.about || '')}">`)
   .replace(/<meta name="site-sri" content="[^"]*">/, `<meta name="site-sri" content="${esc(JSON.stringify(Object.fromEntries(LAZY.map(f => [f, sri(f)]))))}">`)
   .replace(/<meta name="site-assets" content="[^"]*">/, `<meta name="site-assets" content="${esc(JSON.stringify(ASSETS))}">`)
-  .replace(/href="\/favicon\.svg[^"]*"/g, `href="/favicon.svg?v=${iconV}"`).replace(/href="\/favicon\.ico[^"]*"/g, `href="/favicon.ico?v=${iconV}"`).replace(/href="\/apple-touch-icon\.png[^"]*"/g, `href="/apple-touch-icon.png?v=${iconV}"`)
+  .replace(/<link rel="icon" href="[^"]*" type="image\/svg\+xml">/, `<link rel="icon" href="${iconData.replace(/&/g, '&amp;').replace(/"/g, '&quot;')}" type="image/svg+xml">`).replace(/href="\/favicon\.ico[^"]*"/g, `href="/favicon.ico?v=${iconV}"`).replace(/href="\/apple-touch-icon\.png[^"]*"/g, `href="/apple-touch-icon.png?v=${iconV}"`)
   .replace(/script-src 'self'[^;]*/, `script-src 'self' 'sha256-${sha('sha256', importmap)}' 'sha256-${sha('sha256', wildBoot)}'`)
   .replace(/<script id="wildboot">[\s\S]*?<\/script>/, `<script id="wildboot">${wildBoot}</script>`)
   .replace(/<style id="wild">[\s\S]*?<\/style>/, `<style id="wild">${wildCss.replace(/<\/style/gi, '')}</style>`)

@@ -11,6 +11,8 @@ import { Chat, chat, chatConfigure, send as chatSend, setNick } from './chat.js'
 const meta = n => document.querySelector(`meta[name="${n}"]`)?.content?.trim() || '';
 const jsonMeta = n => { try { return JSON.parse(meta(n) || '{}'); } catch { return {}; } };
 const iconHref = document.querySelector('link[rel="icon"][type="image/svg+xml"]')?.getAttribute('href') || '/favicon.svg';
+// the shell inlines the icon as a data URL, so the key is read from the tag itself; a plain href (older shells) is fetched
+const iconText = () => iconHref.startsWith('data:') ? Promise.resolve(/;base64,/.test(iconHref) ? atob(iconHref.slice(iconHref.indexOf(',') + 1)) : decodeURIComponent(iconHref.slice(iconHref.indexOf(',') + 1))) : fetch(iconHref, { cache: 'force-cache' }).then(r => r.text());
 init({ site: meta('site-pubkey'), relay: meta('site-relay'), backups: meta('site-backups').split(',').map(s => s.trim()).filter(Boolean), icon: iconHref, assets: jsonMeta('site-assets'), sri: jsonMeta('site-sri') });
 const SRI = env.SRI;
 const script = src => new Promise((ok, err) => { const s = document.createElement('script'); s.src = src; if (SRI[src]) s.integrity = SRI[src]; s.onload = ok; s.onerror = err; document.head.append(s); });
@@ -39,7 +41,7 @@ export async function start(opts = {}) {
   if (started) return; started = true;
   const strict = !!opts.strict, t0 = performance.now(); // strict: no baked snapshot, the relays and this browser's verified cache are the only sources
   const seedText = document.querySelector('#chat textarea')?.value || '', seedNick = document.querySelector('#chat .who input')?.value || '';
-  const [snap, svg] = await Promise.all([strict ? Promise.resolve(null) : fetch('/site.json', { cache: 'no-cache' }).then(r => r.json()).catch(() => null), fetch(iconHref, { cache: 'force-cache' }).then(r => r.text()), script('/vendor/nostr-tools-2.25.2.bundle.js')]); // the browser already fetched the icon for the tab; reuse that copy
+  const [snap, svg] = await Promise.all([strict ? Promise.resolve(null) : fetch('/site.json', { cache: 'no-cache' }).then(r => r.json()).catch(() => null), iconText(), script('/vendor/nostr-tools-2.25.2.bundle.js')]);
   env.NT = window.NostrTools; progress('libs', { ms: Math.round(performance.now() - t0) }); // the crypto is needed before anything is read: identifiers are hashed, bodies veiled
   try { init({ veil: decodeIcon(svg) }); progress('icon', {}); } catch (e) { console.warn('icon is not a key:', e.message); progress('icon', { error: e.message }); }
   if (snap) loadSnapshot(snap); loadCache(); progress('cache', { n: sel.signed() }); keepCache(); bindNotify(notify);
