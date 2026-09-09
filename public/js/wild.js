@@ -16,7 +16,7 @@ html.wild body::after{content:"";position:fixed;inset:0;z-index:2;pointer-events
 html.wild .veil{color:#43956b!important;text-shadow:none!important}html.wild #wildpill{font-size:0}html.wild #wildpill::before{content:"calm";font-size:.74rem}
 .term{position:fixed;inset:0;z-index:60;background:rgba(3,6,4,.95);color:#a4e9bf;font:13px/1.55 var(--mono);padding:2rem;overflow:hidden;transition:inset .6s ease,padding .6s ease,font-size .6s ease;cursor:pointer}
 .term.min{inset:auto 1rem 1rem auto;width:min(27rem,92vw);max-height:8.5rem;padding:.55rem .8rem;background:rgba(3,6,4,.88);border:1px solid rgba(125,211,168,.35);border-radius:10px;overflow:auto;font-size:11px;cursor:default}
-.term .l{white-space:pre-wrap;word-break:break-all}.term .ok{color:#7dd3a8}.term .dim{color:#43956b}.term .err{color:#e5484d}.term .cur{display:inline-block;width:.6em;height:1em;background:#a4e9bf;vertical-align:-2px;animation:blink 1s steps(2) infinite}@keyframes blink{50%{opacity:0}}
+.term .l{white-space:pre-wrap;word-break:break-all}.term .ok{color:#7dd3a8}.term .dim{color:#43956b}.term .err{color:#e5484d}.term.alert{border-color:#e5484d;box-shadow:0 0 24px rgba(229,72,77,.35)}.term .cur{display:inline-block;width:.6em;height:1em;background:#a4e9bf;vertical-align:-2px;animation:blink 1s steps(2) infinite}@keyframes blink{50%{opacity:0}}
 .term .bar{display:flex;gap:.5rem;justify-content:flex-end;margin-top:.35rem}.term button{font:11px var(--mono);padding:.15rem .5rem;background:rgba(125,211,168,.12);border:1px solid rgba(125,211,168,.35);color:#a4e9bf;border-radius:6px}
 .hud{position:fixed;left:1rem;bottom:1rem;z-index:61;font:12px var(--mono);color:#a4e9bf;background:rgba(3,6,4,.88);border:1px solid rgba(125,211,168,.35);border-radius:10px;padding:.5rem .8rem;display:none;max-width:16rem}.hud.on{display:block}.hud canvas{display:block;width:100%;height:auto;margin-bottom:.35rem}
 html.booting::before{content:"";position:fixed;inset:0;z-index:59;background:rgba(3,6,4,.97)}html.booting::after{content:"> boot \\25AE";position:fixed;left:2rem;top:2rem;z-index:59;color:#a4e9bf;font:13px/1.55 var(--mono)}
@@ -117,17 +117,27 @@ function liveTerminal() {
     case 'css': return [`${ms(d)}  theme: css block unveiled and applied`, 'ok'];
     case 'eose': return [`${ms(d)}  EOSE … ${d.n} signed event${d.n === 1 ? '' : 's'} on the page`, 'ok'];
     case 'error': return [`${ms(d)}  ${d.message}`, 'err'];
+    case 'sw': return [d.on ? `${ms(d)}  service worker installed: this browser pins the shell from the next visit on` : `${ms(d)}  service worker unavailable: ${d.why}`, d.on ? 'dim' : 'err'];
+    case 'shell-pin': return d.state === 'uncontrolled' ? [`${ms(d)}  shell not pinned yet; the worker takes over from the next visit`, 'dim']
+      : d.state === 'pinned-now' ? [`${ms(d)}  shell sha256 ${d.hash.slice(0, 12)}… pinned in this browser (first visit)`, 'ok']
+      : d.state === 'same' ? [`${ms(d)}  shell sha256 ${d.hash.slice(0, 12)}… matches the pin from your last visit`, 'ok']
+      : [`${ms(d)}  shell sha256 ${d.hash.slice(0, 12)}… CHANGED since your last visit (was ${(d.pinned || '').slice(0, 12)}…)`, 'err'];
+    case 'shell-signed': return [`${ms(d)}  manifest: this shell is on the list the site key signed`, 'ok'];
+    case 'shell-unsigned': return [d.none ? `${ms(d)}  manifest: none published yet${d.state === 'changed' ? '; the change above is unverified' : ''}` : `${ms(d)}  manifest: the site key's signed list does not include this shell`, d.state === 'changed' ? 'err' : 'dim'];
     default: return null; } };
-  const q = []; let typing = false, minimised = false, settleTimer = null, seen = 0;
-  const minimise = () => { if (minimised) return; minimised = true; setTimeout(() => { t.classList.add('min'); t.style.cursor = 'default'; }, skip ? 0 : 350); };
-  const drain = async () => { if (typing) return; typing = true; while (q.length) { const [text, cls] = q.shift(); await line(text, cls); } typing = false; };
+  const q = []; let typing = false, minimised = false, wantMin = false, settleTimer = null, seen = 0;
+  // the dock waits for the typewriter: nothing collapses into the corner while a line is still being written
+  const dock = () => { if (minimised) return; minimised = true; setTimeout(() => { t.classList.add('min'); t.style.cursor = 'default'; }, skip ? 0 : 350); };
+  const minimise = () => { wantMin = true; if (!typing && !q.length) dock(); };
+  const drain = async () => { if (typing) return; typing = true; while (q.length) { const [text, cls] = q.shift(); await line(text, cls); } typing = false; if (wantMin) dock(); };
   const relayState = new Map(); // the early socket and the pool both report a relay; print each state change once
   const on = d => { if (d.stage === 'relay') { const k = short(d.url); if (relayState.get(k) === d.open) return; relayState.set(k, d.open); }
     const f = fmt(d); if (f) { q.push(f); drain(); }
     if (d.stage === 'event' || d.stage === 'raw') { seen++; if (d.veiled && d.sample) cipher = (cipher === 'QWxs' ? '' : cipher) + d.sample; blip(220 + parseInt(d.id.slice(8, 10), 16) * 3);
       clearTimeout(settleTimer); settleTimer = setTimeout(() => { q.push([`${String(Math.round(performance.now())).padStart(5)} ms  quiet: ${seen} events, nothing newer`, 'ok']); drain(); minimise(); }, 1500); }
     if (d.stage === 'eose' || d.stage === 'verified') { clearTimeout(settleTimer); blip(880); if (d.stage === 'eose') minimise(); else settleTimer = setTimeout(minimise, 900); }
-    if (d.stage === 'error') minimise(); };
+    if (d.stage === 'error') minimise();
+    if (d.stage === 'shell-unsigned' && d.state === 'changed') t.classList.add('alert'); };
   for (const d of LOG) on(d);
   document.addEventListener('rb:progress', e => on(e.detail));
   setTimeout(minimise, 7000); // whatever the relays do, the page is yours after 7 s

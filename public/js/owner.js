@@ -85,6 +85,12 @@ export async function publishDrafts() {
   toast(`${n}/${drafts.length} drafts published`);
   await retirePlainProfile();
 }
+// The shell manifest: the site key signs the hashes the bake wrote, so a returning browser can tell a deploy from a tampered edge.
+export async function signShell() {
+  const m = await fetch('/shell-manifest.json', { cache: 'no-cache' }).then(r => r.json());
+  const shells = [m.shell, m.static].filter(Boolean);
+  await publishTemplate({ kind: K.block, tags: [['d', h('shell')]], content: veil(JSON.stringify({ slug: 'shell', type: 'manifest', title: 'shell manifest', shells, sw: m.sw, baked_at: m.baked_at })) });
+}
 // Blocks published under an earlier scheme (any tag beyond d) get re-signed under the current one.
 export const stale = () => [...store.events.values()].filter(e => !e.draft && e.kind === K.block && e.tags.some(t => t[0] !== 'd'));
 export async function resignAll() {
@@ -111,6 +117,7 @@ export function OwnerBar({ onEdit, onConsole, unread }) {
     <button class="sm" onClick=${() => onEdit('block', sel.cssEvent(), { slug: 'css' })}>stylesheet</button>
     <button class="sm" onClick=${() => onEdit('block', null, { type: 'section' })}>+ block</button>
     <button class="sm" onClick=${() => onEdit(K.note, null)}>+ note</button>
+    <button class="sm" title="publish the hashes of the shell this deploy serves, so returning browsers can tell a deploy from tampering" disabled=${busy} onClick=${async () => { setBusy(true); try { await signShell(); } catch (e) { toast(e.message, 'err'); } finally { setBusy(false); } }}>sign shell</button>
     <button class="sm" onClick=${() => document.getElementById('chat')?.scrollIntoView({ behavior: 'smooth' })}>inbox${unread ? html`<span class="badge">${unread}</span>` : null}</button>
     <span class="grow"></span>
     <button class="sm" title="where publishes go; deletions always go to every relay" onClick=${() => { localStorage.setItem('rb.targets', targets().length === 1 ? 'all' : 'mine'); notify(); }}>publish to: ${targets().length === 1 ? 'my relay only' : 'all relays'}</button>

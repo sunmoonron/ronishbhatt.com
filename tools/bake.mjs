@@ -84,14 +84,17 @@ const out = src
   .replace(/<main id="app">[\s\S]*?<\/main>/, `<main id="app">${body}</main>`)
   .replace(/(<script type="application\/json" id="snapshot">)[\s\S]*?(<\/script>)/, `$1${index}$2`)
   .replace(/<script type="module" src="[^"]*" integrity="[^"]*">/, `<script type="module" src="/js/${hashed.boot}" integrity="${sri('/js/' + hashed.boot)}">`);
-fs.writeFileSync(PUB + 'index.html', out);
-// the strict entry: the same shell with no pre-rendered body, no baked theme and no snapshot index; strict.js fills it from the relays
-const strictOut = out
+fs.writeFileSync(PUB + 'static.html', out); // the pre-rendered page: the no-JavaScript fallback and the crawlers' copy
+// the default entry is the strict shell: no pre-rendered body, no baked theme, no snapshot index; strict.js fills it from the relays
+const strictOut = out.replace(/(?:<link rel="(?:module)?preload"[^>]*>)+\n?/g, '') // idempotent: the template is last bake's shell, so drop its hints before adding fresh ones
   .replace(/<style id="theme">[\s\S]*?<\/style>/, '<style id="theme"></style>')
-  .replace(/<main id="app">[\s\S]*?<\/main>/, '<main id="app"></main>')
+  .replace(/<main id="app">[\s\S]*?<\/main>/, '<main id="app"><noscript><p>This page is built in your browser from events signed by the site key and needs JavaScript. A pre-rendered copy is at <a href="/static.html">/static.html</a>.</p></noscript></main>')
   .replace(/(<script type="application\/json" id="snapshot">)[\s\S]*?(<\/script>)/, '$1{}$2')
   .replace(/<script type="module" src="[^"]*" integrity="[^"]*">/, `<script type="module" src="/js/${hashed.strict}" integrity="${sri('/js/' + hashed.strict)}">`)
   // everything the entry will need starts downloading with the shell instead of one import hop at a time
-  .replace(/<\/script>\n<script id="wildboot">/, `</script>\n${[...Object.values(VENDOR), ...['app', 'store', 'ui', 'chat', 'garden', 'wild'].map(n => '/js/' + hashed[n])].map(f => `<link rel="modulepreload" href="${f}" integrity="${sri(f)}">`).join('')}${LAZY.slice(0, 2).map(f => `<link rel="preload" as="script" href="${f}" integrity="${sri(f)}">`).join('')}\n<script id="wildboot">`);
-fs.writeFileSync(PUB + 'strict.html', strictOut);
+  .replace(/<\/script>\s*<script id="wildboot">/, `</script>\n${[...Object.values(VENDOR), ...['app', 'store', 'ui', 'chat', 'garden', 'wild'].map(n => '/js/' + hashed[n])].map(f => `<link rel="modulepreload" href="${f}" integrity="${sri(f)}">`).join('')}${LAZY.slice(0, 2).map(f => `<link rel="preload" as="script" href="${f}" integrity="${sri(f)}">`).join('')}\n<script id="wildboot">`);
+fs.writeFileSync(PUB + 'index.html', strictOut);
+fs.writeFileSync(PUB + 'strict.html', strictOut); // alias, same bytes
+const hexsha = d => crypto.createHash('sha256').update(d).digest('hex');
+fs.writeFileSync(PUB + 'shell-manifest.json', JSON.stringify({ shell: hexsha(strictOut), static: hexsha(out), sw: hexsha(fs.readFileSync(PUB + 'sw.js')), baked_at }, null, 1));
 console.log(`baked ${PUB}: ${events.length} signed events (${good.length} fetched from ${env.RELAYS.length} relays${useNew ? '' : ', kept previous'}), ${seed.length} seed drafts (${[...store.events.values()].filter(e => e.draft).length} showing), mural ${store.wraps.size} tiles, garden ${store.words.size} words, html ${(out.length / 1024).toFixed(1)} KB`);

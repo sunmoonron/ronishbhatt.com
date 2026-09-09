@@ -4,13 +4,33 @@
 // signed events, verified in this browser, unveiled with the icon's key, and
 // rendered as it arrives. The relays are asked here, before the crypto has
 // loaded, so the handshake overlaps the download; what they send is buffered
-// and verified the moment nostr-tools lands. The wild terminal narrates it.
-import { progress, LOG } from './store.js';
+// and verified the moment nostr-tools lands. A service worker pins the shell's
+// bytes after the first visit and the page checks them against the list the
+// site key signed. The wild terminal narrates all of it.
+import { progress, LOG, sel, onChange, store, env, meta as blockMeta } from './store.js';
 const meta = n => document.querySelector(`meta[name="${n}"]`)?.content?.trim() || '';
 const SITE = meta('site-pubkey'), RELAYS = [meta('site-relay'), ...meta('site-backups').split(',').map(s => s.trim()).filter(Boolean)];
 const wild = /[?&]wild/.test(location.search) || (localStorage.getItem('rb.wild') !== '0' && !/[?&]calm/.test(location.search));
 progress('shell', { bytes: document.documentElement.outerHTML.length, scripts: document.querySelectorAll('script[src]').length });
-const pre = { events: new Map(), sockets: [], onEvent: null, done: false };
+
+// ---- the shell's own bytes: the worker hashed what it served and left the verdict in two meta tags ----
+const shellHash = meta('shell-sha256'), [pinState, pinnedHash] = (meta('shell-pin') || 'uncontrolled').split(':');
+progress('shell-pin', { hash: shellHash, state: shellHash ? pinState : 'uncontrolled', pinned: pinnedHash });
+if ('serviceWorker' in navigator) {
+  if (meta('sw') === 'off') navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister())).catch(() => {}); // kill switch: a shell that says so retires the worker
+  else navigator.serviceWorker.register('/sw.js').then(() => progress('sw', { on: true }), e => progress('sw', { on: false, why: e.message }));
+}
+// the manifest is a block like any other: {slug:'shell', shells:[sha256...]} signed by the site key; once it is in the store, judge this shell by it
+let judged = false;
+const judge = () => { if (judged || !env.NT) return; let m = null; try { m = sel.section('shell'); } catch { return; }
+  if (m) { judged = true; const list = blockMeta(m)?.shells || [], ok = !!shellHash && list.includes(shellHash);
+    progress(ok ? 'shell-signed' : 'shell-unsigned', { hash: shellHash, pinned: pinnedHash, state: pinState, none: false });
+    if (ok && pinState === 'changed') navigator.serviceWorker?.controller?.postMessage({ pin: shellHash }); }
+  else if (store.ready) { judged = true; progress('shell-unsigned', { hash: shellHash, pinned: pinnedHash, state: shellHash ? pinState : 'uncontrolled', none: true }); } };
+onChange(judge);
+
+// ---- ask the relays now, before the crypto exists; buffer until it does ----
+const pre = { events: new Map(), sockets: [], onEvent: null };
 for (const url of RELAYS) {
   let ws; try { ws = new WebSocket(url); } catch { continue; }
   pre.sockets.push(ws);
