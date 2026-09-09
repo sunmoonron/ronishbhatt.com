@@ -1,6 +1,6 @@
 {
  "site": "0bfcddd3f832913d00075f9246f2f45c362d5467546e593ec8e2f1d87a9e5a3d",
- "baked_at": 1788830526,
+ "baked_at": 1788922610,
  "events": [
   {
    "content": "how",
@@ -417,7 +417,7 @@
   {
    "kind": 30078,
    "d": "weight-dictionary",
-   "content": "{\"slug\": \"weight-dictionary\", \"type\": \"writing\", \"title\": \"Weight-Dictionary Decomposition\", \"summary\": \"Reading a transformer's residual stream with its own writes: a dictionary built from the weights instead of activations, what it can attribute and what it cannot. Five model families, 2026.\", \"r\": \"/weight_dictionary.pdf\", \"image\": \"/thumbs/weight_dictionary.png\", \"order\": \"10\", \"body\": \"\"}"
+   "content": "{\"slug\": \"weight-dictionary\", \"type\": \"writing\", \"title\": \"Weight-Dictionary Decomposition\", \"summary\": \"Reading a transformer's residual stream with its own writes: a dictionary built from the weights instead of activations, what it can attribute and what it cannot. Eight models up to 7B parameters. September 2026.\", \"r\": \"/weight_dictionary_2026-09.pdf\", \"image\": \"/thumbs/weight_dictionary_2026-09.png\", \"order\": \"10\", \"body\": \"\"}"
   },
   {
    "kind": 30078,
