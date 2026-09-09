@@ -50,6 +50,7 @@ for (const ev of ['focusin', 'pointerdown']) $('#garden')?.addEventListener(ev, 
 
 // papers: the thumbnail opens the PDF right there; without this script it is a plain link
 document.addEventListener('click', e => {
+  if (upgrading) return; // once the full app is loading or live, its own Thumb component owns the previews
   const a = e.target.closest('a[data-preview]'); if (!a) return;
   e.preventDefault();
   const host = a.closest('li')?.querySelector('.b') || a.parentElement, old = host.querySelector('iframe.preview');
