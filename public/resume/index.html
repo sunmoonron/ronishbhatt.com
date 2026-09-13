@@ -16,7 +16,7 @@ h1{font-size:1.6rem;margin:0 0 .15rem}h2{font:600 .68rem/1 var(--mono);letter-sp
 .skills{display:grid;grid-template-columns:8rem 1fr;gap:.25rem .7rem}.skills span:nth-child(odd){font:.7rem var(--mono);color:var(--mute);padding-top:.12rem}
 .pdf{float:right;font:.72rem var(--mono);border:1px solid var(--line);border-radius:999px;padding:.25rem .7rem;color:var(--accent);text-decoration:none}
 @page{margin:11mm 13mm}
-@media print{.rb-bar,.pdf{display:none}body{background:#fff;color:#111}main{padding:0;max-width:none;font-size:9.6pt;line-height:1.35}h1{font-size:15pt}h2{color:#1a6d47;border-color:#ccc;margin:.65rem 0 .3rem;font-size:7.4pt}.row{margin-top:.35rem}li{margin:.06rem 0}.sub,.where,.links,.row .when,.skills span:nth-child(odd){color:#555}.links a,a{color:#1a6d47}.skills{gap:.12rem .6rem}}
+@media print{.rb-bar,.pdf{display:none}html,body{background:#fff;color:#111}main{padding:0;max-width:none;font-size:9.6pt;line-height:1.35}h1{font-size:15pt}h2{color:#1a6d47;border-color:#ccc;margin:.65rem 0 .3rem;font-size:7.4pt}.row{margin-top:.35rem}li{margin:.06rem 0}.sub,.where,.links,.row .when,.skills span:nth-child(odd){color:#555}.links a,a{color:#1a6d47}.skills{gap:.12rem .6rem}}
 </style>
 </head>
 <body class="rb">
@@ -28,7 +28,7 @@ h1{font-size:1.6rem;margin:0 0 .15rem}h2{font:600 .68rem/1 var(--mono);letter-sp
 <p class="links"><a href="https://ronishbhatt.com">ronishbhatt.com</a><a href="https://github.com/sunmoonron">github.com/sunmoonron</a><a href="https://njump.me/ronish@ronishbhatt.com">nostr: ronish@ronishbhatt.com</a></p>
 
 <h2>Summary</h2>
-<p>Honours BSc in Computer Science (software engineering co-op, University of Toronto, 2025). I build full-stack products and run the infrastructure under them, and I find bugs in other people's systems. This year: a website whose pages are signed Nostr events served from my own relay, a proof-of-work community layer that needs no accounts, a Bitcoin timechain analytics tool with a from-scratch 3D renderer, and disclosures to Anthropic and OpenAI.</p>
+<p>Honours BSc in Computer Science (software engineering co-op, University of Toronto, 2025). I build full-stack products and run the infrastructure under them. This year: a website whose pages are signed Nostr events served from my own relay, a proof-of-work community layer that needs no accounts, a Bitcoin timechain analytics tool with a from-scratch 3D renderer, disclosures to Anthropic and OpenAI, and an evaluation of weight-derived dictionaries against exact ground truth in eight language models, under review at ICLR 2027.</p>
 
 <h2>Skills</h2>
 <div class="skills">
@@ -52,8 +52,8 @@ h1{font-size:1.6rem;margin:0 0 .15rem}h2{font:600 .68rem/1 var(--mono);letter-sp
 </ul>
 <div class="row"><b>Doorway and Toronto Skating</b><span class="when">2025 to 2026</span></div>
 <ul><li>Live rink schedules for a city with a Nostr community layer (chat, comments, votes) that needs no sign-ups; the proof-of-work relay policy behind it is now its own open-source project, github.com/sunmoonron/doorway.</li></ul>
-<div class="row"><b>Plant a Thought, and interpretability research</b><span class="when">2026</span></div>
-<ul><li>A 7 M-parameter language model and a tiny inference engine running entirely in the browser, taught a memory during the session. Independent papers on weight dictionaries and superweight circuit patching in small transformers; a public context-dilution demo on GPT-2 with real logits in the browser.</li></ul>
+<div class="row"><b>Interpretability research, and Plant a Thought</b><span class="when">2026</span></div>
+<ul><li>Weight-dictionary decomposition: attribution of a transformer's residual states to the components that wrote them, scored against exact ground truth in eight models up to 7B parameters (preprint; code, results and per-token records released), including the finding that reconstruction scores over all positions are dominated by attention-sink states.</li><li>Plant a Thought: a 7 M-parameter language model and a tiny inference engine running entirely in the browser, taught a memory during the session, and a public context-dilution demo on GPT-2 with real logits in the browser.</li></ul>
 
 <h2>Security research (independent)</h2>
 <div class="row"><b>Responsible disclosure</b><span class="when">2018 to present</span></div>
@@ -64,7 +64,7 @@ h1{font-size:1.6rem;margin:0 0 .15rem}h2{font:600 .68rem/1 var(--mono);letter-sp
 </ul>
 
 <h2>Open source</h2>
-<ul><li><b>pandas</b> (2023): implemented <code>escape="latex-math"</code> for LaTeX table rendering so math mode survives while unsafe characters are escaped (issue #50040), with tests across edge cases; co-authored the test plan for <code>merge(..., combine=...)</code> (#16070).</li></ul>
+<ul><li><b>nostr-tools</b> (2026): two merged pull requests, a created_at option for proof-of-work mining used by NIP-59 wraps (#552) and the NIP-45 COUNT documentation (#553).</li><li><b>pandas</b> (2023): implemented <code>escape="latex-math"</code> for LaTeX table rendering so math mode survives while unsafe characters are escaped (issue #50040), with tests across edge cases.</li></ul>
 
 <h2>Experience</h2>
 <div class="row"><b>Financial Technology Risk Analyst (co-op)</b><span class="when">May to Aug 2021</span></div>
