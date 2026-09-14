@@ -44,7 +44,7 @@
    "kind": 30078,
    "d": "weight-dictionary",
    "update": true,
-   "content": "{\"slug\": \"weight-dictionary\", \"type\": \"writing\", \"title\": \"Weight-Dictionary Decomposition\", \"summary\": \"Reading a transformer's residual stream with its own writes: a dictionary built from the weights instead of activations, what it can attribute and what it cannot. Eight models up to 7B parameters, with the audit appendices. September 2026.\", \"r\": \"/weight_dictionary_2026.pdf\", \"image\": \"/thumbs/weight_dictionary_2026.png\", \"order\": \"10\", \"body\": \"\"}"
+   "content": "{\"slug\": \"weight-dictionary\", \"type\": \"writing\", \"title\": \"Weight-Dictionary Decomposition\", \"summary\": \"Reading a transformer's residual stream with its own writes: a dictionary built from the weights instead of activations, what it can attribute and what it cannot. Eight models up to 7B parameters, with the audit appendices. September 2026.\", \"r\": \"/weight_dictionary_2026.pdf\", \"image\": \"/thumbs/weight_dictionary_2026.png\", \"order\": \"10\", \"body\": \"Preprint: [doi:10.5281/zenodo.22749478](https://doi.org/10.5281/zenodo.22749478). Code, results and per-token records: [github.com/sunmoonron/weight-dictionary-decomposition](https://github.com/sunmoonron/weight-dictionary-decomposition), archived at [doi:10.5281/zenodo.22749881](https://doi.org/10.5281/zenodo.22749881).\"}"
   },
   {
    "kind": 30078,
