@@ -6,7 +6,7 @@
 // preference (nothing is published either way).
 import { LOG, env, PALETTE } from './store.js';
 const P = ['#0b1a12', '#10261a', '#153223', '#1a3f2c', '#1f4c35', '#255a3f', '#2b6849', '#327754', '#3a865f', '#43956b', '#4ea477', '#5ab384', '#68c291', '#79d09f', '#8dddae', '#a4e9bf'];
-const CSS = `html.wild body{background:#050806;color:#d8f3e3}html.wild #rain{position:fixed;inset:0;z-index:0;opacity:.5;pointer-events:none}
+const CSS = `html.wild{--bg:#0b0e0d;--fg:#e6efe9;--mute:#8aa094;--line:#1f2b25;--card:#111814;--soft:#172119;--accent:#7dd3a8;--mint:#b4f5d1;--deep:#3aa876;--accent-ink:#08150e;color-scheme:dark}html.wild body{background:#050806;color:#d8f3e3}html.wild #rain{position:fixed;inset:0;z-index:0;opacity:.5;pointer-events:none}
 html.wild main{position:relative;z-index:1}html.wild header.me{background:linear-gradient(135deg,rgba(11,26,18,.88),rgba(5,8,6,.92));border-color:#3a865f;box-shadow:0 0 40px rgba(125,211,168,.25),inset 0 0 60px rgba(125,211,168,.06)}
 html.wild header.me img{box-shadow:0 0 30px #7dd3a8;animation:halo 3s ease-in-out infinite}@keyframes halo{50%{box-shadow:0 0 60px #a4e9bf,0 0 120px rgba(125,211,168,.4)}}
 html.wild h1,html.wild .label,html.wild details.fold>summary{font-family:var(--mono)}html.wild h1{text-shadow:0 0 14px rgba(125,211,168,.8)}html.wild .label{color:#a4e9bf;text-shadow:0 0 8px rgba(125,211,168,.6)}

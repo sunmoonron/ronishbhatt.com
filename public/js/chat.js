@@ -85,18 +85,24 @@ export async function send(peer, text) {
     const toPeer = await wrapRumor(rumor, chat.sk, peer, peer === env.SITE ? POW_IN : POW_OUT);
     chat.busy = 'sending'; notify();
     const res = await publish(toPeer, env.RELAYS);
-    wrapRumor(rumor, chat.sk, chat.me, isOwner ? POW_IN : 0).then(w => publish(w, isOwner ? env.RELAYS : env.BACKUPS)).catch(() => {});
     const ok = res.filter(r => r.ok);
     addMsg(peer, { id: rumor.id, pending: false, delivered: ok.map(r => r.url), failed: res.filter(r => !r.ok) });
     if (!ok.length) toast('no relay accepted the message: ' + res.map(r => r.msg).join('; '), 'err');
   } catch (e) { toast('could not send: ' + e.message, 'err'); addMsg(peer, { id: rumor.id, pending: false, failed: [{ msg: e.message }] }); }
   chat.busy = ''; notify();
+  // the copy addressed to myself is what my other devices read; a lost copy used to vanish silently
+  try {
+    const w = await wrapRumor(rumor, chat.sk, chat.me, isOwner ? POW_IN : 0);
+    const r2 = await publish(w, isOwner ? env.RELAYS : env.BACKUPS), ok2 = r2.filter(r => r.ok);
+    addMsg(peer, { id: rumor.id, copy: ok2.length ? 'ok' : 'failed' });
+    if (!ok2.length) toast('sent, but no relay kept your own copy, so your other devices will not show it: ' + r2.map(r => r.msg).join('; '), 'err');
+  } catch (e) { addMsg(peer, { id: rumor.id, copy: 'failed' }); toast('sent, but your own copy failed: ' + e.message, 'err'); }
 }
 
 // ---- component (live=false is the shell the bake pre-renders; boot.js wires it) ----
 const fmtTime = ts => { const d = new Date(ts * 1000); return `${d.toISOString().slice(5, 10).replace('-', '/')} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`; };
 const Delivery = ({ m }) => m.pending ? html`<small>${chat.busy === 'sealing' ? 'sealing (proof of work)…' : 'sending…'}</small>`
-  : m.mine ? html`<small title=${(m.delivered || []).join('\n')}>${fmtTime(m.ts)} · ${m.delivered?.length ? `✓ ${m.delivered.length} relay${m.delivered.length > 1 ? 's' : ''}${m.delivered.includes(env.PRIMARY) ? ' incl. mine' : ''}` : m.delivered ? '✗ not delivered' : '↗ sent'}</small>`
+  : m.mine ? html`<small title=${(m.delivered || []).join('\n')}>${fmtTime(m.ts)} · ${m.delivered?.length ? `✓ ${m.delivered.length} relay${m.delivered.length > 1 ? 's' : ''}${m.delivered.includes(env.PRIMARY) ? ' incl. mine' : ''}` : m.delivered ? '✗ not delivered' : '↗ sent'}${m.copy === 'failed' ? ' · own copy ✗' : ''}</small>`
   : html`<small>${fmtTime(m.ts)}</small>`;
 function Log({ msgs }) {
   const ref = useRef();
