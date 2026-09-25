@@ -60,5 +60,8 @@ export async function start(opts = {}) {
   chat.seed = opts.send ? '' : seedText;
   if (opts.unlock || storedKey()) { Owner = await import('./owner.js'); if (storedKey()) { try { restore(); } catch {} } else initial.unlockOpen = true; }
   const root = document.getElementById('app'); root.textContent = ''; render(html`<${App} />`, root); progress('render', { events: sel.signed() });
+  const openHash = () => { const el = location.hash.length > 1 && document.getElementById(location.hash.slice(1)); if (!el) return; if (el.tagName === 'DETAILS') el.open = true; el.scrollIntoView({ block: 'start' }); };
+  openHash(); addEventListener('hashchange', openHash);
+  import('./presence.js').then(m => m.start()).catch(e => console.warn('presence:', e.message)); // who else is here, and what this browser remembers
   if (opts.focus === 'chat') { document.querySelector('#chat textarea')?.focus(); if (opts.send && seedText.trim()) chatSend(env.SITE, seedText); }
 }
