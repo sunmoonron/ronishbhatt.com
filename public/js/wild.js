@@ -196,9 +196,10 @@ async function orbit() {
   let cells = keyCells() || [];
   if (!cells.length) await new Promise(res => { const tick = () => { cells = keyCells() || []; if (cells.length) res(); else setTimeout(tick, 60); }; tick(); setTimeout(res, 4000); });
   const primary = document.querySelector('meta[name="site-relay"]')?.content;
-  const relays = [...document.querySelectorAll('footer [data-relay]')].map(el => { const parts = el.dataset.relay.replace(/^wss?:\/\//, '').replace(/\/.*$/, '').split('.'); return { el, name: el.dataset.relay === primary ? 'mine' : parts.length > 1 ? parts[parts.length - 2] : parts[0] }; });
+  const findRelays = () => [...document.querySelectorAll('footer [data-relay]')].map(el => { const parts = el.dataset.relay.replace(/^wss?:\/\//, '').replace(/\/.*$/, '').split('.'); return { el, name: el.dataset.relay === primary ? 'mine' : parts.length > 1 ? parts[parts.length - 2] : parts[0] }; });
+  let relays = findRelays(); // the footer renders after the HUD on the strict shell, so keep looking until it is there
   let t0 = performance.now();
-  const draw = now => { requestAnimationFrame(draw); const t = (now - t0) / 1000; g.clearRect(0, 0, 240, 150);
+  const draw = now => { requestAnimationFrame(draw); const t = (now - t0) / 1000; g.clearRect(0, 0, 240, 150); if (!relays.length && (t | 0) % 2 === 0) relays = findRelays();
     const cx = 120, cy = 75; cells.forEach((f, i) => { g.fillStyle = f; g.fillRect(cx - 12 + (i % 8) * 3, cy - 12 + Math.floor(i / 8) * 3, 2.5, 2.5); });
     relays.forEach((r, i) => { const open = r.el.querySelector('.dot')?.classList.contains('open'), a = t * (0.25 + i * 0.07) + i * 1.6, R = 42 + i * 14, x = cx + Math.cos(a) * R, y = cy + Math.sin(a) * R * 0.55;
       g.strokeStyle = open ? 'rgba(125,211,168,.35)' : 'rgba(229,72,77,.35)'; g.beginPath(); g.ellipse(cx, cy, R, R * 0.55, 0, 0, Math.PI * 2); g.stroke();
