@@ -61,7 +61,7 @@ export async function start(opts = {}) {
   if (opts.unlock || storedKey()) { Owner = await import('./owner.js'); if (storedKey()) { try { restore(); } catch {} } else initial.unlockOpen = true; }
   const root = document.getElementById('app'); root.textContent = ''; render(html`<${App} />`, root); progress('render', { events: sel.signed() });
   const openHash = () => { const el = location.hash.length > 1 && document.getElementById(location.hash.slice(1)); if (!el) return; if (el.tagName === 'DETAILS') el.open = true; el.scrollIntoView({ block: 'start' }); };
-  openHash(); addEventListener('hashchange', openHash);
+  openHash(); addEventListener('hashchange', openHash); setTimeout(openHash, 1500); setTimeout(openHash, 4000); // the page keeps growing as events arrive, so aim twice more
   import('./presence.js').then(m => m.start()).catch(e => console.warn('presence:', e.message)); // who else is here, and what this browser remembers
   if (opts.focus === 'chat') { document.querySelector('#chat textarea')?.focus(); if (opts.send && seedText.trim()) chatSend(env.SITE, seedText); }
 }
