@@ -106,8 +106,9 @@ function place(ms) {
   }
 }
 // a timer, not requestAnimationFrame: some embedded browsers starve rAF while the tab still counts as visible
-function loop() { if (!peers.size || document.hidden) { clearInterval(raf); raf = 0; ring.hidden = true; return; } place(performance.now()); }
-function kick() { if (!raf && peers.size && !document.hidden) { raf = setInterval(loop, 40); loop(); } }
+// (browsers throttle timers in hidden tabs on their own, so no visibility gate here: an embedded pane can report hidden while it is on screen)
+function loop() { if (!peers.size) { clearInterval(raf); raf = 0; ring.hidden = true; return; } place(performance.now()); }
+function kick() { if (!raf && peers.size) { raf = setInterval(loop, 40); loop(); } }
 function count() {
   const n = peers.size, ownerHere = [...peers.values()].some(p => p.owner);
   chip.classList.toggle('alone', n === 0);
