@@ -105,8 +105,9 @@ function place(ms) {
     p.el.style.zIndex = sin > 0 ? 2 : 1;
   }
 }
-function loop(ms) { raf = 0; if (!peers.size || document.hidden) { ring.hidden = true; return; } place(ms); raf = requestAnimationFrame(loop); }
-function kick() { if (!raf && peers.size && !document.hidden) raf = requestAnimationFrame(loop); }
+// a timer, not requestAnimationFrame: some embedded browsers starve rAF while the tab still counts as visible
+function loop() { if (!peers.size || document.hidden) { clearInterval(raf); raf = 0; ring.hidden = true; return; } place(performance.now()); }
+function kick() { if (!raf && peers.size && !document.hidden) { raf = setInterval(loop, 40); loop(); } }
 function count() {
   const n = peers.size, ownerHere = [...peers.values()].some(p => p.owner);
   chip.classList.toggle('alone', n === 0);
