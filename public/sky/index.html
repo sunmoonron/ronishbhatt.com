@@ -28,6 +28,8 @@ body{margin:0;height:100%;height:100dvh;overflow:hidden;color:var(--ink,#a8845c)
 #arc{position:fixed;inset:0;color:inherit;cursor:pointer;outline:none;-webkit-tap-highlight-color:transparent}
 #arc:focus-visible{background:currentColor;opacity:.07}
 @media (hover:hover){#arc:hover{background:currentColor;opacity:.07}}
+/* the sun and its glow, kept out of that link: draw() keeps this over the sun, and a tap on it focuses the box */
+#sun{position:fixed;left:0;top:0;width:88px;height:88px;margin:-44px 0 0 -44px;border-radius:50%;cursor:text;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 #field{display:flex;justify-content:center;align-items:baseline;max-width:30rem;margin:0 auto;padding:.4em .1em;border-bottom:1px solid var(--line,rgba(168,132,92,.25))}
 #field:focus-within{border-bottom-color:var(--line-on,rgba(168,132,92,.5))}
 /* the "!" in front of the box: DuckDuckGo while it is there, Google once it is deleted */
@@ -201,8 +203,13 @@ html[data-engine=ddg] #bang{display:block}
       }
     }
 
+    // The sun sits on its own path, so it gets its own patch of sky, the size of its glow: a tap on it
+    // focuses the box like the rest of the sky instead of opening the sound page.
+    const spot = document.getElementById('sun'), sunUp = inWindow(s) && w > 0 && h > 0;
+    if (spot) spot.hidden = !sunUp;
     if (inWindow(s)) { // the sun, warmer near the horizon
       const sx = x(s.az), sy = y(s.alt), core = mix([255, 170, 100], [255, 246, 224], clamp(s.alt / 15));
+      if (spot && sunUp) { spot.style.left = sx / w * 100 + '%'; spot.style.top = sy / h * 100 + '%'; }
       const glow = g.createRadialGradient(sx, sy, 0, sx, sy, 44);
       glow.addColorStop(0, css(core, dark.matches ? 0.28 : 0.42)); glow.addColorStop(1, css(core, 0));
       g.fillStyle = glow; dot(sx, sy, 44);
@@ -424,6 +431,7 @@ html[data-engine=ddg] #bang{display:block}
 <span id="fit" aria-hidden="true"></span>
 </form>
 <a id="arc" href="/sound.html" hidden aria-label="Earthbell and Attention Sink" title="Earthbell and Attention Sink"></a>
+<label for="q" id="sun" hidden aria-hidden="true"></label>
 <a id="moon" href="/" hidden aria-label="ronishbhatt.com" title="ronishbhatt.com"></a>
 <section id="log" hidden aria-label="search log">
 <header><b>trips</b><span id="logstate"></span><button type="button" id="lock">lock</button><button type="button" id="close">close</button></header>
