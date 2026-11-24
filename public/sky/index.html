@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#000000">
+<meta name="robots" content="noindex">
+<meta name="referrer" content="no-referrer">
+<title>sky</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<style>
+html{background:#000;height:100%}
+body{margin:0;height:100%;height:100dvh;overflow:hidden;color:var(--ink,#a8845c);
+  /* 86% is the horizon; the script draws against the same line */
+  background:linear-gradient(to bottom,var(--top,#000),var(--mid,#000) 52%,var(--hor,#000) 86%,var(--ground,#000) 86%);
+  font:400 24px/1.25 system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%;touch-action:manipulation}
+#sky,#tap{position:fixed;inset:0;width:100%;height:100%}
+#sky{pointer-events:none}
+#tap{cursor:text;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+#go{position:fixed;z-index:1;left:0;right:0;top:24%;margin:0;padding:0 max(28px,env(safe-area-inset-right)) 0 max(28px,env(safe-area-inset-left))}
+/* the moon is the way home: a thumb-sized link that draw() keeps over it, hidden while the moon is down */
+#moon{position:fixed;left:0;top:0;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;cursor:pointer;outline:none;-webkit-tap-highlight-color:transparent}
+#moon:focus-visible{background:radial-gradient(circle,rgba(236,230,214,.22),rgba(236,230,214,0) 70%)}
+@media (hover:hover){#moon:hover{background:radial-gradient(circle,rgba(236,230,214,.22),rgba(236,230,214,0) 70%)}}
+#field{display:flex;justify-content:center;align-items:baseline;max-width:30rem;margin:0 auto;padding:.4em .1em;border-bottom:1px solid var(--line,rgba(168,132,92,.25))}
+#field:focus-within{border-bottom-color:var(--line-on,rgba(168,132,92,.5))}
+/* the "!" in front of the box: DuckDuckGo while it is there, Google once it is deleted */
+#bang{display:none;flex:none;padding-right:.25em;opacity:.75;cursor:text;-webkit-user-select:none;user-select:none}
+html[data-engine=ddg] #bang{display:block}
+#q{flex:0 1 auto;min-width:0;width:100%;padding:0;border:0;border-radius:0;background:transparent;color:inherit;font:inherit;text-align:center;
+  caret-color:currentColor;outline:none;-webkit-appearance:none;appearance:none}
+#q::placeholder{color:inherit;opacity:.5}
+#fit{position:absolute;visibility:hidden;white-space:pre;pointer-events:none}
+/* the search log: /log in the box, or /sky/#log */
+#log{position:fixed;inset:0;z-index:5;overflow:auto;background:var(--top,#000);font-size:16px;line-height:1.4;
+  padding:max(18px,env(safe-area-inset-top)) max(20px,env(safe-area-inset-right)) 48px max(20px,env(safe-area-inset-left))}
+#log[hidden],#unlock[hidden]{display:none}
+#log header{display:flex;align-items:baseline;gap:1em;max-width:40rem;margin:0 auto 12px}
+#log header span{flex:1;opacity:.6;font-size:14px}
+#log button{font:inherit;color:inherit;background:none;border:0;padding:6px 0;opacity:.75;cursor:pointer}
+#log ol{list-style:none;margin:0 auto;padding:0;max-width:40rem}
+#log li>*{display:block;padding:10px 0;border-bottom:1px solid var(--line);color:inherit;text-decoration:none;overflow-wrap:anywhere}
+#log li small{display:block;margin-top:2px;font-size:13px;opacity:.6;font-variant-numeric:tabular-nums}
+#unlock{display:grid;gap:12px;max-width:40rem;margin:18vh auto 0}
+#unlock input[type=password]{font:inherit;color:inherit;background:transparent;border:0;border-bottom:1px solid var(--line-on);border-radius:0;padding:8px 0;outline:none;-webkit-appearance:none;appearance:none}
+#unlock label{font-size:14px;opacity:.75}
+#unlock p{margin:0;font-size:14px}
+</style>
+<script>
+// The phone's door to the web: type an address or a search, and the page around it is
+// lit by Toronto's real sky right now, so it is never brighter than outside.
+// Every trip is also sealed to the site key right here and queued; a later visit wraps it
+// (NIP-59, with the relay's proof of work) for my relay, so only the site key can read the log.
+// Type /log to read it. Tap the moon, while it is up, to go home to ronishbhatt.com.
+(() => {
+  // A window facing south from Toronto: east on the left, west on the right.
+  const LAT = 43.6532, LON = -79.3832;
+  const GOOGLE = 'https://www.google.com/search?q=', DDG = 'https://duckduckgo.com/?q=';
+  const HOR = 0.86, TOP = 0.42; // the horizon and the 75° line, as fractions of the height
+  const rad = Math.PI / 180, root = document.documentElement;
+  const at = Date.parse(new URLSearchParams(location.search).get('t') || ''); // ?t=2026-12-21T16:30-05:00 shows another moment
+  const now = () => (isNaN(at) ? Date.now() : at);
+
+  // The log is sealed to the site's real key, not the favicon: the favicon is the veil key,
+  // which every visitor (and Cloudflare) can read. ?site= and ?relay= only work on a dev server.
+  const local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname), qs = new URLSearchParams(location.search);
+  const SITE = (local && qs.get('site')) || '0bfcddd3f832913d00075f9246f2f45c362d5467546e593ec8e2f1d87a9e5a3d';
+  const RELAY = (local && qs.get('relay')) || 'wss://relay.ronishbhatt.com';
+  // The wraps are encrypted to the site key but addressed to a blind mailbox, so they stay out of the
+  // chat inbox and the mural, and nobody watching the relay can tell they are for me. A wrap to anyone
+  // but the owner costs 20 bits there. The mailbox is just sha256("ronishbhatt.com/sky log mailbox").
+  const MAILBOX = '10b85cd6008d8fa30094d298eaba0fb587d2ce1175b9f31efa50c0af84830a91';
+  const POW = 20, LOG_KIND = 30078, LOG_D = 'sky/search';
+  const nt = new Promise((ok, no) => { // nostr-tools, the same pinned copy the site loads
+    const s = document.createElement('script');
+    s.src = '/vendor/nostr-tools-2.25.2.bundle.js';
+    s.integrity = 'sha384-FXQAsrQPF8+Yw4G9sjW+s9sUIozKgjjidpD4OPcUaIxR5Z7gMcDFArOKmEq+KES2';
+    s.onload = () => ok(window.NostrTools); s.onerror = () => no(new Error('could not load nostr-tools'));
+    document.head.append(s);
+  });
+  nt.catch(() => {});
+
+  // Low-precision sun and moon: a fraction of a degree, plenty for a window.
+  const days = ms => ms / 864e5 - 10957.5; // since J2000.0
+  const ecl = (lon, lat, d) => {
+    const e = (23.439 - 3.6e-7 * d) * rad;
+    return { lon,
+      ra: Math.atan2(Math.sin(lon) * Math.cos(e) - Math.tan(lat) * Math.sin(e), Math.cos(lon)),
+      dec: Math.asin(Math.sin(lat) * Math.cos(e) + Math.cos(lat) * Math.sin(e) * Math.sin(lon)) };
+  };
+  const sun = d => {
+    const g = (357.529 + 0.98560028 * d) * rad;
+    return ecl((280.459 + 0.98564736 * d + 1.915 * Math.sin(g) + 0.02 * Math.sin(2 * g)) * rad, 0, d);
+  };
+  const moon = d => {
+    const M = (134.963 + 13.064993 * d) * rad, F = (93.272 + 13.22935 * d) * rad;
+    return ecl((218.316 + 13.176396 * d + 6.289 * Math.sin(M)) * rad, 5.128 * Math.sin(F) * rad, d);
+  };
+  const place = ({ ra, dec }, d) => { // altitude, and azimuth from north through east, in degrees
+    const H = (280.46061837 + 360.98564736629 * d + LON) * rad - ra, p = LAT * rad;
+    return { alt: Math.asin(Math.sin(p) * Math.sin(dec) + Math.cos(p) * Math.cos(dec) * Math.cos(H)) / rad,
+      az: Math.atan2(Math.sin(H), Math.cos(H) * Math.sin(p) - Math.tan(dec) * Math.cos(p)) / rad + 180 };
+  };
+  // [ra hours, dec°, magnitude]: the brightest stars that cross a southern window
+  const STARS = [[6.7525, -16.716, -1.46], [14.261, 19.182, -0.05], [18.6156, 38.784, 0.03], [5.2782, 45.998, 0.08],
+    [5.2423, -8.202, 0.13], [7.655, 5.225, 0.34], [5.9195, 7.407, 0.5], [19.8464, 8.868, 0.77], [4.5987, 16.509, 0.85],
+    [13.4199, -11.161, 0.97], [16.4901, -26.432, 1.0], [7.7553, 28.026, 1.14], [22.9608, -29.622, 1.16],
+    [20.6905, 45.28, 1.25], [10.1395, 11.967, 1.35], [7.5767, 31.888, 1.58], [5.4189, 6.35, 1.64],
+    [5.6036, -1.202, 1.69], [5.6793, -1.943, 1.77], [5.5334, -0.299, 2.23], [5.7958, -9.67, 2.09]];
+
+  // The sky by sun altitude: [altitude°, zenith, horizon]. Dark mode keeps the same day, dimmed.
+  const LIGHT = [[-90, '000000', '020203'], [-18, '020307', '090b14'], [-12, '060a1a', '161b34'], [-6, '0f1835', '3b3150'],
+    [-2, '1e2d57', 'a15b4b'], [0, '2d4478', 'd6875c'], [4, '3b5a92', 'e8b38a'], [10, '6a93c6', 'cdd7de'],
+    [30, '78a4d3', 'd8e3eb'], [90, '8cb5e0', 'e1eaf0']];
+  const DARK = [[-90, '000000', '020203'], [-18, '010205', '05060c'], [-12, '03060f', '0b0d1a'], [-6, '070c1c', '1c1728'],
+    [-2, '0a1327', '382225'], [0, '0c1730', '482b23'], [4, '0e1b37', '3a2d2a'], [10, '0f2140', '1d2d40'],
+    [30, '112645', '1b3049'], [90, '12294a', '1d334d']];
+  const dark = matchMedia('(prefers-color-scheme: dark)');
+  const rgb = h => [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16));
+  const mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
+  const clamp = (x, lo = 0, hi = 1) => Math.min(hi, Math.max(lo, x));
+  const css = (c, a = 1) => `rgba(${c.map(Math.round).join(',')},${a})`;
+  const hex = c => '#' + c.map(v => Math.round(v).toString(16).padStart(2, '0')).join('');
+  const lum = c => c.map(v => (v /= 255) <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)
+    .reduce((s, v, i) => s + v * [0.2126, 0.7152, 0.0722][i], 0);
+  const contrast = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+
+  function skyAt(alt) {
+    const k = dark.matches ? DARK : LIGHT;
+    let i = 1; while (i < k.length - 1 && alt > k[i][0]) i++;
+    const [a0, z0, h0] = k[i - 1], [a1, z1, h1] = k[i], t = clamp((alt - a0) / (a1 - a0));
+    return [mix(rgb(z0), rgb(z1), t), mix(rgb(h0), rgb(h1), t)];
+  }
+
+  let state;
+  function paint() {
+    const t = now(), d = days(t), s = place(sun(d), d), [top, hor] = skyAt(s.alt);
+    // Ink: dark on a bright sky, pale by day, a dim warm amber once it is properly night.
+    const behind = mix(top, hor, 0.175), pale = mix([242, 244, 248], [168, 132, 92], clamp((-6 - s.alt) / 6));
+    const ink = contrast(pale, behind) >= contrast([6, 12, 22], behind) ? pale : [6, 12, 22];
+    const set = (k, v) => root.style.setProperty(k, v);
+    set('--top', css(top)); set('--mid', css(mix(top, hor, 0.35))); set('--hor', css(hor));
+    set('--ground', css(mix(hor, [24, 28, 34], 0.45))); set('--ink', css(ink));
+    set('--line', css(ink, 0.25)); set('--line-on', css(ink, 0.5));
+    document.querySelector('meta[name=theme-color]').content = hex(top);
+    state = { t, d, s, ink };
+  }
+
+  function draw() {
+    const cv = document.getElementById('sky');
+    if (!cv || !state) return;
+    const { t, d, s, ink } = state, w = innerWidth, h = innerHeight, r = Math.min(devicePixelRatio || 1, 3);
+    if (cv.width !== Math.round(w * r) || cv.height !== Math.round(h * r)) { cv.width = Math.round(w * r); cv.height = Math.round(h * r); }
+    const g = cv.getContext('2d');
+    g.setTransform(r, 0, 0, r, 0, 0); g.clearRect(0, 0, w, h);
+    const base = h * HOR, x = az => (az - 45) / 270 * w, y = alt => base - alt / 75 * (base - h * TOP);
+    const inWindow = p => p.alt > -2 && p.alt < 75 && p.az > 45 && p.az < 315;
+    const dot = (px, py, rr) => { g.beginPath(); g.arc(px, py, rr, 0, 7); g.fill(); };
+    g.save(); g.beginPath(); g.rect(0, 0, w, base); g.clip(); // nothing shows below the horizon
+
+    // Stars fade in once civil twilight ends.
+    const dusk = clamp((-6 - s.alt) / 8);
+    if (dusk > 0) for (const [ra, dec, mag] of STARS) {
+      const p = place({ ra: ra * 15 * rad, dec: dec * rad }, d);
+      if (!inWindow(p)) continue;
+      const b = clamp((2.5 - mag) / 4, 0.15, 1);
+      g.fillStyle = css([239, 228, 207], dusk * (0.25 + 0.6 * b)); dot(x(p.az), y(p.alt), 0.5 + 1.2 * b);
+    }
+
+    // The rest of today's daylight: a dot per quarter hour, a bigger one on each hour.
+    if (s.alt > 0) for (let u = Math.ceil(t / 9e5) * 9e5; u < t + 864e5; u += 9e5) {
+      const p = place(sun(days(u)), days(u));
+      if (p.alt < 0) break;
+      const hour = new Date(u).getMinutes() === 0;
+      g.fillStyle = css(ink, hour ? 0.42 : 0.24); dot(x(p.az), y(p.alt), hour ? 1.7 : 1.1);
+    }
+
+    if (inWindow(s)) { // the sun, warmer near the horizon
+      const sx = x(s.az), sy = y(s.alt), core = mix([255, 170, 100], [255, 246, 224], clamp(s.alt / 15));
+      const glow = g.createRadialGradient(sx, sy, 0, sx, sy, 44);
+      glow.addColorStop(0, css(core, dark.matches ? 0.28 : 0.42)); glow.addColorStop(1, css(core, 0));
+      g.fillStyle = glow; dot(sx, sy, 44);
+      g.fillStyle = css(core); dot(sx, sy, 6.5);
+    }
+
+    const mo = moon(d), m = place(mo, d), up = inWindow(m) && w > 0 && h > 0, door = document.getElementById('moon');
+    if (door) door.hidden = !up;
+    if (up) { // the moon in its real phase, lit on the right while waxing
+      const el = (((mo.lon - sun(d).lon) / rad) % 360 + 360) % 360, k = Math.cos(el * rad), side = el < 180 ? 1 : -1;
+      const mx = x(m.az), my = y(m.alt), R = 9;
+      // and the link home sits on it, in percent of the same box the canvas fills
+      if (door) { door.style.left = mx / w * 100 + '%'; door.style.top = my / h * 100 + '%'; }
+      if (s.alt < -6) { g.fillStyle = css(ink, 0.08); dot(mx, my, R); }
+      g.fillStyle = css([236, 230, 214], s.alt > 0 ? 0.5 : 0.78);
+      g.beginPath();
+      g.arc(mx, my, R, -Math.PI / 2, Math.PI / 2, side < 0);
+      g.ellipse(mx, my, R * Math.abs(k), R, 0, Math.PI / 2, -Math.PI / 2, (k > 0) === (side > 0));
+      g.fill();
+    }
+    g.restore();
+  }
+
+  // What you typed → where to go: an address if it looks like one, a !bang through DuckDuckGo,
+  // anything else a search on DuckDuckGo, or on Google once the "!" is deleted. A leading ? forces a search.
+  const KNOWN = /\.(com|org|net|edu|gov|io|ai|co|ca|dev|app|me|gg|tv|fm|ly|so|xyz|info|page|site|blog|uk|us|eu|de|fr|jp|in|nl|ch|au|link|art|tech|cloud|wiki|news|social|live|world|club|lol|new)$/i;
+  function where(text, ddg) {
+    const s = text.trim(), engine = ddg ? DDG : GOOGLE;
+    if (!s) return '';
+    if (s[0] === '?') return s.length > 1 ? engine + encodeURIComponent(s.slice(1).trim()) : '';
+    if (/^[a-z][a-z0-9+.-]*:\/\//i.test(s) || /^(mailto|tel|sms):/i.test(s)) return s;
+    if (!/\s/.test(s)) {
+      const host = s.split(/[/?#]/)[0], name = host.replace(/:\d+$/, '');
+      if (/^(localhost|\d{1,3}(\.\d{1,3}){3})$/i.test(name)) return 'http://' + s;
+      if (/^([a-z0-9-]+\.)+[a-z]{2,}$/i.test(name) && (KNOWN.test(name) || /^www\./i.test(name) || host !== name || s !== host)) return 'https://' + s;
+    }
+    return (/(^|\s)![a-z0-9]/i.test(s) ? DDG : engine) + encodeURIComponent(s);
+  }
+  window.where = where;
+
+  // ---- the log ----------------------------------------------------------------------
+  const get = k => { try { return localStorage.getItem(k); } catch { return null; } };
+  const put = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
+  const OUTBOX = 'rb.sky.outbox', KEY = 'dash.nsec'; // KEY is the owner unlock the main site uses too
+  const outbox = () => { try { return JSON.parse(get(OUTBOX) || '[]'); } catch { return []; } };
+  const keep = box => put(OUTBOX, JSON.stringify(box.slice(-200)));
+  function skyKey(NT) { // this phone's own key; it signs the seals
+    try { const raw = get('rb.sky.nsec'); if (raw) return NT.nip19.decode(raw).data; } catch {}
+    const sk = NT.generateSecretKey(); put('rb.sky.nsec', NT.nip19.nsecEncode(sk)); return sk;
+  }
+  // At search time: seal the entry to the site key and queue it. Milliseconds, so the trip is not
+  // held up, and nothing readable is ever stored on the phone.
+  async function note(text, to) {
+    try {
+      const NT = await Promise.race([nt, new Promise(r => setTimeout(r, 1500))]);
+      if (!NT) return;
+      const sk = skyKey(NT), engine = to.startsWith(DDG) ? 'duck' : to.startsWith(GOOGLE) ? 'google' : 'open';
+      const rumor = NT.nip59.createRumor({ kind: LOG_KIND, content: text.slice(0, 1000), created_at: Math.floor(Date.now() / 1000),
+        tags: [['d', LOG_D], ['engine', engine], ['r', to.slice(0, 2000)]] }, sk); // well under the relay's 16 KB a wrap
+      keep([...outbox(), NT.nip59.createSeal(rumor, sk, SITE)]);
+    } catch {}
+  }
+  function mine(event, bits) { // NIP-13 on every core, with the site's own worker
+    return new Promise((resolve, reject) => {
+      const n = Math.min(navigator.hardwareConcurrency || 2, 8), workers = []; let done = false;
+      const finish = (err, ev) => { if (done) return; done = true; workers.forEach(w => w.terminate()); err ? reject(err) : resolve(ev); };
+      for (let i = 0; i < n; i++) {
+        const w = new Worker('/js/pow-worker.js'); workers.push(w);
+        w.onmessage = ({ data }) => { if (data.error) finish(new Error(data.error)); else if (data.event) finish(null, data.event); };
+        w.onerror = e => finish(new Error(e.message || 'worker failed'));
+        w.postMessage({ event: structuredClone(event), bits, start: i + 1, step: n });
+      }
+    });
+  }
+  function send(ev) {
+    return new Promise((ok, no) => {
+      const ws = new WebSocket(RELAY), give = setTimeout(() => { ws.close(); no(new Error('timeout')); }, 10000);
+      ws.onopen = () => ws.send(JSON.stringify(['EVENT', ev]));
+      ws.onmessage = m => { try { const [type, id, accepted, why] = JSON.parse(m.data);
+        if (type === 'OK' && id === ev.id) { clearTimeout(give); ws.close(); accepted ? ok() : no(new Error(why)); } } catch {} };
+      ws.onerror = () => { clearTimeout(give); no(new Error('relay unreachable')); };
+    });
+  }
+  // On a later visit: wrap each queued seal under a throwaway key, do the work, hand it to my relay.
+  let flushing = false;
+  async function flush() {
+    if (flushing || !outbox().length) return;
+    flushing = true;
+    try {
+      const NT = await nt, tried = new Set();
+      for (let seal; (seal = outbox().find(s => !tried.has(s.id))); ) {
+        tried.add(seal.id);
+        const eph = NT.generateSecretKey();
+        const wrap = NT.finalizeEvent(await mine({ kind: 1059, pubkey: NT.getPublicKey(eph), tags: [['p', MAILBOX]],
+          created_at: Math.floor(Date.now() / 1000) - Math.floor(Math.random() * 2 * 86400), // NIP-59 blurs when it was sent
+          content: NT.nip44.encrypt(JSON.stringify(seal), NT.nip44.getConversationKey(eph, SITE)) }, POW), eph);
+        await send(wrap);
+        keep(outbox().filter(s => s.id !== seal.id));
+      }
+    } catch {} finally { flushing = false; }
+  }
+
+  // /log: fetch the mailbox, open each wrap with the site key, keep the searches.
+  const storedKey = () => { try { return JSON.parse(localStorage.getItem(KEY) || sessionStorage.getItem(KEY) || 'null'); } catch { return null; } };
+  function siteKey(NT, raw) {
+    raw = String(raw || '').trim(); let sk;
+    if (raw.startsWith('nsec1')) sk = NT.nip19.decode(raw).data;
+    else if (/^[0-9a-f]{64}$/i.test(raw)) sk = NT.utils.hexToBytes(raw.toLowerCase());
+    else throw new Error('paste an nsec1… or a 64-character hex key');
+    if (NT.getPublicKey(sk) !== SITE) throw new Error("that key is not this site's key");
+    return sk;
+  }
+  function unseal(NT, conv, seal) { // the search inside a seal, or null for anything else (chat, forgeries)
+    if (seal.kind !== 13 || !NT.verifyEvent(seal)) return null;
+    const r = JSON.parse(NT.nip44.decrypt(seal.content, conv(seal.pubkey)));
+    return r.kind === LOG_KIND && r.pubkey === seal.pubkey && NT.getEventHash(r) === r.id && r.tags.some(t => t[0] === 'd' && t[1] === LOG_D) ? r : null;
+  }
+  function fetchWraps() { // everything in the mailbox, a page at a time
+    return new Promise(ok => {
+      const ws = new WebSocket(RELAY), all = new Map(); let page = 0, got = 0, oldest = Infinity, reached = false;
+      const end = () => { clearTimeout(give); try { ws.close(); } catch {} ok({ wraps: [...all.values()], reached }); };
+      const give = setTimeout(end, 20000);
+      const req = () => { got = 0; const f = { kinds: [1059], '#p': [MAILBOX], limit: 500 }; if (page) f.until = oldest - 1; ws.send(JSON.stringify(['REQ', 'sky' + ++page, f])); };
+      ws.onopen = () => { reached = true; req(); }; ws.onerror = end;
+      ws.onmessage = m => { try { const [type, id, ev] = JSON.parse(m.data); if (id !== 'sky' + page) return;
+        if (type === 'EVENT') { got++; all.set(ev.id, ev); oldest = Math.min(oldest, ev.created_at); }
+        else if (type === 'EOSE') { ws.send(JSON.stringify(['CLOSE', id])); got && page < 20 ? req() : end(); } } catch {} };
+    });
+  }
+  const when = new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  async function showLog() {
+    const view = document.getElementById('log'), state = document.getElementById('logstate'), rows = document.getElementById('rows'), unlock = document.getElementById('unlock');
+    view.hidden = false; document.getElementById('q').blur(); rows.replaceChildren(); state.textContent = '';
+    let NT, sk = null;
+    try { NT = await nt; } catch { state.textContent = 'could not load nostr-tools'; return; }
+    try { const raw = storedKey(); if (raw) sk = siteKey(NT, raw); } catch {}
+    unlock.hidden = !!sk;
+    if (!sk) return;
+    const keys = new Map(), conv = pk => keys.get(pk) || keys.set(pk, NT.nip44.getConversationKey(sk, pk)).get(pk);
+    const found = new Map(), waiting = new Set();
+    for (const seal of outbox()) try { const r = unseal(NT, conv, seal); if (r) { found.set(r.id, r); waiting.add(r.id); } } catch {}
+    state.textContent = 'fetching…';
+    const { wraps, reached } = await fetchWraps();
+    for (let i = 0; i < wraps.length; i++) {
+      try { const r = unseal(NT, conv, JSON.parse(NT.nip44.decrypt(wraps[i].content, NT.nip44.getConversationKey(sk, wraps[i].pubkey)))); if (r) { found.set(r.id, r); waiting.delete(r.id); } } catch {}
+      if (i % 25 === 24) { state.textContent = `opening ${i + 1} of ${wraps.length}…`; await new Promise(r => setTimeout(r)); }
+    }
+    const list = [...found.values()].sort((a, b) => b.created_at - a.created_at);
+    // Anyone can send the site a wrap, so once more than one key has written here, say which wrote what.
+    let here = ''; try { const raw = get('rb.sky.nsec'); if (raw) here = NT.getPublicKey(NT.nip19.decode(raw).data); } catch {}
+    const from = new Set(list.map(r => r.pubkey)).size > 1 ? r => r.pubkey === here ? 'this device' : 'key ' + r.pubkey.slice(0, 8) : () => '';
+    rows.replaceChildren(...list.map(r => { // text only, and only http(s) links
+      const to = r.tags.find(t => t[0] === 'r')?.[1] || '', li = document.createElement('li');
+      const row = document.createElement(/^https?:\/\//i.test(to) ? 'a' : 'div'), meta = document.createElement('small');
+      if (row.tagName === 'A') row.href = to;
+      meta.textContent = [when.format(r.created_at * 1000), r.tags.find(x => x[0] === 'engine')?.[1], from(r), waiting.has(r.id) && 'not sent yet'].filter(Boolean).join(' · ');
+      row.append(r.content, meta); li.append(row); return li;
+    }));
+    state.textContent = `${list.length} ${list.length === 1 ? 'trip' : 'trips'}` + (waiting.size ? ` · ${waiting.size} waiting to send` : '') + (reached ? '' : ' · relay unreachable');
+  }
+  if (local) window.sky = { note, flush, outbox };
+
+  root.dataset.engine = 'ddg'; // every visit starts on DuckDuckGo
+  paint();
+  addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById('go'), q = document.getElementById('q'), fitter = document.getElementById('fit');
+    const tick = () => { paint(); draw(); };
+    const ddg = () => root.dataset.engine === 'ddg';
+    const fit = () => { fitter.textContent = q.value || q.placeholder; q.style.width = Math.ceil(fitter.getBoundingClientRect().width) + 10 + 'px'; };
+    const engine = on => { root.dataset.engine = on ? 'ddg' : 'google'; fit(); };
+    q.addEventListener('keydown', e => { // backspace at the very start deletes the "!"
+      if (e.key === 'Backspace' && ddg() && q.selectionStart === 0 && q.selectionEnd === 0) { e.preventDefault(); engine(false); }
+    });
+    q.addEventListener('input', () => { // typing "!" into an empty box brings it back
+      if (!ddg() && q.value === '!') { q.value = ''; engine(true); } else fit();
+    });
+    let leaving = false;
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      if (q.value.trim().toLowerCase() === '/log') { q.value = ''; fit(); return showLog(); }
+      const to = where(q.value, ddg());
+      if (!to || leaving) return;
+      leaving = true;
+      await note(q.value.trim(), to);
+      location.assign(to);
+    });
+    const view = document.getElementById('log');
+    const closeLog = () => { view.hidden = true; document.getElementById('rows').replaceChildren(); if (location.hash === '#log') history.replaceState(null, '', location.pathname + location.search); };
+    document.getElementById('close').onclick = closeLog;
+    document.getElementById('lock').onclick = () => { try { sessionStorage.removeItem(KEY); localStorage.removeItem(KEY); } catch {} showLog(); };
+    document.getElementById('unlock').addEventListener('submit', async e => {
+      e.preventDefault();
+      const f = e.target, err = f.querySelector('p');
+      try {
+        const raw = f.nsec.value.trim(); siteKey(await nt, raw);
+        const j = JSON.stringify(raw); sessionStorage.setItem(KEY, j);
+        if (f.remember.checked) localStorage.setItem(KEY, j);
+        f.reset(); err.textContent = ''; showLog();
+      } catch (x) { err.textContent = x.message; }
+    });
+    addEventListener('keydown', e => { if (e.key === 'Escape' && !view.hidden) closeLog(); });
+    addEventListener('hashchange', () => { if (location.hash === '#log') showLog(); });
+    if (location.hash === '#log') showLog();
+    fit(); draw(); flush();
+    setInterval(tick, 60000);
+    addEventListener('resize', draw);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) { tick(); flush(); } });
+    addEventListener('pageshow', e => { if (e.persisted) { q.value = ''; leaving = false; engine(true); tick(); flush(); } });
+    dark.addEventListener('change', tick);
+  });
+})();
+</script>
+</head>
+<body>
+<canvas id="sky" aria-hidden="true"></canvas>
+<label for="q" id="tap" aria-hidden="true"></label>
+<form id="go" action="https://duckduckgo.com/" method="get" role="search" autocomplete="off">
+<div id="field"><label for="q" id="bang" aria-hidden="true">!</label><input id="q" name="q" type="text" inputmode="search" enterkeyhint="go" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="where to?" aria-label="Search or type an address"></div>
+<span id="fit" aria-hidden="true"></span>
+</form>
+<a id="moon" href="/" hidden aria-label="ronishbhatt.com" title="ronishbhatt.com"></a>
+<section id="log" hidden aria-label="search log">
+<header><b>trips</b><span id="logstate"></span><button type="button" id="lock">lock</button><button type="button" id="close">close</button></header>
+<form id="unlock" hidden autocomplete="off"><input name="nsec" type="password" enterkeyhint="go" placeholder="site key, nsec1…" autocomplete="off" aria-label="site key"><label><input name="remember" type="checkbox"> remember on this device</label><button>open</button><p></p></form>
+<ol id="rows"></ol>
+</section>
+</body>
+</html>
