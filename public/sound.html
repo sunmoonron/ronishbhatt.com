@@ -1,0 +1,1502 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Earthbell</title>
+<meta name="description" content="Lightning rings the Earth like a bell about 45 times a second. Earthbell lifts that ringing into hearing, live, and voices it from where you stand.">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#05070c">
+<style>
+:root{
+  --bg:#05070c;
+  --panel:#0a0e17;
+  --panel-2:#0e1420;
+  --line:#1a2232;
+  --line-2:#29344c;
+  --text:#e9ecf3;
+  --soft:#c4cad7;
+  --muted:#939cb0;
+  --faint:#5f687c;
+  --cyan:#8fe3ff;
+  --violet:#c5abff;
+  --gold:#ffd27f;
+  --rose:#ff9fb4;
+  --green:#97f0c4;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+main{max-width:1140px;margin:0 auto;padding:32px 16px 72px}
+header{max-width:800px}
+.kicker{font:12px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin:0 0 14px}
+h1{font-size:clamp(36px,6vw,56px);line-height:1.02;letter-spacing:-.025em;margin:0 0 16px;font-weight:650}
+h1 span{background:linear-gradient(90deg,var(--gold),var(--rose) 40%,var(--violet) 70%,var(--cyan));-webkit-background-clip:text;background-clip:text;color:transparent}
+.lede{color:var(--soft);font-size:17px;margin:0 0 10px}
+.lede.quiet{color:var(--muted);font-size:15.5px}
+.grid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:18px;margin-top:26px;align-items:start}
+.grid.b{grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);margin-top:18px}
+@media (max-width:880px){.grid,.grid.b{grid-template-columns:minmax(0,1fr)}}
+.card{background:linear-gradient(180deg,var(--panel-2),var(--panel));border:1px solid var(--line);border-radius:16px;padding:18px}
+.card h2{font-size:12.5px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin:0 0 14px}
+.mapwrap{position:relative;width:100%;aspect-ratio:1/1}
+#map{position:absolute;inset:0;width:100%;height:100%;cursor:crosshair;touch-action:manipulation}
+.legend{font-size:13px;color:var(--muted);margin:12px 2px 0}
+.legend b{color:var(--soft);font-weight:600}
+button,select,input{font:inherit;color:inherit}
+.primary{width:100%;padding:15px 18px;border-radius:12px;border:1px solid #3d3163;background:linear-gradient(135deg,#2b2050,#15264a);color:var(--text);font-weight:600;font-size:17px;cursor:pointer;transition:box-shadow .2s ease,transform .15s ease}
+.primary:hover{box-shadow:0 0 0 3px rgba(197,171,255,.18)}
+.primary:active{transform:scale(.99)}
+.primary:disabled{opacity:.6;cursor:progress}
+.primary.on{background:linear-gradient(135deg,#17302a,#162340);border-color:#2d5a4b}
+.field{display:block;margin:14px 0 0;font-size:14px;color:var(--muted)}
+.field .lab{display:flex;justify-content:space-between;gap:8px;margin-bottom:6px}
+.field em{font-style:normal;color:var(--soft)}
+select{width:100%;padding:10px 34px 10px 12px;border-radius:10px;border:1px solid var(--line-2);background:#090d15 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23939cb0' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right 12px center;color:var(--text);-webkit-appearance:none;appearance:none}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+input[type=range]{width:100%;accent-color:var(--violet);margin:2px 0}
+.check{display:flex;gap:10px;align-items:flex-start;margin-top:16px;font-size:14px;color:var(--muted);cursor:pointer}
+.check input{margin-top:4px;accent-color:var(--cyan)}
+.hint{font-size:13px;color:var(--faint);margin:8px 0 0}
+.status{font-size:13px;color:var(--muted);margin:10px 0 0}
+.status .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:7px;background:var(--faint);vertical-align:1px}
+.status.live .dot{background:var(--green);box-shadow:0 0 8px var(--green)}
+.chord{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;height:200px}
+.bar{display:flex;flex-direction:column;justify-content:flex-end;border:1px solid var(--line);border-radius:10px;background:#080c14;padding:0;cursor:pointer;overflow:hidden;min-width:0}
+.bar .fill{display:block;margin:0 8px;border-radius:6px 6px 2px 2px;background:linear-gradient(180deg,var(--gold),var(--rose) 55%,var(--violet));transition:height 1.4s ease;min-height:4px;height:20%}
+.bar .hz{font:600 13px/1 var(--mono);padding:9px 0 4px;text-align:center;color:var(--text)}
+.bar .real{font:11px/1 var(--mono);padding:0 0 10px;text-align:center;color:var(--faint)}
+.bar.sel{border-color:#6d5aa6;box-shadow:inset 0 0 0 1px rgba(197,171,255,.3)}
+.bar.off{opacity:.3}
+.now{display:grid;grid-template-columns:auto minmax(0,1fr);gap:9px 16px;margin:0;font-size:14px}
+.now dt{color:var(--muted)}
+.now dd{margin:0;font-variant-numeric:tabular-nums;color:var(--soft)}
+.log{list-style:none;margin:0;padding:0;display:grid;gap:11px}
+.log li{display:grid;grid-template-columns:70px minmax(0,1fr);gap:12px;font-size:14.5px;color:var(--soft);animation:in .6s ease}
+.log time{font:12px/1.9 var(--mono);color:var(--faint)}
+.log .k{display:inline-block;font:600 10.5px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;padding:4px 6px;border-radius:5px;margin-right:8px;vertical-align:1px}
+.k.bell{background:rgba(255,210,127,.12);color:var(--gold)}
+.k.whis{background:rgba(143,227,255,.12);color:var(--cyan)}
+.k.chor{background:rgba(151,240,196,.12);color:var(--green)}
+.k.twe{background:rgba(255,159,180,.12);color:var(--rose)}
+.k.info{background:rgba(197,171,255,.12);color:var(--violet)}
+.log .empty{color:var(--faint);display:block}
+@keyframes in{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.prose{margin-top:18px;color:var(--soft);font-size:15px}
+.prose h3{font-size:16px;color:var(--text);margin:24px 0 8px}
+.prose h3:first-of-type{margin-top:4px}
+.prose ul{padding-left:20px;margin:8px 0}
+.prose li{margin:7px 0}
+.prose b{color:var(--text);font-weight:600}
+.prose .warn{color:var(--gold);font-size:14px;margin-top:22px}
+.prose .small{color:var(--muted);font-size:14px}
+noscript{display:block;margin-top:20px;color:var(--gold)}
+@media (prefers-reduced-motion:reduce){.log li{animation:none}.bar .fill{transition:none}}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <p class="kicker">ronishbhatt.com / sound</p>
+    <h1><span>Earthbell</span></h1>
+    <p class="lede">Somewhere on Earth, lightning strikes about 45 times a second. Every strike rings the hollow between the ground and the ionosphere like a bell, at 7.83, 14.3, 20.8, 27.3, 33.8 and 39 Hz. It has not stopped ringing in billions of years. This page lifts it five octaves into hearing and voices it from where you stand.</p>
+    <p class="lede quiet">It is not a generator pretending to be endless. It is a microphone on something that already is.</p>
+  </header>
+  <noscript>Earthbell needs JavaScript and the Web Audio API.</noscript>
+
+  <div class="grid">
+    <section class="card" aria-label="Map of the planet centered on you">
+      <div class="mapwrap" id="mapwrap"><canvas id="map" role="img" aria-label="The whole Earth drawn around your position. Storms glow; the outer edge is the far side of the planet."></canvas></div>
+      <p class="legend"><b>You are at the center.</b> Distance from the center is true distance, and the outer edge is the far side of the planet. Left and right on the map are left and right in your ears. Dashed rings are the nodes of the selected overtone: a storm sitting on one cannot ring that note for you. <b>Click anywhere to listen from there.</b></p>
+    </section>
+
+    <section class="card" aria-label="Controls">
+      <button id="start" class="primary" type="button">Start listening</button>
+      <p id="support" class="hint"></p>
+      <label class="field"><span class="lab">Setting</span>
+        <select id="mode">
+          <option value="auto" selected>Auto by local time</option>
+          <option value="dawn">First hour / others asleep</option>
+          <option value="isolation">Midday isolation</option>
+          <option value="guests">Guests over</option>
+          <option value="night">End of night</option>
+          <option value="sleep">Sleep-safe quiet bed</option>
+        </select>
+      </label>
+      <label class="field"><span class="lab">Listen from</span>
+        <select id="place">
+          <option value="home">Here</option>
+          <option value="gps">My precise location (asks permission)</option>
+          <option value="catatumbo">Catatumbo, Venezuela: the everlasting storm</option>
+          <option value="kinshasa">Kinshasa, under the Congo storms</option>
+          <option value="singapore">Singapore, on the equator</option>
+          <option value="reykjavik">Reykjavik, under the auroral zone</option>
+          <option value="southpole">The South Pole</option>
+          <option value="nemo">Point Nemo, farthest from any land</option>
+          <option value="antipode">Your antipode</option>
+        </select>
+      </label>
+      <div class="row2">
+        <label class="field"><span class="lab">Tuning</span>
+          <select id="anchor">
+            <option value="true" selected>Planet true</option>
+            <option value="432">Anchored to A=432</option>
+            <option value="440">Anchored to A=440</option>
+          </select>
+        </label>
+        <label class="field"><span class="lab">Octaves up</span>
+          <select id="oct">
+            <option value="auto" selected>Auto (5, sleep 4)</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+          </select>
+        </label>
+      </div>
+      <label class="field"><span class="lab">Volume <em id="volText"></em></span>
+        <input id="volume" type="range" min="0" max="1" step="0.01" value="0.72">
+      </label>
+      <label class="field"><span class="lab">Activity <em id="densText"></em></span>
+        <input id="density" type="range" min="0" max="1" step="0.01" value="0.5">
+      </label>
+      <label class="check"><input id="live" type="checkbox" checked><span>Live Earth data: current convective weather and space weather</span></label>
+      <p id="dataStatus" class="status"><span class="dot"></span>Loading...</p>
+    </section>
+  </div>
+
+  <div class="grid b">
+    <section class="card" aria-label="The chord right now">
+      <h2>The bell right now</h2>
+      <div id="chord" class="chord"></div>
+      <p class="hint">Each bar is one resonance of the planet: what you hear on top, the real frequency below. Height is how strongly today's storms can ring it at your distance. Tap one to see its nodes on the map.</p>
+    </section>
+    <section class="card" aria-label="Earth right now">
+      <h2>Earth right now</h2>
+      <dl id="now" class="now"></dl>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:18px" aria-label="What you are hearing">
+    <h2>What you are hearing</h2>
+    <ol id="log" class="log"><li><span></span><span class="empty">Press Start. Each sound will be explained here as it arrives.</span></li></ol>
+  </section>
+
+  <section class="card" style="margin-top:18px" aria-label="Aircraft over Toronto right now">
+    <h2>Overhead</h2>
+    <p class="lede quiet" style="margin:0 0 14px">Everything above reaches you from the far side of the planet. This layer travels a few kilometres: the aircraft over Toronto right now, voiced from their live positions. A propeller's blades pass at 80 to 150 times a second, and the note slides down as the plane goes by. Indoors you never notice it, but it is in every recording you make.</p>
+    <div id="overhead"></div>
+  </section>
+
+  <section class="card prose">
+    <h2>How it works</h2>
+    <h3>Why this gets close to infinite</h3>
+    <ul>
+      <li><b>It is overheard, not generated.</b> The notes are the planet's own resonances, and lightning has kept them sounding for billions of years. You join a piece that started before you, and it does not end when you close the tab.</li>
+      <li><b>The score is a function of time and place.</b> Strike times come from the world clock, so everyone with this page open hears the same strikes at the same moment, each voiced from where they stand. Pick another place, or click the map, and the same storm sounds different.</li>
+      <li><b>Every timescale has its own clock, and none of them loop.</b> Seconds: strikes. Minutes: whistles, pings and chirps. Hours: storms follow the afternoon around the planet, so the voicing turns with the Earth. A day: daylight decides which sounds can exist at all. A year: the storm belt follows the sun north and south. The Sun itself: flares raise the bell's pitch and magnetic storms wake the chorus, live.</li>
+    </ul>
+    <h3>What you hear</h3>
+    <ul>
+      <li><b>The hum</b> is the Schumann resonance background: six partials, each weighted by <i>P</i><sub>n</sub>(cos&nbsp;&theta;), the shape of the n-th standing wave on a sphere, summed over every storm at its distance &theta; from you.</li>
+      <li><b>Strikes</b> (Q-bursts) are the rare huge flashes that make the whole cavity ring at once. Which overtones reach you depends on how far away the strike was. Its direction places it left or right.</li>
+      <li><b>Whistlers</b> happen at night. Some lightning energy escapes along a magnetic field line, loops thousands of kilometres into space and comes down in the other hemisphere. The plasma up there delays low frequencies more than high ones (arrival time grows as one over the square root of frequency), so the sound falls, high notes first. Your own field line sets how far it travels and how slowly it falls.</li>
+      <li><b>Tweeks</b> are also night sounds: distant lightning bouncing between the ground and the ionosphere rings at the cutoff frequency c / 2h, where h is the height of the ionosphere. The pitch is the height of the night sky. At 86.7 km, two octaves down, it is exactly A=432.</li>
+      <li><b>Dawn chorus</b> comes in the morning: electrons trapped in the radiation belts sing rising chirps, pitched by the strength of the magnetic field where they spiral. There is more of it when the magnetosphere is stirred up (high Kp).</li>
+      <li><b>Crackle and hiss</b> are the radio clicks (sferics) of storms near you and the hiss of the plasmasphere.</li>
+      <li><b>Overhead</b> is the one sound here that is not the Earth's electricity: the aircraft within 55 km of downtown Toronto, from public ADS-B transponder data relayed by this site. Each is played as it would sound where you listen: the blade-pass tone of its propeller or rotor, or the rumble of its jets, pitched by the Doppler shift of its velocity toward or away from you at the moment the sound left it, softened by distance and by the air, and delayed by the travel time, so a plane 10 km away is heard where it was half a minute ago. It only knows Toronto's sky. Anywhere else, it listens from downtown.</li>
+    </ul>
+    <h3>What is real and what is stretched</h3>
+    <p><b>Real:</b> the resonance frequencies; the Legendre weighting by distance; the sun's position, and day and night everywhere; your magnetic latitude, L-shell and the point where your field line comes back down (centred dipole); whistler dispersion; the tweek cutoff; the chorus band from the electron gyrofrequency; Kp and the solar X-ray class (NOAA SWPC, live); convective weather (Open-Meteo, live); the aircraft over Toronto, their tracks and their Doppler shift (ADS-B, live).</p>
+    <p><b>Stretched:</b> everything is shifted up by whole octaves (32 times by default) so you can hear it. The real cavity rings for about a quarter of a second, here for several. Whistlers, tweeks and chorus are slowed down and lowered two octaves, like tape at quarter speed. Event rates are thinned for listening. Storms come from a lightning climatology (where it is afternoon over land, by season) blended with live convective weather, not from detected individual strikes. The aircraft engines are synthesized, and the planes stay audible farther away than they really would.</p>
+    <p><b>Anchored tuning</b> moves every bell note by the same small ratio so the lowest lands on C at A=432 (259.2 Hz). The planet's chord is close to harmonics 6, 11, 16, 21 and 26 of 1.3 Hz, so anchored it becomes harmonics of 43.2 Hz.</p>
+    <p class="small">Your location never leaves this page. The weather request asks about a fixed global grid, the same for everyone, and the aircraft feed is one fixed circle around Toronto, also the same for everyone.</p>
+    <p class="warn">Safety note: this page cannot know your speaker or headphone level. Start low, especially on headphones or for sleep. It is art software, not a medical treatment or a sleep device.</p>
+  </section>
+</main>
+
+<script>
+(() => {
+  'use strict';
+
+  // ---------- constants ----------
+  const $ = (id) => document.getElementById(id);
+  const D2R = Math.PI / 180;
+  const R2D = 180 / Math.PI;
+  const TAU = Math.PI * 2;
+  const EARTH_KM = 6371;
+  const C_KM_S = 299792.458;
+  const MODE_F = [7.83, 14.3, 20.8, 27.3, 33.8, 39.0];
+  const STRIKE_A = [1.0, 0.82, 0.66, 0.52, 0.41, 0.32];
+  const HUM_A = [1.0, 0.75, 0.6, 0.48, 0.38, 0.3];
+  const GEOMAG_POLE = [80.8, -72.7];
+  const HORIZON_MS = 4000;
+  const Q_MAX = 0.075;
+  const GAIN = { hum: 0.09, root: 0.06, bell: 0.9, whis: 0.26, chor: 0.15, twe: 0.13, sfer: 0.7, hiss: 0.5, makeup: 2.8 };
+
+  const LAND_B64 = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABf//8BDf///wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB////h////////AAAAAAAAAAAGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA////5////////4AAAAAYAAAD4/wAAAAPwAAAAAAAAAAAAAAAAAAAAAAAAAGA///+A///////+AAAAB//wAAAAAAAAAAP8gAAAAAAAAAAAAAAAAAAAAAAAMH7n//5////////4AAAAB/+AAAAAAAAAAAAD4AAAAAAAAAAAAAAAAAAAAAAccIAxP/Af///////+AAAAAPHAAAAAAAAAAAAA8AAAAAAAAAAAAAAAAAAAAAH/jC8///AP///////9AAAAACAAAAAAAH4AAAAH/+AAAAAAAAAAAAAAAAAAAAAX/1/z/8AAAf//////AAAAAAAAAAAAH8AAAB////AAAB/uAAAAAAAAAAAAAAPA4AA7/8AAAH/////+AAAAAAAAAAAAfAAAAP///+AAAAIAAAAAAAAAAAAAAAf+AYe+f/gAAD/////4AAAAAAAAAAAA4ACAP/////+HwAGAAAAAAAAAAAAAAA///4/4//4AAD/////wAAAAAAAAAAADwAHl3///////4AP2AAAAAwAAAAAAAAOf/8O4///gAD/////wAAAAAAAAAAADwAff////////8///gAAABAAAf/wAACAP//B8f//8AB////+wAAAAAAD/gAAAYAfv/////////////8AAAAAB////P//H//n/Dxf+AB3////gAAAAAB//8AAQA+fv///////////////v+wAP////////f8Hfzwf+AAf///8AAAAAAP///4MHf//v/////////////////+AD/////////////4Z/4A///4AAAAAAAP///+M////v//////////////////8M/////////////wD/+A///wAQYAAAAf///+////////////////////////4//////////////gX+YAf/6AA/8AAAA/8/+D///////////////////////BgP/////////////w//gAP/wAAf8AAAD/4//f//////////////////////+AGB////////////HIA/wAH/gAAHAAAAP/z/////////////////////////+AAH///////////8Aw2fAAD/AAAAAAAA//H/////////////////////////+AAP///////////wAA/gAAB/AAAAAAAB/+H//////////////////////jv/AAAX///////////wAA/4AAAOAAAAAAAB//H//////////////////////A/4AAAA/7AD///////gAA/4wAAAAAAAAAAB//g/////////////////////+DwAAAAAH8AA///////4AA//4AAAAAAAAAYA5+D///////////////////8AAHgAAAAADcAAP//////8AAf/8AAAAAAAAB8AC+i///////////////////wAAfgAAAAAMAAAH///////wCf/+AAAAAAAAA8AO+H///////////////////AAA/gAAAABwAAAD///////+A///AAAAAAAAB8APwH//////////////////+AAB/AAAAAEAAAABf///////z///4AAAAAAAH/APz////////////////////AAA/AAAAAQAAAABf///////x///8AAAAAAAPPA//////////////////////6AA8AAAAAAAAAAAn///////5///8AAAAAAAPfz//////////////////////+AA4AAAAAAAAAAAD///////////8AAAAAAAIfn//////////////////////7AAwAAAAAAAAAAAD///////////sAAAAAAAAef//////////////////////7ABAAAAAAAAAAAAB/////////+MPAAAAAAAAD///////////////////////7AAAAAAAAAAAAAAAf/////////wfgAAAAAAAf///////////////////////yAAAAAAAAAAAAAAAf/////////gfgAAAAAAAH///////////////////////iAAAAAAAAAAAAAAAP/////////9AAAAAAAAAD//////P/x//////////////CAAAAAAAAAAAAAAAP//////////AAAAAAAAAB/////H//D//////////////AAAAAAAAAAAAAAAAP////////+4AAAAAAAAAB//n/+AP+H/////////////8CAAAAAAAAAAAAAAAP////////wgAAAAAAAAH//jz/+AD/H/////////////4HwAAAAAAAAAAAAAAf////////gAAAAAAAAAH/4Fw/8AB/D////////////+APAAAAAAAAAAAAAAAP////////wAAAAAAAAAH/4E8f+Ph/g////////////8AIAAAAAAAAAAAAAAAP///////+AAAAAAAAAAH/gMPfP///x///////////v4AMAAAAAAAAAAAAAAAP///////8AAAAAAAAAAH/AMCOP///h//////////+ZwAMAAAAAAAAAAAAAAAH///////4AAAAAAAAAAH/AACHP///g//////////8B4AcAAAAAAAAAAAAAAAH///////wAAAAAAAAAAH+AAYGH///w//////////+w4A4AAAAAAAAAAAAAAAD///////wAAAAAAAAAAAwf+ACDv//////////////g8D4AAAAAAAAAAAAAAAB///////wAAAAAAAAAAAh/+AAwE//////////////A8f4AAAAAAAAAAAAAAAB///////gAAAAAAAAAAB//+AAAA//////////////Ax/AAAAAAAAAAAAAAAAAP/////+AAAAAAAAAAAD//+AAAB//////////////gD8AAAAAAAAAAAAAAAAAH/////8AAAAAAAAAAAH///4OAB//////////////gDAAAAAAAAAAAAAAAAAAH/////4AAAAAAAAAAAP///8P4z//////////////wCAAAAAAAAAAAAAAAAAADf////4AAAAAAAAAAAP/////////////////////wAAAAAAAAAAAAAAAAAAADf//3gYAAAAAAAAAAAP/////////P///////////wAAAAAAAAAAAAAAAAAAAAv//AAcAAAAAAAAAAA//////////n///////////wAAAAAAAAAAAAAAAAAAAB3/+AAcAAAAAAAAAAB///////9//j///////////gAAAAAAAAAAAAAAAAAAAAb/+AAMAAAAAAAAAAD///////8//w3//////////AAAAAAAAAAAAAAAAAAAAAJ/+AAEAAAAAAAAAAH///////+f/8b//////////AAAAAAAAAAAAAAAAAAAAAM/+AAAAAAAAAAAAAH///////+f/84Af///////+wAAAAAAAAAAAAAAAAAAAAGf8AAAAAAAAAAAAAP////////P//+AP///////4wAAAAAAAAAAAAAAAAAAAAAP8AA/AAAAAAAAAAf////////n///AH///////ggAAAAAAAAAAAAAAAAAAAAAP+AYDgAAAAAAAAAf////////n///AD//+P//8AAAAAAAAAAAAAAAAAAAAAAAP+B4A8AAAAAAAAAf////////n//+AAf/4P/+IAAAAAAAAAAAAAAAgAAAAAAAH/B4ABwAAAAAAAAf////////h//8AAf/wH/8YAAAAAAAAAAAAAAAAAAAAAAAD/vwAj9AAAAAAAAP////////x//4AAf/AD/8QAQAAAAAAAAAAAAAAAAAAAAAA//wAAAAAAAAAAAP////////4//wAAf+AD/+AAwAAAAAAAAAAAAAAAAAAAAAAH/wAAAAAAAAAAAf////////4/+AAAf8AD//AAwAAAAAAAAAAAAAAAAAAAAAAAH/AAAAAAAAAAAf////////8f8AAAP4AAP/gAwAAAAAAAAAAAAAAAAAAAAAAAD/gAAAAAAAAAAf////////+fgAAAPwAAP/gAwAAAAAAAAAAAAAAAAAAAAAAAA/gAAAAAAAAAAf/////////+AAAAPwAAP/gA8AAAAAAAAAAAAAAAAAAAAAAAAHgAgAAAAAAAAf/////////wAAAAHwAAN/wAWAAAAAAAAAAAAAAAAAAAAAAAADAD4AAAAAAAAP/////////gYAAAHwAAMfgALAAAAAAAAAAAAAAAAAAAAAAAADgP/eAAAAAAAH//////////4AAADwAAIPABOAAAAAAAAAAAAAAAAAAAAAAAABzP/+AAAAAAAD//////////4AAADoAAMEACNAAAAAAAAAAAAAAAAAAAAAAAAA9///AAAAAAAB//////////wAAABIAAMAAAHgAAAAAAAAAAAAAAAAAAAAAAAAE///wAAAAAAB//////////wAAAAMAAGAAAPgAAAAAAAAAAAAAAAAAAAAAAAAA///4AAAAAAAf/////////gAAAAMAADAAMDAAAAAAAAAAAAAAAAAAAAAAAAAA////gAAAAAAP/B///////gAAAAAABDgAeAAAAAAAAAAAAAAAAAAAAAAAAAAA////4AAAAAACAA///////AAAAAAAAzwA8AAAAAAAAAAAAAAAAAAAAAAAAAAA////4AAAAAAAAAD/////+AAAAAAAAdwB8AAAAAAAAAAAAAAAAAAAAAAAAAAB////4AAAAAAAAAD/////8AAAAAAAAfwH8AAAAAAAAAAAAAAAAAAAAAAAAAAB////8AAAAAAAAAH/////4AAAAAAAAHwf+AYAAAAAAAAAAAAAAAAAAAAAAAAD////8AAAAAAAAAH/////wAAAAAAAAHwf8+YAAAAAAAAAAAAAAAAAAAAAACAH/////gAAAAAAAAH/////gAAAAAAAADwf8ATgAAAAAAAAAAAAAAAAAAAAAAAH/////4AAAAAAAAH/////AAAAAAAAAD8P58BxAAAAAAAAAAAAAAAAAAAAAAAH//////AAAAAAAAD////+AAAAAAAAAB+P5wA74AAAAAAAAAAAAAAAAAAAAAAH//////4AAAAAAAB////8AAAAAAAAAA8C54uf/AAAAAAAAAAAAAAAAAAAAAAH//////+AAAAAAAB////8AAAAAAAAAAcAB4AH/wYAAAAAAAAAAAAAAAAAAAAH///////gAAAAAAA////4AAAAAAAAAAMABIAA/xwAAAAAAAAAAAAAAAAAAAAH///////gAAAAAAA////4AAAAAAAAAAHkAAAI/8BAAAAAAAAAAAAAAAAAAAAD///////gAAAAAAAf///8AAAAAAAAAAB/AABA/8AAAAAAAAAAAAAAAAAAAAAB///////gAAAAAAAf///8AAAAAAAAAAAH+5gAvOAQAAAAAAAAAAAAAAAAAAAB///////gAAAAAAAf///8AAAAAAAAAAAABCAAAHACAAAAAAAAAAAAAAAAAAAA///////AAAAAAAAf///+AAAAAAAAAAAAAEAAABgAAAAAAAAAAAAAAAAAAAAA//////+AAAAAAAAP///+AAAAAAAAAAAAAACgCAAAAAAAAAAAAAAAAAAAAAAAf/////8AAAAAAAAf///+AQAAAAAAAAAAAAD+CAAAAAAAAAAAAAAAAAAAAAAAP/////4AAAAAAAA////+AwAAAAAAAAAAAAD8HAAAAAAAAAAAAAAAAAAAAAAAP/////4AAAAAAAA////+BwAAAAAAAAAAAB38HgAAAAAAAAAAAAAAAAAAAAAAH/////4AAAAAAAA////+D4AAAAAAAAAAAD/+HgAAAAAAAAAAAAAAAAAAAAAAB/////4AAAAAAAA////8PwAAAAAAAAAAAH//HwAAAABAAAAAAAAAAAAAAAAAA/////4AAAAAAAA////wPwAAAAAAAAAAAP///wAAAAGAAAAAAAAAAAAAAAAAAf////4AAAAAAAA////gPgAAAAAAAAAAAP///wAAAAAAAAAAAAAAAAAAAAAAAP////wAAAAAAAAf///APgAAAAAAAAAAAf///8AAAAAAAAAAAAAAAAAAAAAAAP////wAAAAAAAAf//+APgAAAAAAAAAAH////+AAIAAAAAAAAAAAAAAAAAAAAP////gAAAAAAAAP//+AfAAAAAAAAAAAf/////AAEAAAAAAAAAAAAAAAAAAAAP////AAAAAAAAAP///AfAAAAAAAAAAA//////gAAAAAAAAAAAAAAAAAAAAAAf///4AAAAAAAAAP///AfAAAAAAAAAAB//////gAAAAAAAAAAAAAAAAAAAAAAf///gAAAAAAAAAP//+AOAAAAAAAAAAB//////wAAAAAAAAAAAAAAAAAAAAAAf///AAAAAAAAAAH//4AEAAAAAAAAAAA//////4AAAAAAAAAAAAAAAAAAAAAAf///AAAAAAAAAAH//4AAAAAAAAAAAAB//////4AAAAAAAAAAAAAAAAAAAAAAf///AAAAAAAAAAH//4AAAAAAAAAAAAA//////8AAAAAAAAAAAAAAAAAAAAAAf//+AAAAAAAAAAD//4AAAAAAAAAAAAA//////8AAAAAAAAAAAAAAAAAAAAAA///8AAAAAAAAAAB//gAAAAAAAAAAAAAf/////8AAAAAAAAAAAAAAAAAAAAAA///8AAAAAAAAAAB//gAAAAAAAAAAAAAf/////4AAAAAAAAAAAAAAAAAAAAAA///4AAAAAAAAAAA//AAAAAAAAAAAAAAf/////4AAAAAAAAAAAAAAAAAAAAAA///wAAAAAAAAAAA/+AAAAAAAAAAAAAAf/AP//4AAAAAAAAAAAAAAAAAAAAAA///gAAAAAAAAAAA/4AAAAAAAAAAAAAAf8AH//wAAAAAAAAAAAAAAAAAAAAAA///AAAAAAAAAAAAcAAAAAAAAAAAAAAAeAAF//gAAAAAAAAAAAAAAAAAAAAAB//4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB//gAABgAAAAAAAAAAAAAAAAAB//4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP/AAAAgAAAAAAAAAAAAAAAAAD//4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP/AAAAQAAAAAAAAAAAAAAAAAD//wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADYAAAA8AAAAAAAAAAAAAAAAAD/8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA4AAAAAAAAAAAAAAAAAD/8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYAAAAAAAAAAAAAAAAAD/gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcAAADwAAAAAAAAAAAAAAAAAD/wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcAAAHAAAAAAAAAAAAAAAAAAB/gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAeAAAAAAAAAAAAAAAAAAH/gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8AAAAAAAAAAAAAAAAAAH+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB4AAAAAAAAAAAAAAAAAAH+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwAAAAAAAAAAAAAAAAAAH/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP+AAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH4BwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/AAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB8AAAAAAAAAAAAAAAAAAP4AAAAAf//PgDj/wAAAAAAAAAAAAAAAAAAAAAAAAHgAAAAAAAAAAAAAAAAAD//+AAD//////////wAAAAAAAAAAAAAAAAAAAAAAAB4AAAAAAAAAAAAAAAEB////8A////////////2AAAAAAAAAAAAAAAAAAAAAA/8AAAAAAAAAAAAAAAHn////4D/////////////8AAAAAAAAAAAAAAAAAAAAMf8AAAAAAAAAED+/nL//////4//////////////++AAAAAAAAAAAAAAAAAAAH/+AAAAAAAA/////////////x////////////////4AAAAAAAAAAAAAAPAAAB5/AAAAAAAB/////////////v////////////////wAAAAAAAAABgAAB///Pv//AAAAAAAP//////////////////////////////AAAAAAAAAAi//sAf/////+AAAAAAA//////////////////////////////4AAAAAAAC/////////////wAAAAAAf//////////////////////////////gAAAAAAAf////////////4AAAAAA////////////////////////////////gAAAAAD/////////////+AAAAAAP////////////////////////////////zAAAAAA/////////////AEAAD8A/////////////////////////////////+AAAAD4D////////////w7AAH+AH///////////////////////////////+AAAAAAAA////////////4AXA/wAf///////////////////////////////+AAAAAAA///////////////gAAA//////////////////////////////////AAAAAAAP//////////////8D////////////////////////////////////8AAAD////////////////////////////////////////////////////////+A/+H/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////';
+
+  // name, lat, lon, radius (deg), weight, season peak day (-1 = all year), off-season floor, local solar hour of peak, sharpness
+  const REGIONS = [
+    ['the Congo Basin', -1.5, 23.5, 7, 1.0, -1, 1, 16.5, 2.2],
+    ['Lake Maracaibo (Catatumbo)', 9.6, -71.6, 1.6, 0.55, 275, 0.6, 1.5, 2.5],
+    ['the Amazon', -4.5, -61, 9, 0.7, 330, 0.4, 15, 2.0],
+    ['the Brazilian Highlands', -15, -48, 6, 0.4, 15, 0.1, 16, 2.0],
+    ['Córdoba and the Pampas', -29, -62, 6, 0.55, 15, 0.08, 1.0, 1.6],
+    ['the Colombian Andes', 6, -75, 4, 0.45, -1, 1, 18, 1.5],
+    ['Central America', 13, -87, 5, 0.4, 200, 0.15, 16, 2.0],
+    ['Florida and the Gulf Coast', 29, -84, 5, 0.45, 200, 0.08, 16, 2.2],
+    ['the Great Plains', 38, -97, 7, 0.55, 175, 0.03, 0.5, 1.4],
+    ['the Sierra Madre', 22, -103, 5, 0.3, 210, 0.05, 17, 2.0],
+    ['Cuba and the Caribbean', 21, -78, 4, 0.2, 200, 0.2, 15, 2.0],
+    ['Nigeria and the Guinea coast', 8, 7, 6, 0.6, 220, 0.25, 18, 1.6],
+    ['the Sahel', 13.5, 2, 7, 0.35, 220, 0.02, 20, 1.6],
+    ['Lake Victoria', -1, 33, 2.5, 0.5, -1, 1, 4, 2.0],
+    ['the East African Highlands', -6, 36, 5, 0.35, 90, 0.3, 15, 2.0],
+    ['Angola and Zambia', -12, 25, 6, 0.45, 15, 0.1, 16, 2.0],
+    ['the South African Highveld', -26, 29, 5, 0.35, 15, 0.05, 17, 2.0],
+    ['Madagascar', -18, 47, 4, 0.25, 15, 0.1, 16, 2.0],
+    ['the Ethiopian Highlands', 9, 38.5, 4, 0.3, 210, 0.1, 16, 2.0],
+    ['South Sudan', 8, 30, 5, 0.3, 210, 0.05, 18, 1.8],
+    ['Bangladesh and the Himalayan foothills', 25, 89, 5, 0.6, 140, 0.1, 21, 1.4],
+    ['northern Pakistan and Kashmir', 33, 73.5, 3.5, 0.35, 180, 0.05, 19, 1.8],
+    ['Indochina', 15, 103, 6, 0.45, 140, 0.15, 17, 2.0],
+    ['southern China', 24, 112, 5, 0.4, 190, 0.08, 16, 2.0],
+    ['the Malay Peninsula and Sumatra', 2, 101, 4, 0.7, -1, 1, 17, 2.0],
+    ['Borneo', 0.5, 114, 5, 0.6, -1, 1, 17, 2.0],
+    ['Java', -7.5, 110, 3, 0.4, 15, 0.25, 16, 2.0],
+    ['New Guinea', -5, 141, 5, 0.45, -1, 1, 16, 2.0],
+    ['the Philippines', 12, 123, 4, 0.3, 220, 0.3, 16, 2.0],
+    ['northern Australia', -15, 132, 6, 0.4, 15, 0.02, 17, 2.0],
+    ['the Mediterranean and the Balkans', 43, 17, 6, 0.3, 235, 0.1, 15, 1.8],
+    ['the Alps and central Europe', 47, 11, 5, 0.25, 195, 0.02, 17, 2.0],
+    ['the Tibetan Plateau', 32, 90, 6, 0.15, 200, 0.02, 16, 2.0],
+    ['the Gulf Stream', 34, -70, 7, 0.15, 20, 0.3, 5, 1.0],
+    ['the Kuroshio Current', 30, 128, 6, 0.15, 20, 0.3, 5, 1.0],
+    ['the western Pacific warm pool', 5, 155, 10, 0.15, -1, 1, 5, 1.0],
+    ['the Indian Ocean', -5, 75, 10, 0.1, -1, 1, 5, 1.0]
+  ];
+
+  const CITY_DATA = "Kinshasa|-4.32|15.31;Kisangani|0.52|25.19;Mbandaka|0.05|18.26;Lubumbashi|-11.66|27.48;Kananga|-5.9|22.42;Bangui|4.39|18.56;Yaoundé|3.85|11.5;Douala|4.05|9.7;Libreville|0.39|9.45;Lagos|6.52|3.38;Abuja|9.08|7.4;Kano|12.0|8.52;Accra|5.6|-0.19;Abidjan|5.36|-4.01;Dakar|14.72|-17.47;Bamako|12.64|-8.0;Niamey|13.51|2.11;Ouagadougou|12.37|-1.52;N'Djamena|12.13|15.06;Khartoum|15.5|32.56;Juba|4.85|31.58;Addis Ababa|9.03|38.74;Nairobi|-1.29|36.82;Kampala|0.35|32.58;Kisumu|-0.09|34.77;Kigali|-1.95|30.06;Dar es Salaam|-6.79|39.21;Mwanza|-2.52|32.9;Lusaka|-15.39|28.32;Harare|-17.83|31.05;Luanda|-8.84|13.23;Huambo|-12.78|15.74;Johannesburg|-26.2|28.05;Durban|-29.86|31.02;Cape Town|-33.92|18.42;Maputo|-25.97|32.57;Antananarivo|-18.88|47.51;Windhoek|-22.56|17.08;Gaborone|-24.63|25.92;Cairo|30.04|31.24;Casablanca|33.57|-7.59;Algiers|36.75|3.06;Tunis|36.81|10.18;Tripoli|32.89|13.19;Mogadishu|2.05|45.32;Nouakchott|18.09|-15.98;Timbuktu|16.77|-3.0;Agadez|16.97|7.99;"
+    + "London|51.51|-0.13;Dublin|53.35|-6.26;Edinburgh|55.95|-3.19;Paris|48.86|2.35;Madrid|40.42|-3.7;Lisbon|38.72|-9.14;Barcelona|41.39|2.17;Marseille|43.3|5.37;Berlin|52.52|13.4;Hamburg|53.55|9.99;Munich|48.14|11.58;Zurich|47.38|8.54;Milan|45.46|9.19;Rome|41.9|12.5;Naples|40.85|14.27;Palermo|38.12|13.36;Vienna|48.21|16.37;Prague|50.08|14.44;Budapest|47.5|19.04;Zagreb|45.81|15.98;Belgrade|44.79|20.45;Sofia|42.7|23.32;Bucharest|44.43|26.1;Athens|37.98|23.73;Istanbul|41.01|28.98;Ankara|39.93|32.86;Warsaw|52.23|21.01;Kyiv|50.45|30.52;Minsk|53.9|27.57;Moscow|55.76|37.62;Saint Petersburg|59.93|30.34;Stockholm|59.33|18.07;Oslo|59.91|10.75;Copenhagen|55.68|12.57;Helsinki|60.17|24.94;Amsterdam|52.37|4.9;Brussels|50.85|4.35;Luxembourg|49.61|6.13;Reykjavik|64.15|-21.94;Tromsø|69.65|18.96;Murmansk|68.97|33.08;Longyearbyen|78.22|15.65;"
+    + "Tehran|35.69|51.39;Riyadh|24.71|46.68;Jeddah|21.49|39.19;Dubai|25.2|55.27;Muscat|23.59|58.41;Baghdad|33.31|44.36;Jerusalem|31.77|35.21;Beirut|33.89|35.5;Tbilisi|41.72|44.79;Baku|40.41|49.87;Tashkent|41.3|69.24;Almaty|43.24|76.89;Astana|51.17|71.43;Kabul|34.56|69.21;Yekaterinburg|56.84|60.6;Novosibirsk|55.01|82.93;Krasnoyarsk|56.01|92.89;Irkutsk|52.29|104.28;Yakutsk|62.03|129.73;Magadan|59.56|150.8;Vladivostok|43.12|131.89;Ulaanbaatar|47.89|106.91;Norilsk|69.35|88.2;"
+    + "Karachi|24.86|67.0;Lahore|31.55|74.34;Islamabad|33.68|73.05;Srinagar|34.08|74.8;Delhi|28.61|77.21;Jaipur|26.91|75.79;Mumbai|19.08|72.88;Hyderabad|17.39|78.49;Bengaluru|12.97|77.59;Chennai|13.08|80.27;Kolkata|22.57|88.36;Patna|25.59|85.14;Dhaka|23.81|90.41;Guwahati|26.14|91.74;Kathmandu|27.72|85.32;Thimphu|27.47|89.64;Colombo|6.93|79.86;Malé|4.18|73.51;"
+    + "Yangon|16.84|96.17;Mandalay|21.96|96.09;Bangkok|13.76|100.5;Chiang Mai|18.79|98.98;Vientiane|17.97|102.63;Hanoi|21.03|105.85;Da Nang|16.05|108.2;Ho Chi Minh City|10.82|106.63;Phnom Penh|11.56|104.92;Kuala Lumpur|3.14|101.69;Penang|5.41|100.33;Singapore|1.35|103.82;Medan|3.6|98.67;Padang|-0.95|100.35;Palembang|-2.98|104.76;Jakarta|-6.21|106.85;Bandung|-6.92|107.61;Surabaya|-7.25|112.75;Denpasar|-8.65|115.22;Pontianak|-0.03|109.33;Kuching|1.55|110.36;Kota Kinabalu|5.98|116.07;Balikpapan|-1.27|116.83;Makassar|-5.15|119.43;Manado|1.47|124.84;Ambon|-3.7|128.18;Manila|14.6|120.98;Cebu|10.32|123.89;Davao|7.07|125.61;Hong Kong|22.32|114.17;Guangzhou|23.13|113.26;Nanning|22.82|108.32;Kunming|25.04|102.71;Chengdu|30.57|104.07;Chongqing|29.56|106.55;Lhasa|29.65|91.1;Wuhan|30.59|114.31;Shanghai|31.23|121.47;Beijing|39.9|116.4;Harbin|45.8|126.53;Urumqi|43.83|87.62;Seoul|37.57|126.98;Busan|35.18|129.08;Tokyo|35.68|139.69;Osaka|34.69|135.5;Sapporo|43.06|141.35;Taipei|25.03|121.57;Naha|26.21|127.68;"
+    + "Darwin|-12.46|130.84;Katherine|-14.47|132.26;Port Moresby|-9.44|147.18;Lae|-6.73|147.0;Jayapura|-2.53|140.72;Cairns|-16.92|145.77;Townsville|-19.26|146.82;Brisbane|-27.47|153.03;Sydney|-33.87|151.21;Canberra|-35.28|149.13;Melbourne|-37.81|144.96;Hobart|-42.88|147.33;Adelaide|-34.93|138.6;Perth|-31.95|115.86;Broome|-17.96|122.24;Alice Springs|-23.7|133.88;Auckland|-36.85|174.76;Wellington|-41.29|174.78;Christchurch|-43.53|172.64;Nouméa|-22.27|166.44;Port Vila|-17.73|168.32;Honiara|-9.43|159.95;Suva|-18.14|178.44;Apia|-13.83|-171.76;Nuku'alofa|-21.14|-175.2;Papeete|-17.54|-149.57;Honolulu|21.31|-157.86;Guam|13.44|144.79;Majuro|7.09|171.38;Tarawa|1.45|173.0;"
+    + "Anchorage|61.22|-149.9;Fairbanks|64.84|-147.72;Utqiagvik|71.29|-156.79;Juneau|58.3|-134.42;Whitehorse|60.72|-135.06;Vancouver|49.28|-123.12;Seattle|47.61|-122.33;Portland|45.52|-122.68;Boise|43.62|-116.2;San Francisco|37.77|-122.42;Los Angeles|34.05|-118.24;San Diego|32.72|-117.16;Las Vegas|36.17|-115.14;Phoenix|33.45|-112.07;Salt Lake City|40.76|-111.89;Denver|39.74|-104.99;Albuquerque|35.08|-106.65;El Paso|31.76|-106.49;Dallas|32.78|-96.8;Austin|30.27|-97.74;San Antonio|29.42|-98.49;Houston|29.76|-95.37;Oklahoma City|35.47|-97.52;Wichita|37.69|-97.34;Kansas City|39.1|-94.58;Omaha|41.26|-95.93;Des Moines|41.59|-93.62;Minneapolis|44.98|-93.27;Bismarck|46.81|-100.78;Chicago|41.88|-87.63;Indianapolis|39.77|-86.16;Louisville|38.25|-85.76;St. Louis|38.63|-90.2;Memphis|35.15|-90.05;Nashville|36.16|-86.78;New Orleans|29.95|-90.07;Birmingham|33.52|-86.8;Atlanta|33.75|-84.39;Tampa|27.95|-82.46;Orlando|28.54|-81.38;Miami|25.76|-80.19;Charlotte|35.23|-80.84;Washington|38.91|-77.04;Philadelphia|39.95|-75.17;New York|40.71|-74.01;Boston|42.36|-71.06;Detroit|42.33|-83.05;Cleveland|41.5|-81.69;Pittsburgh|40.44|-80.0;Toronto|43.65|-79.38;Ottawa|45.42|-75.7;Montreal|45.5|-73.57;Quebec City|46.81|-71.21;Halifax|44.65|-63.58;St. John's|47.56|-52.71;Winnipeg|49.9|-97.14;Regina|50.45|-104.61;Calgary|51.05|-114.07;Edmonton|53.55|-113.49;Yellowknife|62.45|-114.37;Churchill|58.77|-94.17;Iqaluit|63.75|-68.52;Nuuk|64.18|-51.72;Mexico City|19.43|-99.13;Guadalajara|20.66|-103.35;Monterrey|25.69|-100.32;Chihuahua|28.63|-106.07;Hermosillo|29.07|-110.96;Mérida|20.97|-89.62;Oaxaca|17.07|-96.73;Havana|23.11|-82.37;Kingston|17.97|-76.79;Port-au-Prince|18.54|-72.34;Santo Domingo|18.49|-69.93;San Juan|18.47|-66.11;Guatemala City|14.63|-90.51;San Salvador|13.69|-89.22;Tegucigalpa|14.07|-87.19;Managua|12.11|-86.24;San José|9.93|-84.08;Panama City|8.98|-79.52;Nassau|25.05|-77.36;Bermuda|32.3|-64.78;"
+    + "Caracas|10.48|-66.9;Maracaibo|10.65|-71.64;Barquisimeto|10.07|-69.32;Bogotá|4.71|-74.07;Medellín|6.24|-75.58;Cali|3.45|-76.53;Barranquilla|10.96|-74.8;Quito|-0.18|-78.47;Guayaquil|-2.17|-79.92;Lima|-12.05|-77.04;Cusco|-13.53|-71.97;Iquitos|-3.75|-73.25;Manaus|-3.12|-60.02;Santarém|-2.44|-54.71;Belém|-1.46|-48.49;Porto Velho|-8.76|-63.9;Rio Branco|-9.97|-67.81;Cuiabá|-15.6|-56.1;Campo Grande|-20.47|-54.62;Brasília|-15.79|-47.88;Goiânia|-16.68|-49.25;Belo Horizonte|-19.92|-43.94;São Paulo|-23.55|-46.63;Rio de Janeiro|-22.91|-43.17;Curitiba|-25.43|-49.27;Porto Alegre|-30.03|-51.23;Salvador|-12.97|-38.5;Recife|-8.05|-34.88;Fortaleza|-3.73|-38.52;Teresina|-5.09|-42.8;Asunción|-25.26|-57.58;Santa Cruz de la Sierra|-17.78|-63.18;La Paz|-16.5|-68.15;Salta|-24.79|-65.41;Tucumán|-26.82|-65.22;Córdoba|-31.42|-64.18;Rosario|-32.95|-60.66;Buenos Aires|-34.6|-58.38;Mendoza|-32.89|-68.83;Santiago|-33.45|-70.67;Montevideo|-34.9|-56.16;Bahía Blanca|-38.72|-62.27;Puerto Montt|-41.47|-72.94;Comodoro Rivadavia|-45.86|-67.48;Punta Arenas|-53.16|-70.91;Ushuaia|-54.8|-68.3;Stanley|-51.69|-57.86;Paramaribo|5.85|-55.2;Georgetown|6.8|-58.16;Cayenne|4.92|-52.31;"
+    + "Ponta Delgada|37.74|-25.67;Las Palmas|28.12|-15.43;Praia|14.93|-23.51;Saint Helena|-15.93|-5.72;Tristan da Cunha|-37.07|-12.31;Port Louis|-20.16|57.5;Saint-Denis|-20.88|55.45;Victoria (Seychelles)|-4.62|55.45;Diego Garcia|-7.31|72.41;Port Blair|11.62|92.73;Kerguelen|-49.35|70.22;McMurdo Station|-77.85|166.67;Halley Station|-75.58|-26.66;Davis Station|-68.58|77.97;Rothera|-67.57|-68.13;South Pole Station|-90|0";
+
+  const SEAS = [
+    ['the Mediterranean', 30, 46, -6, 36], ['the Black Sea', 40.5, 47, 27, 42], ['the Caspian Sea', 36, 47, 46, 55],
+    ['the Red Sea', 12, 30, 32, 44], ['the Persian Gulf', 23, 30.5, 47, 57], ['the Arabian Sea', 5, 25, 51, 76],
+    ['the Bay of Bengal', 5, 23, 79, 95], ['the South China Sea', 0, 23, 99, 121], ['the Philippine Sea', 5, 35, 121, 145],
+    ['the Sea of Japan', 33, 52, 127, 142], ['the Coral Sea', -30, -9, 145, 165], ['the Tasman Sea', -47, -30, 147, 175],
+    ['the Java Sea', -8, -2, 105, 119], ['the Gulf of Mexico', 18, 31, -98, -81], ['the Caribbean', 9, 22, -88, -59],
+    ['Hudson Bay', 51, 66, -95, -76], ['the Gulf of Guinea', -5, 6, -10, 12], ['the Mozambique Channel', -26, -11, 34, 45],
+    ['the North Sea', 51, 61, -4, 10], ['the Baltic', 53, 66, 9, 30], ['the Bering Sea', 52, 66, 162, 180], ['the Bering Sea', 52, 66, -180, -157]
+  ];
+
+  const PROFILES = {
+    dawn:      { label: 'First hour', vol: 0.20, humL: 1.0, rootL: 0.6, bellL: 0.85, bellR: 0.8, whisL: 0.85, whisR: 0.7, chorL: 1.0, chorR: 1.6, tweL: 0.7, tweR: 0.6, sferL: 0.35, sferCut: 2400, hissL: 0.6, air: 2800, wet: 0.34, bellT: 8, atk: 0.03, modes: 6, oct: 5 },
+    isolation: { label: 'Midday isolation', vol: 0.24, humL: 1.0, rootL: 0.45, bellL: 1.0, bellR: 1.15, whisL: 1.0, whisR: 1.0, chorL: 0.9, chorR: 0.8, tweL: 0.9, tweR: 1.0, sferL: 0.6, sferCut: 3800, hissL: 0.5, air: 5200, wet: 0.28, bellT: 7, atk: 0.012, modes: 6, oct: 5 },
+    guests:    { label: 'Guests over', vol: 0.17, humL: 0.85, rootL: 0.4, bellL: 0.7, bellR: 0.6, whisL: 0.7, whisR: 0.5, chorL: 0.7, chorR: 0.5, tweL: 0.6, tweR: 0.5, sferL: 0.3, sferCut: 3000, hissL: 0.4, air: 3400, wet: 0.26, bellT: 6, atk: 0.02, modes: 6, oct: 5 },
+    night:     { label: 'End of night', vol: 0.15, humL: 0.95, rootL: 0.7, bellL: 0.6, bellR: 0.5, whisL: 0.9, whisR: 1.0, chorL: 0.6, chorR: 0.35, tweL: 0.7, tweR: 0.8, sferL: 0.18, sferCut: 1700, hissL: 0.45, air: 2000, wet: 0.4, bellT: 10, atk: 0.06, modes: 6, oct: 5 },
+    sleep:     { label: 'Sleep-safe quiet bed', vol: 0.09, humL: 0.9, rootL: 0.9, bellL: 0.35, bellR: 0.18, whisL: 0.4, whisR: 0.25, chorL: 0, chorR: 0, tweL: 0, tweR: 0, sferL: 0, sferCut: 900, hissL: 0.4, air: 950, wet: 0.44, bellT: 12, atk: 0.35, modes: 3, oct: 4 }
+  };
+
+  const PRESETS = {
+    catatumbo: { name: 'Catatumbo, Venezuela', lat: 9.35, lon: -71.75 },
+    kinshasa: { name: 'Kinshasa', lat: -4.32, lon: 15.31 },
+    singapore: { name: 'Singapore', lat: 1.35, lon: 103.82 },
+    reykjavik: { name: 'Reykjavik', lat: 64.15, lon: -21.94 },
+    southpole: { name: 'the South Pole', lat: -89.99, lon: 0 },
+    nemo: { name: 'Point Nemo', lat: -48.88, lon: -123.39 }
+  };
+
+  // ---------- small math ----------
+  const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const smooth = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); };
+  const wrapLon = (l) => ((l + 180) % 360 + 360) % 360 - 180;
+
+  function fmix(h) {
+    h ^= h >>> 16; h = Math.imul(h, 0x85ebca6b);
+    h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35);
+    h ^= h >>> 16; return h >>> 0;
+  }
+  function hash01(a, b) { return fmix((a >>> 0) ^ fmix((b + 0x9e3779b9) >>> 0)) / 4294967296; }
+  function vnoise(seed, x) {
+    const i = Math.floor(x), f = x - i, u = f * f * (3 - 2 * f);
+    const a = hash01(i, seed), b = hash01(i + 1, seed);
+    return a + (b - a) * u;
+  }
+  function fnoise(seed, x) { return 0.62 * vnoise(seed, x) + 0.38 * vnoise(seed + 977, x * 2.37 + 11.3); }
+  function mulberry(seed) {
+    let a = seed >>> 0;
+    return () => {
+      a = (a + 0x6D2B79F5) >>> 0; let t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function gauss2(u1, u2) {
+    const r = Math.sqrt(-2 * Math.log(Math.max(u1, 1e-9)));
+    return [r * Math.cos(TAU * u2), r * Math.sin(TAU * u2)];
+  }
+  function legendre(n, x) {
+    if (n === 0) return 1;
+    let p0 = 1, p1 = x;
+    for (let k = 1; k < n; k++) { const p2 = ((2 * k + 1) * x * p1 - k * p0) / (k + 1); p0 = p1; p1 = p2; }
+    return p1;
+  }
+
+  // ---------- the sphere ----------
+  function gc(lat1, lon1, lat2, lon2) {
+    const p1 = lat1 * D2R, p2 = lat2 * D2R, dl = (lon2 - lon1) * D2R;
+    const s = Math.sin((p2 - p1) / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) ** 2;
+    const d = 2 * Math.asin(Math.min(1, Math.sqrt(s)));
+    const az = Math.atan2(Math.sin(dl) * Math.cos(p2), Math.cos(p1) * Math.sin(p2) - Math.sin(p1) * Math.cos(p2) * Math.cos(dl));
+    return { d, az };
+  }
+  function dest(lat, lon, az, d) {
+    const p1 = lat * D2R, l1 = lon * D2R;
+    const p2 = Math.asin(clamp(Math.sin(p1) * Math.cos(d) + Math.cos(p1) * Math.sin(d) * Math.cos(az), -1, 1));
+    const l2 = l1 + Math.atan2(Math.sin(az) * Math.sin(d) * Math.cos(p1), Math.cos(d) - Math.sin(p1) * Math.sin(p2));
+    return [p2 * R2D, wrapLon(l2 * R2D)];
+  }
+  function vec(lat, lon) { const p = lat * D2R, l = lon * D2R; return [Math.cos(p) * Math.cos(l), Math.cos(p) * Math.sin(l), Math.sin(p)]; }
+  function unvec(v) { const r = Math.hypot(v[0], v[1], v[2]); return [Math.asin(v[2] / r) * R2D, Math.atan2(v[1], v[0]) * R2D]; }
+
+  function sunAt(ms) {
+    const d = (ms - 946728000000) / 86400000;
+    const g = (357.529 + 0.98560028 * d) * D2R;
+    const q = 280.459 + 0.98564736 * d;
+    const L = (q + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * D2R;
+    const e = (23.439 - 0.00000036 * d) * D2R;
+    const dec = Math.asin(Math.sin(e) * Math.sin(L));
+    const ra = Math.atan2(Math.cos(e) * Math.sin(L), Math.cos(L)) * R2D;
+    let gmst = (18.697374558 + 24.06570982441908 * d) % 24; if (gmst < 0) gmst += 24;
+    return { lat: dec * R2D, lon: wrapLon(ra - gmst * 15) };
+  }
+  const sunElev = (lat, lon, sun) => 90 - gc(lat, lon, sun.lat, sun.lon).d * R2D;
+  const solarHour = (lon, sun) => ((12 + (lon - sun.lon) / 15) % 24 + 24) % 24;
+  function doyOf(ms) { const y = new Date(ms).getUTCFullYear(); return (ms - Date.UTC(y, 0, 1)) / 864e5; }
+
+  const POLE_V = vec(GEOMAG_POLE[0], GEOMAG_POLE[1]);
+  const dotPole = (v) => v[0] * POLE_V[0] + v[1] * POLE_V[1] + v[2] * POLE_V[2];
+  function magLat(lat, lon) { return Math.asin(clamp(dotPole(vec(lat, lon)), -1, 1)) * R2D; }
+  function conjugate(lat, lon) {
+    const v = vec(lat, lon), k = 2 * dotPole(v);
+    return unvec([v[0] - k * POLE_V[0], v[1] - k * POLE_V[1], v[2] - k * POLE_V[2]]);
+  }
+  function lShell(mlat) { const c = Math.cos(Math.min(Math.abs(mlat), 84) * D2R); return 1 / (c * c); }
+
+  const NODES = [];
+  for (let n = 1; n <= 6; n++) {
+    const zs = []; let prev = legendre(n, 1), pt = 0;
+    for (let i = 1; i <= 1800; i++) {
+      const th = (i / 1800) * Math.PI, v = legendre(n, Math.cos(th));
+      if ((v > 0) !== (prev > 0)) {
+        let a = pt, b = th;
+        for (let k = 0; k < 40; k++) { const m = (a + b) / 2; if ((legendre(n, Math.cos(m)) > 0) === (prev > 0)) a = m; else b = m; }
+        zs.push((a + b) / 2);
+      }
+      prev = v; pt = th;
+    }
+    NODES.push(zs);
+  }
+
+  // ---------- land and places ----------
+  const LAND = Uint8Array.from(atob(LAND_B64), (c) => c.charCodeAt(0));
+  function isLand(lat, lon) {
+    const r = clamp(Math.floor(90 - lat), 0, 179), c = clamp(Math.floor(wrapLon(lon) + 180), 0, 359);
+    const bit = r * 360 + c;
+    return (LAND[bit >> 3] >> (7 - (bit & 7))) & 1;
+  }
+  const CITIES = CITY_DATA.split(';').map((s) => { const p = s.split('|'); return { name: p[0], lat: +p[1], lon: +p[2] }; });
+  const SHORT_DIRS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+  const DIRS = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest'];
+  const octant = (az) => Math.round(((((az * R2D) % 360) + 360) % 360) / 45) % 8;
+  const fmtInt = (x) => Math.round(x).toLocaleString('en-US');
+  const fmtKm = (km) => fmtInt(km < 1000 ? Math.round(km / 10) * 10 : Math.round(km / 50) * 50);
+  function nearestCity(lat, lon) {
+    let best = CITIES[0], bd = 9;
+    for (const c of CITIES) { const d = gc(lat, lon, c.lat, c.lon).d; if (d < bd) { bd = d; best = c; } }
+    return { city: best, km: bd * EARTH_KM };
+  }
+  function seaName(lat, lon) {
+    for (const s of SEAS) if (lat >= s[1] && lat <= s[2] && lon >= s[3] && lon <= s[4]) return s[0];
+    if (lat > 66) return 'the Arctic Ocean';
+    if (lat < -60) return 'the Southern Ocean';
+    if (lon >= 20 && lon < 147 && lat < 30) return 'the Indian Ocean';
+    if ((lon >= -70 && lon < 20) || (lon >= -100 && lon < -70 && lat > 8 && lat < 50)) return lat >= 0 ? 'the North Atlantic' : 'the South Atlantic';
+    return lat >= 0 ? 'the North Pacific' : 'the South Pacific';
+  }
+  function placeName(lat, lon) {
+    const n = nearestCity(lat, lon), land = isLand(lat, lon);
+    if (n.km < 120) return 'near ' + n.city.name;
+    if (n.km < 700 || (land && n.km < 1600)) {
+      const q = gc(n.city.lat, n.city.lon, lat, lon);
+      return fmtKm(n.km) + ' km ' + SHORT_DIRS[octant(q.az)] + ' of ' + n.city.name;
+    }
+    return land ? 'deep inland, ' + fmtKm(n.km) + ' km from ' + n.city.name : 'over ' + seaName(lat, lon);
+  }
+
+  function guessHome() {
+    let tz = '';
+    try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { tz = ''; }
+    const alias = { 'Asia/Calcutta': 'Kolkata', 'Europe/Kiev': 'Kyiv', 'Asia/Saigon': 'Ho Chi Minh City', 'Asia/Rangoon': 'Yangon', 'Asia/Katmandu': 'Kathmandu', 'America/Buenos_Aires': 'Buenos Aires', 'Pacific/Auckland': 'Auckland', 'America/Indiana/Indianapolis': 'Indianapolis', 'America/Kentucky/Louisville': 'Louisville' };
+    const norm = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z]/g, '');
+    if (tz) {
+      const last = alias[tz] || tz.split('/').pop().replace(/_/g, ' ');
+      const key = norm(last);
+      const c = CITIES.find((x) => norm(x.name) === key) || (key.length > 3 ? CITIES.find((x) => norm(x.name).startsWith(key)) : null);
+      if (c) return { name: c.name, lat: c.lat, lon: c.lon, how: 'from your time zone' };
+    }
+    const east = -new Date().getTimezoneOffset() / 60;
+    const south = /^(Australia|Antarctica)|Auckland|Fiji|Argentina|Sao_Paulo|Santiago|Montevideo|Asuncion|La_Paz|Lima|Johannesburg|Maputo|Harare|Lusaka|Windhoek/.test(tz);
+    return { name: 'your time zone', lat: south ? -28 : 38, lon: clamp(east * 15, -179, 179), how: 'a rough guess from your clock' };
+  }
+
+  // ---------- storms ----------
+  const REG = REGIONS.map((r, i) => ({ name: r[0], lat: r[1], lon: r[2], rad: r[3], w: r[4], peak: r[5], floor: r[6], lst: r[7], k: r[8], seed: 1000 + i * 31 }));
+  function seasonF(r, doy) {
+    if (r.peak < 0) return 1;
+    const c = (1 + Math.cos(TAU * (doy - r.peak) / 365.25)) / 2;
+    return r.floor + (1 - r.floor) * c * c;
+  }
+  const diurnalF = (lst, peak, k) => 0.12 + 0.88 * Math.exp(k * (Math.cos(TAU * (lst - peak) / 24) - 1));
+  function regionW(r, ms, sun, doy) {
+    return r.w * seasonF(r, doy) * diurnalF(solarHour(r.lon, sun), r.lst, r.k) * (0.35 + 1.3 * fnoise(r.seed, ms / (5.3 * 3600e3)));
+  }
+  let MEAN_CLIM = 1;
+  (function calibrate() {
+    let sum = 0, n = 0; const t0 = Date.UTC(2026, 0, 1);
+    for (let d = 0; d < 365; d += 7.3) for (let h = 0; h < 24; h += 1.5) {
+      const ms = t0 + d * 864e5 + h * 3600e3, sun = sunAt(ms), doy = doyOf(ms);
+      for (const r of REG) sum += regionW(r, ms, sun, doy);
+      n++;
+    }
+    MEAN_CLIM = sum / n;
+  })();
+
+  const LIVE = { on: true, cells: null, wxTime: '', wxAt: 0, kp: null, kpAt: 0, xclass: null, xflux: null };
+  function stormsAt(ms) {
+    const sun = sunAt(ms), doy = doyOf(ms), list = [];
+    const liveOn = LIVE.on && LIVE.cells && LIVE.cells.length > 0;
+    const k = liveOn ? 0.6 : 1;
+    let clim = 0;
+    for (const r of REG) { const w = regionW(r, ms, sun, doy); clim += w; list.push({ name: r.name, lat: r.lat, lon: r.lon, rad: r.rad, w: w * k, live: false }); }
+    if (liveOn) for (const c of LIVE.cells) list.push({ name: null, lat: c[0], lon: c[1], rad: 3, w: c[2] * 0.5, live: true, code: c[3] });
+    let total = 0; for (const s of list) total += s.w;
+    return { list, total, sun, flashes: 45 * clim / MEAN_CLIM };
+  }
+  function pickStorm(g, u) {
+    let x = u * g.total;
+    for (const s of g.list) { x -= s.w; if (x <= 0) return s; }
+    return g.list[g.list.length - 1];
+  }
+  const kpModel = (ms) => 0.4 + 3 * Math.pow(fnoise(4242, ms / 2.5e7), 1.8);
+  const xModel = (ms) => 1e-7 * Math.pow(10, 0.9 * fnoise(4343, ms / 1.4e7));
+  function fluxClass(f) {
+    const L = f < 1e-7 ? ['A', 1e-8] : f < 1e-6 ? ['B', 1e-7] : f < 1e-5 ? ['C', 1e-6] : f < 1e-4 ? ['M', 1e-5] : ['X', 1e-4];
+    return L[0] + (f / L[1]).toFixed(1);
+  }
+  function classFlux(c) {
+    const m = /^([ABCMX])([\d.]+)/.exec(c || '');
+    if (!m) return null;
+    return { A: 1e-8, B: 1e-7, C: 1e-6, M: 1e-5, X: 1e-4 }[m[1]] * parseFloat(m[2]);
+  }
+
+  // ---------- state, settings ----------
+  const ui = {
+    start: $('start'), support: $('support'), mode: $('mode'), place: $('place'), anchor: $('anchor'), oct: $('oct'),
+    volume: $('volume'), density: $('density'), volText: $('volText'), densText: $('densText'), live: $('live'),
+    status: $('dataStatus'), chord: $('chord'), now: $('now'), log: $('log'), map: $('map')
+  };
+  const store = {
+    get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* private mode */ } }
+  };
+  const HOME = guessHome();
+  let place = { key: 'home', name: HOME.name, lat: HOME.lat, lon: HOME.lon };
+  const saved = store.get('earthbell:v1') || {};
+  ['mode', 'anchor', 'oct'].forEach((k) => { if (saved[k] && [...ui[k].options].some((o) => o.value === saved[k])) ui[k].value = saved[k]; });
+  if (saved.volume != null) ui.volume.value = saved.volume;
+  if (saved.density != null) ui.density.value = saved.density;
+  if (saved.live === false) ui.live.checked = false;
+  LIVE.on = ui.live.checked;
+  if (saved.place && isFinite(saved.place.lat) && isFinite(saved.place.lon) && saved.place.key !== 'home') place = saved.place;
+  ui.place.options[0].textContent = HOME.name === 'your time zone' ? 'Here (a rough guess from your clock)' : 'Here: ' + HOME.name + ' (' + HOME.how + ')';
+
+  function save() {
+    const p = place.key === 'home' ? { key: 'home' } : { key: place.key, name: place.name, lat: +place.lat.toFixed(place.key === 'gps' ? 1 : 2), lon: +place.lon.toFixed(place.key === 'gps' ? 1 : 2) };
+    store.set('earthbell:v1', { mode: ui.mode.value, anchor: ui.anchor.value, oct: ui.oct.value, volume: ui.volume.value, density: ui.density.value, live: ui.live.checked, place: p });
+  }
+
+  function modeKey() {
+    let m = ui.mode.value;
+    if (m === 'auto') {
+      const h = new Date().getHours();
+      m = h >= 5 && h < 10 ? 'dawn' : h >= 10 && h < 17 ? 'isolation' : h >= 17 && h < 21 ? 'guests' : h >= 21 && h < 23 ? 'night' : 'sleep';
+    }
+    return PROFILES[m] ? m : 'isolation';
+  }
+  const profile = () => PROFILES[modeKey()];
+  const octaves = () => (ui.oct.value === 'auto' ? profile().oct : +ui.oct.value);
+  function pitchScale() {
+    const K = octaves(), a = ui.anchor.value;
+    if (a === '432' || a === '440') return (a === '432' ? 259.2 : 264) * Math.pow(2, K - 5) / MODE_F[0];
+    return Math.pow(2, K);
+  }
+  function heardF(n) { return (model ? model.realF[n - 1] : MODE_F[n - 1]) * pitchScale(); }
+
+  // ---------- the planet, right now, as heard from here ----------
+  let model = null;
+  function updateModel() {
+    const ms = Date.now(), g = stormsAt(ms);
+    const M = { ms, g, sun: g.sun };
+    M.elev = sunElev(place.lat, place.lon, g.sun);
+    M.lst = solarHour(place.lon, g.sun);
+    M.night = smooth(-1, -12, M.elev);
+    M.tNight = smooth(-4, -14, M.elev);
+    M.mlat = magLat(place.lat, place.lon);
+    M.L = lShell(M.mlat);
+    M.conj = conjugate(place.lat, place.lon);
+    const acc = [0, 0, 0, 0, 0, 0];
+    let wsum = 0, near = 0, conjAct = 0, localAct = 0, twSum = 0, whisBest = null, whisBestW = 0;
+    const twList = [];
+    for (const st of g.list) {
+      const q = gc(place.lat, place.lon, st.lat, st.lon);
+      st.d = q.d; st.az = q.az;
+      const x = Math.cos(q.d);
+      for (let n = 1; n <= 6; n++) { const p = legendre(n, x); acc[n - 1] += st.w * p * p; }
+      wsum += st.w;
+      const km = q.d * EARTH_KM;
+      near += st.w * Math.exp(-km / 2500);
+      localAct += st.w * Math.exp(-km / 1200);
+      const cw = st.w * Math.exp(-gc(M.conj[0], M.conj[1], st.lat, st.lon).d * EARTH_KM / 1500);
+      conjAct += cw;
+      if (cw > whisBestW) { whisBestW = cw; whisBest = st; }
+      st.elev = sunElev(st.lat, st.lon, g.sun);
+      if (st.elev < -4) {
+        const tw = st.w * Math.exp(-Math.pow((km - 3500) / 2600, 2));
+        if (tw > 0.002) { twSum += tw; twList.push([st, tw]); }
+      }
+      const p = proj(st.lat, st.lon); st.x = p.x; st.y = p.y;
+    }
+    M.hum = acc.map((v, i) => HUM_A[i] * clamp(Math.sqrt((v / Math.max(wsum, 1e-6)) * (2 * i + 3)), 0.05, 2.2));
+    M.act = clamp(g.flashes / 45, 0.4, 1.8);
+    M.kpLive = LIVE.on && LIVE.kp != null;
+    M.kp = M.kpLive ? LIVE.kp : kpModel(ms);
+    M.xLive = LIVE.on && LIVE.xflux != null;
+    M.xflux = M.xLive ? LIVE.xflux : xModel(ms);
+    M.xclass = M.xLive && LIVE.xclass ? LIVE.xclass : fluxClass(M.xflux);
+    const ut = (ms / 3600e3) % 24;
+    M.shift = 0.006 * Math.cos(TAU * (ut - 9) / 24) + 0.012 * clamp((Math.log10(M.xflux) + 7) / 3, 0, 1) + 0.004 * (fnoise(5151, ms / 7.2e6) - 0.5);
+    M.realF = MODE_F.map((f) => f * (1 + M.shift));
+    M.hNight = 85 + 4.5 * fnoise(777, ms / 1.08e7) + 0.25 * M.kp;
+    M.tweekF = C_KM_S / (2 * M.hNight) / 4;
+    M.D = clamp(10 + 15 * Math.pow(Math.max(M.L - 1, 0.2), 1.3), 10, 95);
+    M.Lc = clamp(M.L + 1.5, 4.5, 7);
+    M.fce = 837000 / Math.pow(M.Lc, 3);
+    const latW = M.L < 1.3 ? 0.05 : M.L < 2 ? lerp(0.25, 1, (M.L - 1.3) / 0.7) : M.L <= 4.5 ? 1 : M.L < 7 ? lerp(1, 0.35, (M.L - 4.5) / 2.5) : 0.35;
+    const latC = M.L < 2 ? 0.25 : M.L < 3.5 ? lerp(0.25, 1, (M.L - 2) / 1.5) : 1;
+    M.wRate = 4 * M.night * latW * clamp(0.2 + (conjAct + 0.5 * localAct) / 0.35, 0, 1.6) * (1 + 0.08 * M.kp);
+    M.whisSrc = whisBestW > 0.01 ? whisBest : null;
+    M.dawn = Math.exp(1.6 * (Math.cos(TAU * (M.lst - 6.5) / 24) - 1));
+    M.cRate = 1.8 * M.dawn * (0.25 + 0.75 * Math.pow(clamp(M.kp / 5, 0, 1), 0.8)) * latC;
+    M.tRate = 3.5 * M.tNight * clamp(twSum / 0.25, 0.05, 1.5);
+    M.twList = twList; M.twSum = twSum;
+    M.sferRate = clamp(0.3 + 10 * near / (near + 0.9), 0.2, 12);
+    M.hiss = 0.55 + 0.3 * clamp(M.kp / 6, 0, 1) + 0.15 * (1 - M.night);
+    M.top = g.list.filter((s) => !s.live).sort((a, b) => b.w - a.w).slice(0, 3);
+    const first = !model;
+    model = M;
+    narrate(first);
+    applyAudio(false);
+  }
+
+  // ---------- live Earth data ----------
+  async function getJSON(url, ms) {
+    const ac = new AbortController(), t = setTimeout(() => ac.abort(), ms);
+    try {
+      const r = await fetch(url, { signal: ac.signal, cache: 'no-store' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return await r.json();
+    } finally { clearTimeout(t); }
+  }
+  let GRID = null;
+  function liveGrid() {
+    if (GRID) return GRID;
+    GRID = [];
+    for (let lat = -42; lat <= 60; lat += 6) for (let lon = -177; lon < 180; lon += 6) {
+      let c = 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) c += isLand(lat + dy, lon + dx);
+      if (c / 9 > 0.5) GRID.push([lat, lon]);
+    }
+    return GRID;
+  }
+  function convective(code, cape) {
+    const trig = code >= 95 ? 1.5 : code >= 80 ? 0.75 : code >= 61 ? 0.45 : code >= 51 ? 0.25 : code >= 2 ? 0.12 : 0.05;
+    const c = clamp(((cape || 0) - 200) / 2200, 0, 1.6);
+    return (code >= 95 ? Math.max(0.5, c) : c) * trig;
+  }
+  async function loadWeather() {
+    const cached = store.get('earthbell:wx');
+    if (cached && Date.now() - cached.t < 50 * 60e3 && Array.isArray(cached.cells)) { LIVE.cells = cached.cells; LIVE.wxTime = cached.time; return false; }
+    const pts = liveGrid();
+    const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + pts.map((p) => p[0]).join(',') + '&longitude=' + pts.map((p) => p[1]).join(',') + '&current=weather_code,cape&timezone=GMT';
+    const res = await getJSON(url, 20000);
+    if (!Array.isArray(res) || res.length !== pts.length) throw new Error('unexpected weather reply');
+    const cells = [];
+    res.forEach((x, i) => {
+      const cu = x && x.current; if (!cu) return;
+      const w = convective(cu.weather_code, cu.cape);
+      if (w > 0.06) cells.push([pts[i][0], pts[i][1], +w.toFixed(3), cu.weather_code]);
+    });
+    const time = ((res[0].current && res[0].current.time) || '').slice(11, 16);
+    LIVE.cells = cells; LIVE.wxTime = time;
+    store.set('earthbell:wx', { t: Date.now(), cells, time });
+    return true;
+  }
+  async function loadSpace() {
+    const [kp, xr] = await Promise.allSettled([
+      getJSON('https://services.swpc.noaa.gov/json/planetary_k_index_1m.json', 15000),
+      getJSON('https://services.swpc.noaa.gov/json/goes/primary/xray-flares-latest.json', 15000)
+    ]);
+    if (kp.status === 'fulfilled' && Array.isArray(kp.value) && kp.value.length) {
+      const last = kp.value[kp.value.length - 1];
+      const v = parseFloat(last.estimated_kp != null ? last.estimated_kp : last.kp_index);
+      if (isFinite(v)) LIVE.kp = v;
+    }
+    if (xr.status === 'fulfilled' && Array.isArray(xr.value) && xr.value.length) {
+      const f = classFlux(xr.value[0].current_class);
+      if (f) { LIVE.xflux = f; LIVE.xclass = xr.value[0].current_class; }
+    }
+    if (kp.status !== 'fulfilled' && xr.status !== 'fulfilled') throw new Error('space weather unavailable');
+  }
+  let liveBusy = false;
+  async function refreshLive(force) {
+    if (!LIVE.on || liveBusy) { setDataStatus(); return; }
+    liveBusy = true;
+    const now = Date.now(), jobs = [];
+    if (force || now - LIVE.wxAt > 55 * 60e3) {
+      jobs.push(loadWeather().then((fresh) => {
+        LIVE.wxAt = Date.now();
+        if (fresh) logLine('info', 'Live weather loaded: ' + LIVE.cells.length + ' areas with convective storms or showers right now (Open-Meteo, ' + LIVE.wxTime + ' UTC).');
+      }).catch(() => { LIVE.wxAt = Date.now() - 45 * 60e3; }));
+    }
+    if (force || now - LIVE.kpAt > 9 * 60e3) {
+      jobs.push(loadSpace().then(() => { LIVE.kpAt = Date.now(); }).catch(() => { LIVE.kpAt = Date.now() - 5 * 60e3; }));
+    }
+    await Promise.all(jobs);
+    liveBusy = false;
+    updateModel();
+    setDataStatus();
+  }
+  function setDataStatus() {
+    const el = ui.status;
+    el.replaceChildren();
+    const dot = document.createElement('span'); dot.className = 'dot';
+    let text;
+    if (!LIVE.on) text = 'Offline model: storms from lightning climatology and the real sun; space weather modeled.';
+    else {
+      const a = LIVE.cells ? 'Storms: lightning climatology plus live weather (Open-Meteo, ' + LIVE.wxTime + ' UTC).' : 'Storms: lightning climatology and the real sun (live weather unavailable).';
+      const b = LIVE.kp != null ? ' Space weather: live from NOAA SWPC.' : ' Space weather: modeled.';
+      text = a + b;
+    }
+    el.className = 'status' + (LIVE.on && (LIVE.cells || LIVE.kp != null) ? ' live' : '');
+    el.append(dot, document.createTextNode(text));
+  }
+
+  // ---------- audio ----------
+  const AC = window.AudioContext || window.webkitAudioContext;
+  let E = null;
+  let playing = false;
+
+  const WORKLET = "class EarthNoise extends AudioWorkletProcessor{static get parameterDescriptors(){return[{name:'rate',defaultValue:2,minValue:0,maxValue:80,automationRate:'k-rate'}]}"
+    + "constructor(){super();this.s=(Math.random()*4294967295>>>0)||7;this.l=0;this.r=0;this.k=0.99}"
+    + "rnd(){let x=this.s;x^=x<<13;x^=x>>>17;x^=x<<5;this.s=x>>>0;return this.s/4294967296}"
+    + "process(i,o,p){const c=o[0];if(!c||c.length<4)return true;const n=c[0].length,pr=p.rate[0]/sampleRate;"
+    + "for(let j=0;j<n;j++){c[0][j]=this.rnd()*2-1;c[1][j]=this.rnd()*2-1;"
+    + "if(this.rnd()<pr){const a=Math.pow(this.rnd(),2.4),q=this.rnd();this.l=Math.max(this.l,a*(1-0.75*q));this.r=Math.max(this.r,a*(0.25+0.75*q));this.k=Math.exp(-1/(sampleRate*(0.0003+this.rnd()*0.0014)))}"
+    + "const w=this.rnd()*2-1;c[2][j]=this.l*w;c[3][j]=this.r*w;this.l*=this.k;this.r*=this.k}return true}}"
+    + "registerProcessor('earth-noise',EarthNoise);";
+
+  function scriptNoise(ctx) {
+    const sp = ctx.createScriptProcessor(2048, 0, 4);
+    let s = (Math.random() * 4294967295 >>> 0) || 7, l = 0, r = 0, k = 0.99;
+    const sr = ctx.sampleRate;
+    const rnd = () => { s ^= s << 13; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; };
+    const rate = { value: 2, setTargetAtTime(v) { this.value = v; } };
+    sp.onaudioprocess = (ev) => {
+      const ob = ev.outputBuffer, c0 = ob.getChannelData(0), c1 = ob.getChannelData(1), c2 = ob.getChannelData(2), c3 = ob.getChannelData(3);
+      const pr = rate.value / sr;
+      for (let j = 0; j < c0.length; j++) {
+        c0[j] = rnd() * 2 - 1; c1[j] = rnd() * 2 - 1;
+        if (rnd() < pr) { const a = Math.pow(rnd(), 2.4), q = rnd(); l = Math.max(l, a * (1 - 0.75 * q)); r = Math.max(r, a * (0.25 + 0.75 * q)); k = Math.exp(-1 / (sr * (0.0003 + rnd() * 0.0014))); }
+        const w = rnd() * 2 - 1; c2[j] = l * w; c3[j] = r * w; l *= k; r *= k;
+      }
+    };
+    sp.rate = rate;
+    return sp;
+  }
+  function bufferNoise(ctx) {
+    const len = Math.floor(ctx.sampleRate * 13.7), buf = ctx.createBuffer(4, len, ctx.sampleRate);
+    for (let ch = 0; ch < 2; ch++) { const d = buf.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1; }
+    const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+    return src;
+  }
+  function impulse(ctx, sec, decay) {
+    const len = Math.floor(ctx.sampleRate * sec), buf = ctx.createBuffer(2, len, ctx.sampleRate);
+    const rnd = mulberry(0xEA27), pre = Math.floor(ctx.sampleRate * 0.018);
+    for (let ch = 0; ch < 2; ch++) {
+      const d = buf.getChannelData(ch); let lp = 0;
+      for (let i = 0; i < len; i++) { lp = lp * 0.6 + (rnd() * 2 - 1) * 0.4; d[i] = i < pre ? 0 : lp * Math.pow(1 - i / len, decay) * 0.5; }
+    }
+    return buf;
+  }
+  function makePan(ctx, v) {
+    if (ctx.createStereoPanner) { const p = ctx.createStereoPanner(); p.pan.value = clamp(v, -1, 1); return p; }
+    const g = ctx.createGain(); return g;
+  }
+
+  function buildEngine() {
+    let ctx;
+    try { ctx = new AC({ latencyHint: 'playback' }); } catch (e) { ctx = new AC(); }
+    const g = (v) => { const n = ctx.createGain(); n.gain.value = v; return n; };
+    const filt = (type, f, q) => { const n = ctx.createBiquadFilter(); n.type = type; n.frequency.value = f; if (q != null) n.Q.value = q; return n; };
+    const e = { ctx, g, filt, ready: false, rootBreath: 0.8, hissBreath: 1 };
+    e.master = g(0.0001);
+    e.hp = filt('highpass', 30, 0.7);
+    e.comp = ctx.createDynamicsCompressor();
+    e.comp.threshold.value = -20; e.comp.knee.value = 18; e.comp.ratio.value = 5; e.comp.attack.value = 0.008; e.comp.release.value = 0.4;
+    e.analyser = ctx.createAnalyser(); e.analyser.fftSize = 2048;
+    e.master.connect(e.hp); e.hp.connect(e.comp); e.comp.connect(ctx.destination); e.comp.connect(e.analyser);
+    e.air = filt('lowpass', 4000, 0.5);
+    e.dry = g(1); e.wetSend = g(0.3); e.wet = g(0.9);
+    e.conv = ctx.createConvolver(); e.conv.buffer = impulse(ctx, 5.5, 2.6);
+    e.air.connect(e.dry); e.dry.connect(e.master);
+    e.air.connect(e.wetSend); e.wetSend.connect(e.conv); e.conv.connect(e.wet); e.wet.connect(e.master);
+    e.bus = {};
+    ['hum', 'root', 'bell', 'whis', 'chor', 'twe', 'sfer', 'hiss'].forEach((k) => { e.bus[k] = g(1); e.bus[k].connect(e.air); });
+    const cl = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.04), ctx.sampleRate), cd = cl.getChannelData(0);
+    for (let i = 0; i < cd.length; i++) cd[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.003));
+    e.clickBuf = cl;
+    return e;
+  }
+
+  async function setupVoices() {
+    const e = E, ctx = e.ctx;
+    let src = null;
+    if (ctx.audioWorklet && window.AudioWorkletNode) {
+      try {
+        const url = URL.createObjectURL(new Blob([WORKLET], { type: 'application/javascript' }));
+        await ctx.audioWorklet.addModule(url);
+        src = new AudioWorkletNode(ctx, 'earth-noise', { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [4] });
+        e.rate = src.parameters.get('rate'); e.noiseKind = 'worklet';
+      } catch (err) { src = null; }
+    }
+    if (!src && ctx.createScriptProcessor) {
+      try { src = scriptNoise(ctx); e.rate = src.rate; e.noiseKind = 'script'; } catch (err) { src = null; }
+    }
+    if (!src) { src = bufferNoise(ctx); e.rate = { value: 0, setTargetAtTime() {} }; e.noiseKind = 'buffer'; }
+    e.noise = src;
+    const split = ctx.createChannelSplitter(4);
+    src.connect(split);
+    e.nz = ctx.createChannelMerger(2); split.connect(e.nz, 0, 0); split.connect(e.nz, 1, 1);
+    e.cl = ctx.createChannelMerger(2); split.connect(e.cl, 2, 0); split.connect(e.cl, 3, 1);
+
+    e.hissBp = e.filt('bandpass', 520, 0.9); e.hissLp = e.filt('lowpass', 2200, 0.5); e.hissG = e.g(0);
+    e.nz.connect(e.hissBp); e.hissBp.connect(e.hissLp); e.hissLp.connect(e.hissG); e.hissG.connect(e.bus.hiss);
+
+    e.sfHp = e.filt('highpass', 320, 0.6); e.sfLp = e.filt('lowpass', 2400, 0.6); e.sfG = e.g(0);
+    e.cl.connect(e.sfHp); e.sfHp.connect(e.sfLp); e.sfLp.connect(e.sfG); e.sfG.connect(e.bus.sfer);
+
+    e.modes = [];
+    for (let n = 1; n <= 6; n++) {
+      const m = { breath: 1, panPos: (n % 2 ? -1 : 1) * (0.12 + 0.05 * n) };
+      const f = heardF(n);
+      m.o1 = ctx.createOscillator(); m.o2 = ctx.createOscillator();
+      m.o1.frequency.value = f; m.o2.frequency.value = f * (1 + 0.0022 / Math.sqrt(n));
+      const g1 = e.g(0.7), g2 = e.g(0.3);
+      m.o1.connect(g1); m.o2.connect(g2);
+      m.level = e.g(0);
+      g1.connect(m.level); g2.connect(m.level);
+      m.bp = e.filt('bandpass', f, 60); m.halo = e.g(0);
+      e.nz.connect(m.bp); m.bp.connect(m.halo); m.halo.connect(m.level);
+      m.pan = makePan(ctx, m.panPos);
+      m.level.connect(m.pan); m.pan.connect(e.bus.hum);
+      m.o1.start(); m.o2.start();
+      e.modes.push(m);
+    }
+    e.root1 = ctx.createOscillator(); e.root2 = ctx.createOscillator();
+    e.rootG = e.g(0); const r2g = e.g(0.28);
+    e.root1.connect(e.rootG); e.root2.connect(r2g); r2g.connect(e.rootG); e.rootG.connect(e.bus.root);
+    e.root1.frequency.value = heardF(1) * 2.6 / MODE_F[0]; e.root2.frequency.value = e.root1.frequency.value * 2;
+    e.root1.start(); e.root2.start();
+    if (src.start) { try { src.start(); } catch (err) { /* already running */ } }
+    e.ready = true;
+  }
+
+  function masterTarget() { return clamp(profile().vol * Math.pow(+ui.volume.value, 1.7), 0, 0.35) * GAIN.makeup; }
+
+  function applyAudio(immediate) {
+    if (!E || !E.ready || !model) return;
+    const ctx = E.ctx, t = ctx.currentTime, M = model, P = profile(), sr = ctx.sampleRate;
+    const tau = immediate ? 0.05 : 3;
+    for (let i = 0; i < 6; i++) {
+      const m = E.modes[i], f = heardF(i + 1);
+      m.o1.frequency.setTargetAtTime(f, t, tau);
+      m.o2.frequency.setTargetAtTime(f * (1 + 0.0022 / Math.sqrt(i + 1)), t, tau);
+      m.bp.frequency.setTargetAtTime(f, t, tau);
+      const norm = 1 / (0.577 * Math.sqrt((Math.PI / 2) * (f / 60) / (sr / 2)));
+      m.halo.gain.setTargetAtTime(0.16 * norm, t, tau);
+      const lvl = (i < P.modes ? 1 : 0) * GAIN.hum * M.hum[i] * Math.pow(M.act, 0.35) * m.breath;
+      m.level.gain.setTargetAtTime(lvl, t, immediate ? 0.05 : 5);
+      if (m.pan.pan) m.pan.pan.setTargetAtTime(m.panPos, t, 6);
+    }
+    const r = heardF(1) * 2.6 / MODE_F[0];
+    E.root1.frequency.setTargetAtTime(r, t, tau);
+    E.root2.frequency.setTargetAtTime(r * 2, t, tau);
+    E.rootG.gain.setTargetAtTime(GAIN.root * E.rootBreath, t, 6);
+    E.hissG.gain.setTargetAtTime(GAIN.hiss * M.hiss * E.hissBreath, t, 4);
+    E.rate.setTargetAtTime(M.sferRate * (0.4 + 1.2 * +ui.density.value), t, 2);
+    E.sfLp.frequency.setTargetAtTime(P.sferCut, t, 2);
+    E.sfG.gain.setTargetAtTime(GAIN.sfer, t, 2);
+    const B = E.bus;
+    B.hum.gain.setTargetAtTime(P.humL, t, 3); B.root.gain.setTargetAtTime(P.rootL, t, 3);
+    B.bell.gain.setTargetAtTime(P.bellL, t, 3); B.whis.gain.setTargetAtTime(P.whisL, t, 3);
+    B.chor.gain.setTargetAtTime(P.chorL, t, 3); B.twe.gain.setTargetAtTime(P.tweL, t, 3);
+    B.sfer.gain.setTargetAtTime(P.sferL, t, 3); B.hiss.gain.setTargetAtTime(P.hissL, t, 3);
+    E.air.frequency.setTargetAtTime(P.air, t, immediate ? 0.05 : 4);
+    E.wetSend.gain.setTargetAtTime(P.wet, t, 4);
+    E.master.gain.setTargetAtTime(playing ? masterTarget() : 0.0001, t, immediate ? 0.05 : 1.2);
+  }
+
+  function breathe() {
+    if (!E || !E.ready) return;
+    for (const m of E.modes) {
+      m.breath = clamp(m.breath + (Math.random() - 0.5) * 0.24, 0.6, 1.35);
+      m.panPos = clamp(m.panPos + (Math.random() - 0.5) * 0.08, -0.45, 0.45);
+    }
+    E.rootBreath = clamp(E.rootBreath + (Math.random() - 0.5) * 0.3, 0.3, 1.2);
+    E.hissBreath = clamp(E.hissBreath + (Math.random() - 0.5) * 0.25, 0.5, 1.4);
+    applyAudio(false);
+  }
+
+  function click(T, dest, amp, hpf) {
+    const ctx = E.ctx, s = ctx.createBufferSource(), hp = E.filt('highpass', hpf || 900, 0.7), gg = E.g(amp);
+    s.buffer = E.clickBuf; s.connect(hp); hp.connect(gg); gg.connect(dest);
+    s.start(T);
+    s.onended = () => { gg.disconnect(); };
+  }
+
+  // Q-burst: the whole cavity rings; P_n(cos d) decides each overtone's share.
+  function playBell(T, ev) {
+    const ctx = E.ctx, P = profile();
+    const out = E.g(1), pan = makePan(ctx, clamp(Math.sin(ev.az) * 0.8, -0.85, 0.85));
+    out.connect(pan); pan.connect(E.bus.bell);
+    const x = Math.cos(ev.d), lvl = GAIN.bell * ev.level, amps = [];
+    let end = 0, last = null;
+    for (let n = 1; n <= 6; n++) {
+      const p = legendre(n, x); amps.push(p);
+      if (n > P.modes) continue;
+      const a = STRIKE_A[n - 1] * p * lvl;
+      if (Math.abs(a) < 0.004) continue;
+      const f = heardF(n), tau = P.bellT * Math.pow(n, -0.55) * (0.85 + 0.3 * ev.r1);
+      const env = E.g(0);
+      env.gain.setValueAtTime(0, T);
+      env.gain.linearRampToValueAtTime(a, T + P.atk);
+      env.gain.setTargetAtTime(0, T + P.atk, tau);
+      const o1 = ctx.createOscillator(), o2 = ctx.createOscillator(), g2 = E.g(0.38);
+      o1.frequency.value = f; o2.frequency.value = f * (1 + 0.0019 / Math.sqrt(n));
+      o1.connect(env); o2.connect(g2); g2.connect(env); env.connect(out);
+      const stop = T + P.atk + tau * 5;
+      o1.start(T); o2.start(T); o1.stop(stop); o2.stop(stop);
+      if (stop > end) { end = stop; last = o1; }
+    }
+    if (P.sferL > 0) click(T, pan, 0.06 * ev.level, 1200);
+    if (last) last.onended = () => { out.disconnect(); pan.disconnect(); };
+    else { out.disconnect(); pan.disconnect(); }
+    return amps;
+  }
+
+  // Whistler: arrival time t(f) = D / sqrt(f), slowed and lowered two octaves like tape at quarter speed.
+  function playWhistler(T, ev) {
+    const ctx = E.ctx, S = 4, fHi = 7200, fLo = 950;
+    const out = E.g(1), pan = makePan(ctx, ev.pan);
+    out.connect(pan); pan.connect(E.bus.whis);
+    const hops = ev.echo ? [1, 3, 5] : [1], hopAmp = [1, 0.34, 0.12];
+    const first = S * ev.D / Math.sqrt(fHi);
+    let end = 0, last = null;
+    ev.comps.forEach((c) => {
+      hops.forEach((k, hi) => {
+        const D = ev.D * c.m * k;
+        const t0 = S * D / Math.sqrt(fHi), t1 = S * D / Math.sqrt(fLo), dur = t1 - t0;
+        const start = T + (t0 - first) + c.delay;
+        const N = 128, fc = new Float32Array(N), ga = new Float32Array(N);
+        for (let i = 0; i < N; i++) {
+          const tt = t0 + (dur * i) / (N - 1);
+          const fr = Math.pow(S * D / tt, 2);
+          fc[i] = fr / S;
+          const lf = Math.log(fr / 3200), u = i / (N - 1);
+          ga[i] = Math.exp(-(lf * lf) / 0.72) * Math.min(1, u / 0.04) * Math.min(1, (1 - u) / 0.2) * hopAmp[hi] * c.a * ev.lvl;
+        }
+        ga[0] = 0; ga[N - 1] = 0;
+        const o = ctx.createOscillator(), gg = E.g(0);
+        o.frequency.setValueCurveAtTime(fc, start, dur);
+        gg.gain.setValueCurveAtTime(ga, start, dur);
+        o.connect(gg); gg.connect(out);
+        o.start(start); o.stop(start + dur + 0.05);
+        if (start + dur > end) { end = start + dur; last = o; }
+      });
+    });
+    if (last) last.onended = () => { out.disconnect(); pan.disconnect(); };
+    return (end - T);
+  }
+
+  // Dawn chorus: rising chirps from electrons gyrating at fce on the field line.
+  function playChorus(T, ev) {
+    const ctx = E.ctx, rnd = mulberry(ev.seed);
+    const out = E.g(1); out.connect(E.bus.chor);
+    let t = T, last = null;
+    for (let i = 0; i < ev.n; i++) {
+      const dur = (0.1 + 0.28 * rnd()) * 2.5;
+      const f0 = ev.fce * (0.13 + 0.24 * rnd()) / 4;
+      const f1 = f0 * (1.25 + 0.65 * rnd());
+      const pk = ev.lvl * (0.55 + 0.45 * rnd());
+      const hook = rnd() < 0.2;
+      const o = ctx.createOscillator(), gg = E.g(0), pn = makePan(ctx, (rnd() * 2 - 1) * 0.55);
+      o.frequency.setValueAtTime(f0, t);
+      o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+      if (hook) o.frequency.exponentialRampToValueAtTime(f1 * 0.92, t + dur * 1.15);
+      const N = 32, env = new Float32Array(N);
+      for (let k = 0; k < N; k++) { const u = k / (N - 1); env[k] = Math.pow(Math.sin(Math.PI * Math.pow(u, 0.7)), 2) * pk; }
+      env[0] = 0; env[N - 1] = 0;
+      gg.gain.setValueCurveAtTime(env, t, dur * 1.15);
+      o.connect(gg); gg.connect(pn); pn.connect(out);
+      o.start(t); o.stop(t + dur * 1.15 + 0.03);
+      last = o;
+      t += dur * (0.25 + 0.55 * rnd());
+    }
+    if (last) last.onended = () => out.disconnect();
+    return t - T;
+  }
+
+  // Tweek: a sferic ringing down to the Earth-ionosphere waveguide cutoff c / 2h.
+  function playTweek(T, ev) {
+    const ctx = E.ctx, out = E.g(1), pn = makePan(ctx, ev.pan);
+    out.connect(pn); pn.connect(E.bus.twe);
+    const hs = ev.m === 2 ? [1, 2] : [1];
+    let last = null;
+    hs.forEach((h, i) => {
+      const f = ev.fc * h, o = ctx.createOscillator(), gg = E.g(0);
+      o.frequency.setValueAtTime(f * 1.9, T);
+      o.frequency.setTargetAtTime(f, T, 0.18);
+      gg.gain.setValueAtTime(0, T);
+      gg.gain.linearRampToValueAtTime(ev.lvl * (i ? 0.45 : 1), T + 0.004);
+      gg.gain.setTargetAtTime(0, T + 0.004, ev.tau * (i ? 0.7 : 1));
+      o.connect(gg); gg.connect(out);
+      o.start(T); o.stop(T + 0.004 + ev.tau * 6);
+      last = o;
+    });
+    click(T, out, ev.lvl * 0.5, 1500);
+    last.onended = () => { out.disconnect(); pn.disconnect(); };
+  }
+
+  // ---------- the score: a pure function of (UTC second, place) ----------
+  const sched = { lastS: 0 };
+  const stats = { flashes: 0, heard: 0, since: Date.now() };
+  function tick() {
+    if (!playing || !E || !E.ready || !model) return;
+    const nowMs = Date.now(), nowS = Math.floor(nowMs / 1000);
+    if (!sched.lastS || sched.lastS < nowS - 2) sched.lastS = nowS - 1;
+    const endS = Math.floor((nowMs + HORIZON_MS) / 1000);
+    for (let s = sched.lastS + 1; s <= endS; s++) { planSecond(s); sched.lastS = s; }
+  }
+  function planSecond(s) {
+    const M = model, P = profile(), dens = +ui.density.value;
+    // global: every listener on Earth gets the same strikes
+    const u = hash01(s, 101);
+    if (u < Q_MAX * 1.6) {
+      const g = stormsAt(s * 1000);
+      const p = Q_MAX * clamp(g.flashes / 45, 0.5, 1.6);
+      const rank = hash01(s, 102);
+      const heard = clamp((0.12 + 0.88 * Math.pow(dens, 1.5)) * P.bellR, 0, 1);
+      if (u < p && rank < heard) {
+        const st = pickStorm(g, hash01(s, 104));
+        const [gx, gy] = gauss2(hash01(s, 105), hash01(s, 106));
+        const lat = clamp(st.lat + gx * st.rad * 0.45, -80, 80);
+        const lon = wrapLon(st.lon + gy * st.rad * 0.45 / Math.max(0.2, Math.cos(st.lat * D2R)));
+        const size = Math.pow(rank + 1e-3, -1 / 1.5);
+        const q = gc(place.lat, place.lon, lat, lon);
+        const atten = Math.pow(10, -(q.d * EARTH_KM / 1000) * 0.6 / 20);
+        const level = clamp((0.32 + 0.2 * Math.log10(size)) * atten, 0.15, 0.8);
+        schedule('bell', s * 1000 + Math.floor(hash01(s, 103) * 1000), { lat, lon, d: q.d, az: q.az, level, r1: hash01(s, 107), live: st.live, region: st.name });
+      }
+    }
+    // local: depends on where you are listening from
+    const cell = ((Math.round(place.lat * 2) + 200) * 1000 + (Math.round(place.lon * 2) + 400)) | 0;
+    const key = (s ^ fmix(cell)) >>> 0;
+    const densMul = 0.25 + 1.5 * dens;
+    if (hash01(key, 201) < (M.wRate * densMul * P.whisR) / 60) {
+      const rnd = mulberry(fmix(key + 0x51ed));
+      const nComp = 1 + (rnd() < 0.45 ? 1 : 0) + (rnd() < 0.18 ? 1 : 0);
+      const comps = [{ m: 1, a: 1, delay: 0 }];
+      for (let i = 1; i < nComp; i++) comps.push({ m: 1 + 0.05 * i + 0.03 * rnd(), a: 0.35 + 0.35 * rnd(), delay: 0.05 + 0.25 * rnd() });
+      schedule('whis', s * 1000 + Math.floor(rnd() * 1000), { D: M.D * (0.85 + 0.3 * rnd()), comps, echo: rnd() < 0.4, pan: (rnd() * 2 - 1) * 0.35, lvl: GAIN.whis * (0.55 + 0.45 * rnd()) });
+    }
+    if (hash01(key, 301) < (M.cRate * densMul * P.chorR) / 60) {
+      const rnd = mulberry(fmix(key + 0xc0de));
+      schedule('chor', s * 1000 + Math.floor(rnd() * 1000), { fce: M.fce, n: 4 + Math.floor(rnd() * 10), seed: fmix(key + 0xbeef), lvl: GAIN.chor });
+    }
+    if (M.twList.length && hash01(key, 401) < (M.tRate * densMul * P.tweR) / 60) {
+      const rnd = mulberry(fmix(key + 0x7eef));
+      let x = rnd() * M.twSum, src = M.twList[0][0];
+      for (const [st, w] of M.twList) { x -= w; if (x <= 0) { src = st; break; } }
+      schedule('twe', s * 1000 + Math.floor(rnd() * 1000), { fc: M.tweekF * (1 + 0.012 * (rnd() - 0.5)), m: rnd() < 0.3 ? 2 : 1, pan: clamp(Math.sin(src.az) * 0.8, -0.85, 0.85), tau: 0.35 + 0.5 * rnd(), lvl: GAIN.twe * (0.5 + 0.5 * rnd()), src });
+    }
+  }
+  const VOICES = { bell: playBell, whis: playWhistler, chor: playChorus, twe: playTweek };
+  function schedule(type, ms, ev) {
+    const ctxNow = E.ctx.currentTime, nowMs = Date.now();
+    let T = ctxNow + (ms - nowMs) / 1000;
+    if (T < ctxNow - 0.5) return;
+    T = Math.max(T, ctxNow + 0.05);
+    let info;
+    try { info = VOICES[type](T, ev); } catch (err) { console.warn('Earthbell voice failed', err); return; }
+    setTimeout(() => shown(type, ev, info), Math.max(0, (T - E.ctx.currentTime) * 1000));
+  }
+
+  // ---------- words ----------
+  function shown(type, ev, info) {
+    if (!playing) return;
+    const M = model;
+    if (type === 'bell') {
+      stats.heard++;
+      const amps = info, P = profile();
+      const idx = [0, 1, 2, 3, 4, 5].slice(0, P.modes);
+      const hz = (i) => Math.round(heardF(i + 1));
+      const ranked = idx.slice().sort((a, b) => Math.abs(amps[b]) - Math.abs(amps[a]));
+      const silent = idx.filter((i) => Math.abs(amps[i]) < 0.12).map(hz);
+      let s = 'Lightning ' + placeName(ev.lat, ev.lon) + ', ' + fmtKm(ev.d * EARTH_KM) + ' km to your ' + DIRS[octant(ev.az)] + '. ';
+      if (idx.every((i) => Math.abs(amps[i]) > 0.55)) s += ev.d < Math.PI / 2 ? 'Close enough that every overtone rings in phase' : 'Nearly on the far side of the planet, where every overtone focuses again';
+      else s += listHz(ranked.slice(0, 2).sort((a, b) => a - b).map(hz)) + ' Hz ring hardest from this distance';
+      if (silent.length) s += '; ' + listHz(silent) + ' Hz ' + (silent.length > 1 ? 'sit' : 'sits') + ' on a node and stay' + (silent.length > 1 ? '' : 's') + ' silent';
+      logLine('bell', s + '.', 'Strike');
+      const p = proj(ev.lat, ev.lon);
+      fx.push({ type: 'bell', x: p.x, y: p.y, t0: performance.now(), dur: 2600, lvl: ev.level });
+      flashChord(amps);
+    } else if (type === 'whis') {
+      const src = M.whisSrc ? (M.whisSrc.name ? M.whisSrc.name : placeName(M.whisSrc.lat, M.whisSrc.lon)) : 'in the other hemisphere';
+      const where = M.whisSrc && M.whisSrc.name ? 'over ' + src : src;
+      logLine('whis', 'Lightning ' + where + ' sent radio energy up a magnetic field line, ' + fmtKm((M.L - 1) * EARTH_KM) + ' km out into space, and it fell back to you high notes first.' + (ev.echo ? ' Then it bounced between hemispheres.' : ''), 'Whistler');
+      const c = proj(M.conj[0], M.conj[1]);
+      fx.push({ type: 'whis', x: c.x, y: c.y, t0: performance.now(), dur: Math.max(2000, info * 1000) });
+    } else if (type === 'chor') {
+      logLine('chor', 'Electrons spiralling around the field line at L ' + M.Lc.toFixed(1) + ' sing rising chirps' + (M.kp >= 4 ? ', strong today (Kp ' + M.kp.toFixed(1) + ')' : '') + '.', 'Chorus');
+      fx.push({ type: 'chor', t0: performance.now(), dur: Math.max(2200, info * 1000), seed: Math.random() * 1000 });
+    } else if (type === 'twe') {
+      const st = ev.src;
+      logLine('twe', 'A night storm ' + (st.name ? 'over ' + st.name : placeName(st.lat, st.lon)) + ' bounced between the ground and the ionosphere ' + M.hNight.toFixed(1) + ' km up, which tunes it to ' + Math.round(ev.fc * (ev.m === 2 ? 2 : 1)) + ' Hz.', 'Tweek');
+      fx.push({ type: 'twe', x: st.x, y: st.y, t0: performance.now(), dur: 1000 });
+    }
+  }
+
+  function listHz(a) { return a.length < 3 ? a.join(' and ') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]; }
+  let lastLogKey = '';
+  function logLine(kind, text, tag) {
+    if (kind === 'info' && text === lastLogKey) return;
+    if (kind === 'info') lastLogKey = text;
+    const li = document.createElement('li');
+    const tm = document.createElement('time');
+    const d = new Date();
+    tm.textContent = d.toTimeString().slice(0, 8);
+    const body = document.createElement('span');
+    const k = document.createElement('span');
+    k.className = 'k ' + kind; k.textContent = tag || 'Note';
+    body.append(k, document.createTextNode(text));
+    li.append(tm, body);
+    const empty = ui.log.querySelector('.empty');
+    if (empty) empty.parentElement.remove();
+    ui.log.prepend(li);
+    while (ui.log.children.length > 9) ui.log.lastElementChild.remove();
+  }
+
+  let prevNight = null, prevProfile = null, prevPlaceKey = null;
+  function narrate(first) {
+    const M = model;
+    const nightNow = M.night > 0.5;
+    if (prevNight !== null && nightNow !== prevNight && playing) {
+      logLine('info', nightNow ? 'It is dark here now. The lowest layer of the ionosphere fades, so whistlers and tweeks can reach you.' : 'Daylight here. Sunlight rebuilds the lowest layer of the ionosphere, and it swallows whistlers and tweeks until dusk.', 'Sky');
+    }
+    prevNight = nightNow;
+    const pk = modeKey();
+    if (prevProfile !== null && pk !== prevProfile && playing) logLine('info', 'Setting: ' + PROFILES[pk].label + '.', 'Setting');
+    prevProfile = pk;
+    if (first) prevPlaceKey = place.key + place.lat + place.lon;
+  }
+
+  // ---------- map: azimuthal equidistant around you, which is how a spherical bell sounds ----------
+  const map = { cv: ui.map, c2: null, size: 300, dpr: 1, R: 140, cx: 150, cy: 150, dots: [], land: document.createElement('canvas'), landAt: 0, sel: 2, last: 0, flashes: [] };
+  const fx = [];
+  function proj(lat, lon) {
+    const q = gc(place.lat, place.lon, lat, lon), rr = (q.d / Math.PI) * map.R;
+    return { x: map.cx + rr * Math.sin(q.az), y: map.cy - rr * Math.cos(q.az) };
+  }
+  function initMap() {
+    map.c2 = map.cv.getContext('2d');
+    const N = 16000, ga = Math.PI * (3 - Math.sqrt(5));
+    for (let i = 0; i < N; i++) {
+      const y = 1 - (2 * (i + 0.5)) / N, r = Math.sqrt(1 - y * y), ph = i * ga;
+      const lat = Math.asin(y) * R2D, lon = wrapLon(Math.atan2(Math.sin(ph) * r, Math.cos(ph) * r) * R2D);
+      if (isLand(lat, lon)) map.dots.push({ lat, lon, x: 0, y: 0 });
+    }
+    if (window.ResizeObserver) new ResizeObserver(resizeMap).observe($('mapwrap'));
+    else window.addEventListener('resize', resizeMap);
+    resizeMap();
+    map.cv.addEventListener('click', onMapClick);
+    requestAnimationFrame(frame);
+  }
+  function resizeMap() {
+    const w = $('mapwrap').clientWidth || 300;
+    map.dpr = Math.min(2, window.devicePixelRatio || 1);
+    map.size = w;
+    map.cv.width = Math.round(w * map.dpr); map.cv.height = Math.round(w * map.dpr);
+    map.R = w / 2 - 6; map.cx = map.cy = w / 2;
+    reproject();
+  }
+  function reproject() {
+    for (const d of map.dots) { const p = proj(d.lat, d.lon); d.x = p.x; d.y = p.y; }
+    if (model) for (const st of model.g.list) { const p = proj(st.lat, st.lon); st.x = p.x; st.y = p.y; }
+    renderLand();
+  }
+  function renderLand() {
+    const cv = map.land; cv.width = map.cv.width; cv.height = map.cv.height;
+    const c = cv.getContext('2d');
+    c.setTransform(map.dpr, 0, 0, map.dpr, 0, 0);
+    const grd = c.createRadialGradient(map.cx, map.cy, 0, map.cx, map.cy, map.R);
+    grd.addColorStop(0, '#0e1626'); grd.addColorStop(1, '#060911');
+    c.fillStyle = grd; c.beginPath(); c.arc(map.cx, map.cy, map.R, 0, TAU); c.fill();
+    c.strokeStyle = 'rgba(255,255,255,0.045)'; c.lineWidth = 1;
+    for (const km of [5000, 10000, 15000]) { c.beginPath(); c.arc(map.cx, map.cy, (km / (Math.PI * EARTH_KM)) * map.R, 0, TAU); c.stroke(); }
+    c.fillStyle = 'rgba(255,255,255,0.22)'; c.font = '10px system-ui,sans-serif'; c.textAlign = 'left';
+    for (const km of [5000, 10000, 15000]) c.fillText(fmtInt(km) + ' km', map.cx + 4, map.cy - (km / (Math.PI * EARTH_KM)) * map.R + 11);
+    const sun = sunAt(Date.now()), sz = map.size > 420 ? 1.9 : 1.5;
+    for (const d of map.dots) {
+      const day = smooth(-7, 7, sunElev(d.lat, d.lon, sun));
+      const r = Math.round(lerp(96, 236, day)), g = Math.round(lerp(128, 196, day)), b = Math.round(lerp(196, 128, day));
+      c.fillStyle = 'rgba(' + r + ',' + g + ',' + b + ',' + (0.32 + 0.36 * day).toFixed(2) + ')';
+      c.fillRect(d.x - sz / 2, d.y - sz / 2, sz, sz);
+    }
+    c.strokeStyle = 'rgba(255,255,255,0.13)'; c.beginPath(); c.arc(map.cx, map.cy, map.R, 0, TAU); c.stroke();
+    c.fillStyle = 'rgba(255,255,255,0.3)'; c.textAlign = 'center';
+    c.fillText('the far side of the Earth', map.cx, map.cy + map.R - 6);
+    map.landAt = Date.now();
+  }
+  function onMapClick(e) {
+    const r = map.cv.getBoundingClientRect();
+    const dx = e.clientX - r.left - map.cx, dy = e.clientY - r.top - map.cy, rr = Math.hypot(dx, dy);
+    if (rr > map.R || rr < 3) return;
+    const [lat, lon] = dest(place.lat, place.lon, Math.atan2(dx, -dy), (rr / map.R) * Math.PI);
+    setPlace({ key: 'map', name: placeName(lat, lon), lat, lon });
+  }
+  function label(c, placed, text, x, y, color) {
+    const w = c.measureText(text).width, box = [x - w / 2 - 3, y - 11, w + 6, 15];
+    if (box[0] < 2 || box[0] + box[2] > map.size - 2) return;
+    for (const b of placed) if (box[0] < b[0] + b[2] && box[0] + box[2] > b[0] && box[1] < b[1] + b[3] && box[1] + box[3] > b[1]) return;
+    placed.push(box);
+    c.lineWidth = 3; c.lineJoin = 'round'; c.strokeStyle = 'rgba(6,9,17,0.85)'; c.strokeText(text, x, y);
+    c.fillStyle = color; c.fillText(text, x, y);
+  }
+  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function frame(ts) {
+    requestAnimationFrame(frame);
+    if (ts - map.last < 33) return;
+    map.last = ts;
+    const c = map.c2, M = model;
+    c.setTransform(map.dpr, 0, 0, map.dpr, 0, 0);
+    c.clearRect(0, 0, map.size, map.size);
+    if (Date.now() - map.landAt > 60000) renderLand();
+    c.drawImage(map.land, 0, 0, map.size, map.size);
+    if (!M) return;
+    // nodes of the selected overtone
+    c.save(); c.setLineDash([3, 5]); c.strokeStyle = 'rgba(255,210,127,0.32)'; c.lineWidth = 1;
+    for (const z of NODES[map.sel - 1]) { c.beginPath(); c.arc(map.cx, map.cy, (z / Math.PI) * map.R, 0, TAU); c.stroke(); }
+    c.restore();
+    // storms
+    const list = M.g.list;
+    for (let i = 0; i < list.length; i++) {
+      const st = list[i];
+      if (st.w < 0.012 || st.x == null) continue;
+      const fl = reduceMotion ? 0.85 : 0.68 + 0.32 * Math.sin(ts * 0.004 * (1 + (i % 5) * 0.37) + i * 1.7);
+      const r = (st.live ? 2.5 : 3.5) + 10 * Math.sqrt(st.w);
+      const col = st.live ? '143,227,255' : '197,171,255';
+      const gr = c.createRadialGradient(st.x, st.y, 0, st.x, st.y, r * 2.2);
+      gr.addColorStop(0, 'rgba(' + col + ',' + (0.5 * fl).toFixed(3) + ')');
+      gr.addColorStop(0.45, 'rgba(' + col + ',' + (0.16 * fl).toFixed(3) + ')');
+      gr.addColorStop(1, 'rgba(' + col + ',0)');
+      c.fillStyle = gr; c.beginPath(); c.arc(st.x, st.y, r * 2.2, 0, TAU); c.fill();
+    }
+    // the planet flickering: a few random flashes, weighted by storm strength
+    if (!reduceMotion && Math.random() < 0.6) {
+      const s = pickStorm(M.g, Math.random());
+      if (s && s.x != null) { const a = Math.random() * TAU, rr = Math.random() * 6; map.flashes.push({ x: s.x + Math.cos(a) * rr, y: s.y + Math.sin(a) * rr, t0: ts }); }
+    }
+    for (let i = map.flashes.length - 1; i >= 0; i--) {
+      const f = map.flashes[i], k = (ts - f.t0) / 140;
+      if (k > 1) { map.flashes.splice(i, 1); continue; }
+      c.fillStyle = 'rgba(255,255,255,' + (0.9 * (1 - k)).toFixed(3) + ')';
+      c.fillRect(f.x - 1, f.y - 1, 2, 2);
+    }
+    // the sun overhead, and where your field line lands
+    const sp = proj(M.sun.lat, M.sun.lon);
+    const sg = c.createRadialGradient(sp.x, sp.y, 0, sp.x, sp.y, 14);
+    sg.addColorStop(0, 'rgba(255,210,127,0.9)'); sg.addColorStop(1, 'rgba(255,210,127,0)');
+    c.fillStyle = sg; c.beginPath(); c.arc(sp.x, sp.y, 14, 0, TAU); c.fill();
+    const cp = proj(M.conj[0], M.conj[1]);
+    c.strokeStyle = 'rgba(143,227,255,0.7)'; c.lineWidth = 1.2; c.beginPath(); c.arc(cp.x, cp.y, 5, 0, TAU); c.stroke();
+    // labels, most important first, skipping any that would collide
+    const small = map.size < 420;
+    c.font = (small ? '9.5px' : '10.5px') + ' system-ui,sans-serif'; c.textAlign = 'center';
+    const placed = [[map.cx - 16, map.cy - 9, 32, 32]];
+    label(c, placed, 'nodes of ' + Math.round(heardF(map.sel)) + ' Hz', map.cx, map.cy - (NODES[map.sel - 1][0] / Math.PI) * map.R - 5, 'rgba(255,210,127,0.8)');
+    label(c, placed, 'your field line lands', cp.x, cp.y + 17, 'rgba(143,227,255,0.8)');
+    label(c, placed, 'sun overhead', sp.x, sp.y + 24, 'rgba(255,224,160,0.8)');
+    for (const st of M.top.slice(0, small ? 2 : 3)) if (st.x != null) label(c, placed, st.name, st.x, st.y - 10 - 6 * Math.sqrt(st.w), 'rgba(214,200,255,0.8)');
+    // events
+    const now = performance.now();
+    for (let i = fx.length - 1; i >= 0; i--) {
+      const f = fx[i], k = (now - f.t0) / f.dur;
+      if (k > 1) { fx.splice(i, 1); continue; }
+      if (k < 0) continue;
+      if (f.type === 'bell') {
+        c.strokeStyle = 'rgba(255,210,127,' + (Math.pow(1 - k, 1.5) * (0.4 + 0.6 * f.lvl)).toFixed(3) + ')';
+        c.lineWidth = 1.5; c.beginPath(); c.arc(f.x, f.y, 4 + 46 * k, 0, TAU); c.stroke();
+        c.strokeStyle = 'rgba(255,230,180,' + (Math.pow(1 - k, 2) * 0.7).toFixed(3) + ')';
+        c.lineWidth = 1; c.beginPath(); c.moveTo(f.x, f.y); c.lineTo(map.cx, map.cy); c.stroke();
+      } else if (f.type === 'whis') {
+        const mx = (f.x + map.cx) / 2, my = (f.y + map.cy) / 2, dx = map.cx - f.x, dy = map.cy - f.y;
+        const qx = mx - dy * 0.45, qy = my + dx * 0.45;
+        c.strokeStyle = 'rgba(143,227,255,' + (0.55 * (1 - k)).toFixed(3) + ')'; c.lineWidth = 1.3;
+        c.beginPath(); c.moveTo(f.x, f.y); c.quadraticCurveTo(qx, qy, map.cx, map.cy); c.stroke();
+        const t = Math.min(1, k * 1.25), it = 1 - t;
+        const bx = it * it * f.x + 2 * it * t * qx + t * t * map.cx, by = it * it * f.y + 2 * it * t * qy + t * t * map.cy;
+        c.fillStyle = 'rgba(200,245,255,' + (0.9 * (1 - k)).toFixed(3) + ')'; c.beginPath(); c.arc(bx, by, 2.6, 0, TAU); c.fill();
+      } else if (f.type === 'twe') {
+        c.strokeStyle = 'rgba(255,159,180,' + (0.8 * (1 - k)).toFixed(3) + ')'; c.lineWidth = 1.2;
+        c.beginPath(); c.arc(f.x, f.y, 3 + 14 * k, 0, TAU); c.stroke();
+      } else if (f.type === 'chor') {
+        for (let j = 0; j < 9; j++) {
+          const a = (f.seed + j * 2.4) % TAU, rr = 10 + ((j * 37) % 30);
+          c.fillStyle = 'rgba(151,240,196,' + (0.8 * Math.sin(Math.PI * k)).toFixed(3) + ')';
+          c.beginPath(); c.arc(map.cx + Math.cos(a) * rr, map.cy + Math.sin(a) * rr - 30 * k, 1.6, 0, TAU); c.fill();
+        }
+      }
+    }
+    // you
+    const pulse = reduceMotion ? 0 : (ts % 2400) / 2400;
+    c.strokeStyle = 'rgba(255,255,255,' + (0.5 * (1 - pulse)).toFixed(3) + ')'; c.lineWidth = 1;
+    c.beginPath(); c.arc(map.cx, map.cy, 4 + 12 * pulse, 0, TAU); c.stroke();
+    c.fillStyle = '#fff'; c.beginPath(); c.arc(map.cx, map.cy, 3.2, 0, TAU); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.85)'; c.font = '600 11px system-ui,sans-serif';
+    c.fillText('you', map.cx, map.cy + 17);
+  }
+
+  // ---------- chord bars and readouts ----------
+  const bars = [];
+  function initChord() {
+    for (let n = 1; n <= 6; n++) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'bar';
+      b.setAttribute('aria-label', 'Show the nodes of overtone ' + n);
+      const fill = document.createElement('span'); fill.className = 'fill';
+      const hz = document.createElement('span'); hz.className = 'hz';
+      const real = document.createElement('span'); real.className = 'real';
+      b.append(fill, hz, real);
+      b.addEventListener('click', () => { map.sel = n; renderChord(); });
+      ui.chord.appendChild(b);
+      bars.push({ b, fill, hz, real });
+    }
+  }
+  function renderChord() {
+    if (!model) return;
+    const P = profile(), max = Math.max(...model.hum);
+    bars.forEach((x, i) => {
+      x.fill.style.height = (10 + 82 * model.hum[i] / max).toFixed(1) + '%';
+      x.hz.textContent = Math.round(heardF(i + 1));
+      x.real.textContent = model.realF[i].toFixed(2) + ' Hz';
+      x.b.classList.toggle('sel', map.sel === i + 1);
+      x.b.classList.toggle('off', i >= P.modes);
+    });
+  }
+  function flashChord(amps) {
+    if (!bars[0].fill.animate) return;
+    amps.forEach((a, i) => bars[i].fill.animate([{ filter: 'brightness(' + (1 + 2.4 * Math.abs(a)).toFixed(2) + ')' }, { filter: 'brightness(1)' }], { duration: 1800, easing: 'ease-out' }));
+  }
+  const hm = (h) => { const H = Math.floor(h), m = Math.floor((h - H) * 60); return String(H).padStart(2, '0') + ':' + String(m).padStart(2, '0'); };
+  const skyWord = (el) => (el > 6 ? 'Day' : el > -6 ? 'Twilight' : el > -12 ? 'Nearly dark' : 'Night');
+  const kpWord = (k) => (k < 3 ? 'quiet' : k < 5 ? 'unsettled' : k < 6 ? 'active' : 'storm');
+  function renderNow() {
+    const M = model; if (!M) return;
+    const rows = [
+      ['Listening from', place.key === 'home' ? HOME.name : place.name],
+      ['Lightning on Earth', 'about ' + Math.round(M.g.flashes) + ' flashes a second'],
+      ['Busiest storms', M.top.map((s) => s.name).join(', ')],
+      ['Since you arrived', fmtInt(stats.flashes) + ' flashes on Earth, ' + stats.heard + ' rang your bell'],
+      ['Your sky', skyWord(M.elev) + ', sun at ' + Math.round(M.elev) + '°, solar time ' + hm(M.lst)],
+      ['The lowest note', M.realF[0].toFixed(3) + ' Hz, heard at ' + heardF(1).toFixed(1) + ' Hz'],
+      ['Night ionosphere', M.hNight.toFixed(1) + ' km up, so tweeks ring at ' + Math.round(M.tweekF) + ' Hz'],
+      ['Your field line', 'L ' + M.L.toFixed(1) + ', reaches ' + fmtKm((M.L - 1) * EARTH_KM) + ' km up, lands ' + placeName(M.conj[0], M.conj[1])],
+      ['Space weather', 'Kp ' + M.kp.toFixed(1) + ' (' + kpWord(M.kp) + (M.kpLive ? '' : ', modeled') + '), Sun X-ray ' + M.xclass + (M.xLive ? '' : ' (modeled)')],
+      ['Running time', 'billions of years, give or take']
+    ];
+    ui.now.replaceChildren(...rows.flatMap(([a, b]) => {
+      const dt = document.createElement('dt'); dt.textContent = a;
+      const dd = document.createElement('dd'); dd.textContent = b;
+      return [dt, dd];
+    }));
+  }
+  function labels() {
+    const v = +ui.volume.value, d = +ui.density.value;
+    ui.volText.textContent = v < 0.25 ? 'barely there' : v < 0.55 ? 'low' : v < 0.82 ? 'quiet' : 'present';
+    ui.densText.textContent = d < 0.25 ? 'sparse' : d < 0.65 ? 'balanced' : 'busy';
+  }
+
+  // ---------- place ----------
+  function setPlace(p, quiet) {
+    place = p;
+    let opt = [...ui.place.options].find((o) => o.value === 'map');
+    if (p.key === 'map') {
+      if (!opt) { opt = document.createElement('option'); opt.value = 'map'; ui.place.appendChild(opt); }
+      opt.textContent = 'Map point: ' + p.name;
+    } else if (opt) opt.remove();
+    ui.place.value = p.key;
+    save();
+    reproject();
+    updateModel();
+    renderNow(); renderChord();
+    if (!quiet) logLine('info', 'Listening from ' + (p.key === 'home' ? HOME.name : p.name) + '. Same storms, new voicing: which overtones you hear depends on how far each storm is from you.', 'Moved');
+  }
+  function onPlaceSelect() {
+    const v = ui.place.value;
+    if (v === 'home') return setPlace({ key: 'home', name: HOME.name, lat: HOME.lat, lon: HOME.lon });
+    if (v === 'antipode') return setPlace({ key: 'antipode', name: 'your antipode, ' + placeName(-HOME.lat, wrapLon(HOME.lon + 180)), lat: -HOME.lat, lon: wrapLon(HOME.lon + 180) });
+    if (v === 'gps') {
+      if (!navigator.geolocation) { logLine('info', 'This browser cannot share a location.', 'Place'); ui.place.value = place.key; return; }
+      ui.place.disabled = true;
+      navigator.geolocation.getCurrentPosition((pos) => {
+        ui.place.disabled = false;
+        setPlace({ key: 'gps', name: 'your location', lat: pos.coords.latitude, lon: pos.coords.longitude });
+      }, () => {
+        ui.place.disabled = false; ui.place.value = place.key;
+        logLine('info', 'No precise location, so the time zone guess stays.', 'Place');
+      }, { timeout: 15000, maximumAge: 600000 });
+      return;
+    }
+    if (PRESETS[v]) setPlace(Object.assign({ key: v }, PRESETS[v]));
+  }
+
+  // ---------- start, pause ----------
+  function unlock(ctx) {
+    try { const b = ctx.createBuffer(1, 1, ctx.sampleRate), s = ctx.createBufferSource(); s.buffer = b; s.connect(ctx.destination); s.start(0); } catch (e) { /* not needed */ }
+  }
+  const timers = { tick: 0 };
+  async function start() {
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) { /* optional */ }
+    if (!E) { E = buildEngine(); unlock(E.ctx); }
+    const resumed = E.ctx.resume();
+    if (!E.ready) {
+      ui.start.disabled = true; ui.start.textContent = 'Tuning in...';
+      try { await setupVoices(); } catch (err) { console.error(err); ui.start.disabled = false; ui.start.textContent = 'Start listening'; ui.support.textContent = 'Audio could not start in this browser.'; return; }
+      ui.start.disabled = false;
+    }
+    try { await resumed; } catch (e) { /* resumes on next gesture */ }
+    playing = true;
+    sched.lastS = 0;
+    updateModel();
+    applyAudio(false);
+    if (!timers.tick) timers.tick = setInterval(tick, 250);
+    tick();
+    ui.start.textContent = 'Pause'; ui.start.classList.add('on');
+    if (!stats.started) {
+      stats.started = true;
+      logLine('info', 'You joined a piece that has been playing for billions of years. Strike times come from the world clock, so anyone listening right now hears the same lightning, voiced from where they are.', 'Joined');
+    }
+    if ('mediaSession' in navigator) {
+      try {
+        navigator.mediaSession.metadata = new MediaMetadata({ title: 'Earthbell', artist: 'Planet Earth, live', album: 'Schumann resonance, five octaves up' });
+        navigator.mediaSession.setActionHandler('play', () => { if (!playing) start(); });
+        navigator.mediaSession.setActionHandler('pause', () => { if (playing) pause(); });
+        navigator.mediaSession.playbackState = 'playing';
+      } catch (e) { /* optional */ }
+    }
+  }
+  function pause() {
+    if (!E) return;
+    playing = false;
+    if (timers.tick) { clearInterval(timers.tick); timers.tick = 0; }
+    const t = E.ctx.currentTime;
+    E.master.gain.cancelScheduledValues(t);
+    E.master.gain.setTargetAtTime(0.0001, t, 0.35);
+    ui.start.textContent = 'Resume'; ui.start.classList.remove('on');
+    try { navigator.mediaSession.playbackState = 'paused'; } catch (e) { /* optional */ }
+    setTimeout(() => { if (!playing && E.ctx.state === 'running') E.ctx.suspend(); }, 1600);
+  }
+
+  // ---------- wiring ----------
+  if (!AC) { ui.start.disabled = true; ui.support.textContent = 'This browser has no Web Audio API, so the map runs silently.'; }
+  else ui.support.textContent = 'Runs in your browser. No recordings, no loops.';
+  ui.start.addEventListener('click', () => { if (playing) pause(); else start(); });
+  [ui.mode, ui.anchor, ui.oct].forEach((el) => el.addEventListener('change', () => { save(); updateModel(); applyAudio(false); renderChord(); renderNow(); }));
+  ui.volume.addEventListener('input', () => { labels(); applyAudio(false); });
+  ui.volume.addEventListener('change', save);
+  ui.density.addEventListener('input', () => { labels(); applyAudio(false); });
+  ui.density.addEventListener('change', save);
+  ui.place.addEventListener('change', onPlaceSelect);
+  ui.live.addEventListener('change', () => { LIVE.on = ui.live.checked; save(); if (LIVE.on) refreshLive(true); else { updateModel(); setDataStatus(); } });
+
+  labels();
+  initChord();
+  initMap();
+  if (place.key === 'home') place = { key: 'home', name: HOME.name, lat: HOME.lat, lon: HOME.lon };
+  if (place.key === 'map') setPlace(place, true); else ui.place.value = place.key;
+  updateModel();
+  reproject();
+  renderChord(); renderNow(); setDataStatus();
+  if (LIVE.on) refreshLive(false);
+
+  let lastSlow = Date.now();
+  setInterval(() => {
+    const now = Date.now();
+    if (model) stats.flashes += model.g.flashes * (now - lastSlow) / 1000;
+    lastSlow = now;
+    breathe(); renderNow(); renderChord();
+  }, 2000);
+  setInterval(updateModel, 5000);
+  setInterval(() => { if (LIVE.on) refreshLive(false); }, 5 * 60e3);
+
+  window.__earthbell = { get E() { return E; }, get model() { return model; }, place: () => place, schedule, planSecond, stormsAt, placeName, legendre, conjugate, magLat, lShell, sunAt, LIVE };
+})();
+</script>
+<!-- Overhead: the sky over Toronto as sound (overhead.js, shared with sink.html). Bump ?v= when that file changes. -->
+<script src="overhead.js?v=2"></script>
+<script>
+(() => {
+  if (!window.Overhead) return;
+  const eb = window.__earthbell;
+  window.__overhead = Overhead.mount(document.getElementById('overhead'), {
+    name: 'Earthbell',
+    how: 'as the bell does',
+    theme: { fg: '#e9ecf3', muted: '#939cb0', faint: '#5f687c', line: '#1a2232', panel: '#080c14', acc: '#8fe3ff', acc2: '#ffd27f', mono: 'ui-monospace,SFMono-Regular,Menlo,Consolas,monospace' },
+    // listen from wherever the bell is being listened from, when that is inside the feed's circle
+    listener: () => { const p = eb && eb.place(); return p ? { lat: p.lat, lon: p.lon, name: p.name } : null; }
+  });
+})();
+</script>
+</body>
+</html>

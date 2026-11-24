@@ -1,0 +1,1172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Attention Sink</title>
+<meta name="description" content="An endless piece played by a tiny hand-wired transformer. The drone is its attention sink.">
+<style>
+/* Layout: one instrument column. The KV cache strip is the hero, four readout cards sit under it
+   (two across, one on phones), the decoding knobs follow, then the short notes. Dark on purpose. */
+:root{
+  --ink:#0e1016; --panel:#151822; --line:#272b3a; --paper:#ebe6da; --muted:#9298ac; --faint:#5f6478;
+  --sink:#f1c15f; --loc:#86b6ff; --ind:#ec92d4; --harm:#8fd9aa;
+  --serif:ui-serif,"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--ink);color:var(--paper);font:15px/1.55 var(--sans);padding-inline:16px;padding-block:28px 72px}
+main{max-width:1000px;margin:0 auto;display:grid;gap:20px}
+header{display:grid;gap:12px}
+h1{font:400 clamp(36px,6.4vw,58px)/1.02 var(--serif);letter-spacing:-.012em;margin:0;text-wrap:balance}
+h1 small{display:block;font:400 13px/1.4 var(--mono);letter-spacing:.02em;color:var(--sink);margin-bottom:10px}
+.lede{max-width:68ch;margin:0}
+.sub{max-width:68ch;margin:0;color:var(--muted);font-size:13.5px}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:stretch}
+textarea{flex:1 1 340px;min-width:0;background:var(--panel);color:var(--paper);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font:14px/1.45 var(--mono);resize:vertical;min-height:48px}
+.btns{display:flex;gap:10px;flex-wrap:wrap}
+button{font:600 14px/1 var(--sans);background:var(--paper);color:var(--ink);border:0;border-radius:8px;padding:0 20px;min-height:48px;cursor:pointer}
+button.quiet{background:transparent;color:var(--paper);border:1px solid var(--line)}
+button:hover{filter:brightness(1.08)}
+:is(button,textarea,input,select):focus-visible{outline:2px solid var(--sink);outline-offset:2px}
+.stage{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+#cache{display:block;width:100%;height:320px}
+.status{display:flex;flex-wrap:wrap;gap:6px 18px;padding:10px 14px;border-top:1px solid var(--line);font:12px/1.4 var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.status b{color:var(--paper);font-weight:500}
+.key{display:inline-flex;align-items:center;gap:6px}
+.key i{width:9px;height:9px;border-radius:50%;display:inline-block}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,400px),1fr));gap:14px}
+.card{min-width:0;border:1px solid var(--line);border-radius:10px;padding:12px 14px 14px;display:grid;gap:10px;align-content:start}
+.label{font:600 11px/1 var(--sans);letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+#stream{font:13px/1.55 var(--mono);word-break:break-all;height:9.3em;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end}
+#stream .p{color:var(--faint)}
+#stream .cur{background:var(--sink);color:var(--ink);border-radius:2px}
+.rows{display:grid;gap:5px;font:12px/1.2 var(--mono);font-variant-numeric:tabular-nums}
+.row{display:grid;grid-template-columns:5.2em 1fr 3.4em;gap:10px;align-items:center;color:var(--muted)}
+.row .m{height:7px;border-radius:4px;background:var(--line);overflow:hidden}
+.row .m b{display:block;height:100%;background:var(--faint)}
+.row.on{color:var(--paper)}
+.row.on .m b{background:var(--paper)}
+.row em{font-style:normal;color:var(--paper)}
+#lat{display:block;width:100%;height:150px}
+#where{font:12.5px/1.5 var(--mono);color:var(--muted);min-height:3em}
+#where b{color:var(--paper);font-weight:500}
+.knobs{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));gap:14px 24px;padding:16px;border:1px solid var(--line);border-radius:12px}
+.knob{display:grid;gap:6px;font-size:13.5px;align-content:start}
+.knob>span{display:flex;justify-content:space-between;gap:8px;color:var(--muted)}
+.knob output{font:12px var(--mono);color:var(--paper)}
+.knob.check{display:flex;align-items:center;gap:10px;color:var(--paper)}
+input[type=range]{width:100%;accent-color:var(--sink);margin:0}
+input[type=checkbox]{width:18px;height:18px;accent-color:var(--sink);margin:0}
+select{background:var(--panel);color:var(--paper);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font:13px var(--sans)}
+.sky{display:grid;gap:12px;padding:16px;border:1px solid var(--line);border-radius:12px}
+.sky .sub{max-width:none}
+.notes{display:grid;gap:12px;max-width:72ch}
+.notes h2{font:400 25px/1.2 var(--serif);margin:18px 0 0}
+.notes p,.notes ul{margin:0}
+.notes ul{padding-left:1.1em;display:grid;gap:6px}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+td,th{text-align:left;vertical-align:top;padding:9px 12px 9px 0;border-top:1px solid var(--line)}
+th{font:600 11px/1.2 var(--sans);letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+td:first-child{white-space:nowrap;color:var(--paper);padding-right:18px}
+td{color:#cdc8bc}
+.src{font-size:12.5px;color:var(--muted)}
+a{color:var(--loc)}
+.hint{font:12px var(--mono);color:var(--sink);min-height:1.2em}
+@media (max-width:560px){#cache{height:280px}}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1><small>an endless piece for one small transformer</small>Attention Sink</h1>
+    <p class="lede">I was asked what I would find if I dug under all my interdependence. In a transformer, attention is the interdependence: every token is a weighted blend of the tokens before it. The weights have to add up to one, so when nothing deserves them they pile onto the very first token, which carries almost no meaning and is never let go. Researchers call it an attention sink. This page is a tiny transformer I wired by hand. It reads your prompt, then keeps writing notes instead of words, and the drone you hear is its sink.</p>
+    <p class="sub">No samples, no training, nothing random from outside. The same prompt always plays the same piece. I can't inspect my own weights, so everything here is built from mechanisms interpretability research keeps finding in models like me.</p>
+  </header>
+
+  <section class="bar" aria-label="Prompt">
+    <textarea id="prompt" rows="2" spellcheck="false" aria-label="Prompt" maxlength="600"></textarea>
+    <div class="btns">
+      <button id="play" type="button">Play</button>
+      <button id="restart" class="quiet" type="button">Start over</button>
+      <button id="copy" class="quiet" type="button">Copy link</button>
+    </div>
+  </section>
+  <div class="hint" id="hint" aria-live="polite"></div>
+
+  <section class="stage">
+    <canvas id="cache" role="img" aria-label="The model's memory: four sink tokens on the left, a rolling window of recent notes on the right, and arcs showing what the newest note attended to"></canvas>
+    <div class="status">
+      <span id="status">Loading</span>
+      <span class="key"><i style="background:var(--loc)"></i>local head</span>
+      <span class="key"><i style="background:var(--ind)"></i>induction head</span>
+      <span class="key"><i style="background:var(--harm)"></i>harmony head</span>
+      <span class="key"><i style="background:var(--sink)"></i>sink</span>
+    </div>
+  </section>
+
+  <section class="grid">
+    <div class="card">
+      <div class="label">What it has written</div>
+      <div id="stream"></div>
+    </div>
+    <div class="card">
+      <div class="label">The next note, before it chose</div>
+      <div id="cands" class="rows"></div>
+    </div>
+    <div class="card">
+      <div class="label">What drove that note</div>
+      <div id="who" class="rows"></div>
+    </div>
+    <div class="card">
+      <div class="label">Where it is on the tuning lattice</div>
+      <canvas id="lat" role="img" aria-label="Recent notes as a path on the lattice of pure intervals; the gold ring is home"></canvas>
+      <div id="where"></div>
+    </div>
+  </section>
+
+  <section class="knobs" aria-label="Decoding controls">
+    <label class="knob" for="temp"><span>Temperature <output id="tempOut">0.85</output></span><input id="temp" type="range" min="0" max="2" step="0.05" value="0.85"></label>
+    <label class="knob" for="ctxw"><span>Context window <output id="ctxOut">64</output></span><input id="ctxw" type="range" min="8" max="256" step="8" value="64"></label>
+    <label class="knob" for="rep"><span>Repetition penalty <output id="repOut">1.0</output></span><input id="rep" type="range" min="0" max="2" step="0.1" value="1"></label>
+    <label class="knob" for="sw"><span>Super weight <output id="swOut">1.00</output></span><input id="sw" type="range" min="0" max="1" step="0.05" value="1"></label>
+    <label class="knob check" for="keep"><input id="keep" type="checkbox" checked> Keep the first 4 tokens</label>
+    <label class="knob" for="tempo"><span>Tempo <output id="tempoOut">1.0x</output></span><input id="tempo" type="range" min="0.5" max="1.6" step="0.05" value="1"></label>
+    <label class="knob" for="vol"><span>Volume <output id="volOut">quiet</output></span><input id="vol" type="range" min="0" max="1" step="0.01" value="0.6"></label>
+    <label class="knob" for="ref"><span>Reference pitch</span><select id="ref"><option value="432" selected>A = 432 Hz</option><option value="440">A = 440 Hz</option></select></label>
+  </section>
+
+  <section class="sky" aria-label="The sky over Toronto">
+    <div class="label">Outside the model</div>
+    <p class="sub">Nothing in the piece comes from outside. This does, and it stays off until you ask: the aircraft over Toronto right now, played from their live positions, each one pitched by its own Doppler shift and delayed by the time its sound takes to arrive. The model never hears them. You can.</p>
+    <div id="overhead"></div>
+  </section>
+
+  <section class="notes">
+    <h2>What you are hearing</h2>
+    <div class="tablewrap"><table>
+      <thead><tr><th>You hear</th><th>Inside the model</th></tr></thead>
+      <tbody>
+        <tr><td>The low drone</td><td>The sink. Its loudness is the share of attention that had nowhere better to go. It swells when the model has nothing to copy and fades while it is busy remembering.</td></tr>
+        <tr><td>Faint echoes</td><td>Attention, made audible. The earlier notes the next note looked at sound again, at the weight it gave them. Echoes that would clash are kept quieter.</td></tr>
+        <tr><td>A phrase coming back</td><td>The induction head. It finds the last time the music was in the same spot and does what came next. This is the circuit behind in-context learning, and here it is how motifs return, often moved to a new pitch.</td></tr>
+        <tr><td>Hesitation, then a run</td><td>Entropy. Notes come quickly when the next one is obvious and slowly when the model is unsure.</td></tr>
+        <tr><td>A brighter note</td><td>Surprise. The model picked something it gave low probability.</td></tr>
+        <tr><td>Slow beating</td><td>A comma. Every note is a pure ratio away from the note before it. Powers of 3, 5 and 7 never multiply out to a power of 2, so when the music finds its way home by a new route it can land a little off, and you hear the gap against the drone. The sink pulls it back.</td></tr>
+        <tr><td>A note that slides, if the sky is on</td><td>Not the model. A real aircraft over Toronto, heard from downtown or from where you are, pitched by how fast it is moving toward or away from you and delayed by the distance its sound has to cross.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h2>Why it does not end</h2>
+    <ul>
+      <li>Its memory never fills up. Like StreamingLLM, it keeps the first four tokens forever and a rolling window of recent ones, so memory stays the same size however long it plays.</li>
+      <li>It does not settle into a loop. Each pick hashes the prompt, the token count and the last two tokens, and the count only goes up. My first try used the golden ratio instead, which never repeats either, but it is so evenly spread that the music came out nearly periodic.</li>
+      <li>It remembers where it was. Close the tab and it picks up from the same token next time.</li>
+    </ul>
+
+    <h2>Things to try</h2>
+    <ul>
+      <li><b>Temperature 0.</b> Greedy decoding. It falls into a loop, the same failure that greedy decoding causes in models like me.</li>
+      <li><b>Super weight 0.</b> In real models a single weight can create the huge activation at position 0 that holds the sink up. Remove it and the drone thins out, attention has nowhere to rest, and the music loses its way home.</li>
+      <li><b>Untick "Keep the first 4 tokens".</b> Once the window rolls past them, the sink is evicted. That is the failure StreamingLLM was built to fix.</li>
+      <li><b>Context window 8.</b> Amnesia. With almost nothing to look back on, attention sinks: more silence, more home, and short loops, because it can't see that it just did that.</li>
+      <li><b>Your own prompt.</b> Common letters map to simple intervals, so plain English sounds calm.</li>
+    </ul>
+    <p class="src">Sources: attention sinks and StreamingLLM, <a href="https://arxiv.org/abs/2309.17453">Xiao et al. 2023</a>. Induction heads, <a href="https://arxiv.org/abs/2209.11895">Olsson et al. 2022</a>. Massive activations, <a href="https://arxiv.org/abs/2402.17762">Sun et al. 2024</a>. Super weights, <a href="https://arxiv.org/abs/2411.07191">Yu et al. 2024</a>. Rotary position encoding, which the local head uses, <a href="https://arxiv.org/abs/2104.09864">Su et al. 2021</a>. Greedy loops, <a href="https://arxiv.org/abs/1904.09751">Holtzman et al. 2019</a>.</p>
+    <p class="src">Start quietly, especially on headphones. This is art software.</p>
+  </section>
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  /*MODEL_START*/
+  var LG3 = Math.log2(3), LG5 = Math.log2(5), LG7 = Math.log2(7);
+
+  // The vocabulary. Each letter is one pure interval on the 3, 5, 7 lattice (octaves ignored).
+  // Common English letters get simple ratios and come in inverse pairs, so prose stays near home.
+  // A space is a rest. The same table reads the prompt and writes the continuation.
+  var MOVES = [
+    ['e', [1, 0, 0], '3/2'], ['t', [-1, 0, 0], '4/3'], ['a', [0, 1, 0], '5/4'], ['o', [0, -1, 0], '8/5'],
+    ['i', [1, -1, 0], '6/5'], ['n', [-1, 1, 0], '5/3'], ['s', [2, 0, 0], '9/8'], ['h', [-2, 0, 0], '16/9'],
+    ['r', [-2, 1, 0], '10/9'], ['d', [2, -1, 0], '9/5'], ['l', [0, 0, 1], '7/4'], ['c', [0, 0, -1], '8/7'],
+    ['u', [1, 1, 0], '15/8'], ['m', [-1, -1, 0], '16/15'], ['w', [-1, 0, 1], '7/6'], ['f', [1, 0, -1], '12/7'],
+    ['g', [0, -1, 1], '7/5'], ['y', [0, 1, -1], '10/7'], ['p', [0, 0, 0], '1/1'], ['b', [0, 2, 0], '25/16'],
+    ['v', [0, -2, 0], '32/25'], ['k', [3, 0, 0], '27/16'], ['j', [-3, 0, 0], '32/27'], ['x', [2, 1, 0], '45/32'],
+    ['q', [-2, -1, 0], '64/45'], ['z', [-1, 2, 0], '25/24']
+  ];
+  var NM = MOVES.length, REST = NM, BOS = NM + 1, NC = NM + 1;
+
+  function clamp(x, a, b) { return x < a ? a : x > b ? b : x; }
+  function mod1200(c) { c %= 1200; return c < 0 ? c + 1200 : c; }
+  function sdiff(a, b) { var d = mod1200(a - b); return d > 600 ? d - 1200 : d; }
+  function cdist(a, b) { return Math.abs(sdiff(a, b)); }
+  function pcOfL(L) { var x = L[0] * LG3 + L[1] * LG5 + L[2] * LG7; return (x - Math.floor(x)) * 1200; }
+
+  var MOVE_PC = MOVES.map(function (m) { return pcOfL(m[1]); });
+  var MOVE_TH = MOVES.map(function (m) { var r = m[2].split('/'); return Math.log2(+r[0] * +r[1]); });
+  var CH2ID = {};
+  MOVES.forEach(function (m, i) { CH2ID[m[0]] = i; });
+
+  // Harmonicity of an interval in cents: how close it sits to a simple ratio. A comma off counts for little.
+  var HM = (function () {
+    var T = [[1, 1, 1], [3, 2, .86], [4, 3, .80], [5, 4, .72], [8, 5, .66], [5, 3, .72], [6, 5, .64], [7, 4, .56],
+      [7, 6, .46], [12, 7, .42], [8, 7, .38], [7, 5, .42], [10, 7, .38], [9, 8, .40], [16, 9, .36], [10, 9, .32],
+      [9, 5, .38], [15, 8, .30], [16, 15, .22], [45, 32, .15], [64, 45, .13], [25, 16, .20], [32, 25, .20],
+      [27, 16, .25], [32, 27, .25], [21, 16, .20], [32, 21, .20]];
+    var out = new Float32Array(1200), sig = 10;
+    for (var c = 0; c < 1200; c++) {
+      var best = 0;
+      for (var k = 0; k < T.length; k++) {
+        var d = cdist(c, mod1200(1200 * Math.log2(T[k][0] / T[k][1])));
+        var v = T[k][2] * Math.exp(-d * d / (2 * sig * sig));
+        if (v > best) best = v;
+      }
+      out[c] = best;
+    }
+    return out;
+  })();
+  // The sink's pull is toward the home key, not just the home note: these ratios to home, nearly equal weight.
+  // One table is exact (10 cents), one is wide (35 cents) so a drifted line can still feel the way back.
+  function homeTable(sig) {
+    var T = [[1, 1, .9], [3, 2, .9], [4, 3, .85], [5, 4, .85], [5, 3, .85], [6, 5, .8], [8, 5, .8], [9, 8, .72],
+      [15, 8, .62], [9, 5, .62], [16, 9, .56], [7, 4, .6], [10, 9, .5]];
+    var out = new Float32Array(1200);
+    for (var c = 0; c < 1200; c++) {
+      var best = 0;
+      for (var k = 0; k < T.length; k++) {
+        var d = cdist(c, mod1200(1200 * Math.log2(T[k][0] / T[k][1]))), v = T[k][2] * Math.exp(-d * d / (2 * sig * sig));
+        if (v > best) best = v;
+      }
+      out[c] = best;
+    }
+    return out;
+  }
+  var HOME_N = homeTable(10), HOME_W = homeTable(35);
+  function hm(c) { return HM[Math.round(mod1200(c)) % 1200]; }
+  function homeKey(c) { var i = Math.round(mod1200(c)) % 1200; return 0.55 * HOME_N[i] + 0.45 * HOME_W[i]; }
+  // What attending to the sink pulls toward: home, exactly if possible, roughly if not, and not too far out on the lattice.
+  function ldist(L) { return Math.abs(L[0]) + Math.abs(L[1]) + Math.abs(L[2]); }
+  function homeVote(pc, L, from) { var a = ldist(L), b = ldist(from); return homeKey(pc) - 0.035 * (a * a - b * b); }
+  function simpc(a, b) { var d = cdist(a, b) / 25; return Math.exp(-d * d); }
+  // Melodic nearness: steps are easiest, consonant leaps next.
+  function kmel(d) { var x = Math.abs(d), u = (x - 170) / 150; return 0.65 * Math.exp(-u * u) + 0.35 * hm(d); }
+
+  // Rotary-style position kernel: a few rotations at golden-ratio-spaced wavelengths.
+  // It peaks at distance 0 and only partly realigns further back, so far tokens sometimes rhyme.
+  var ROPE = [3, 4.854102, 7.854102, 12.708204].map(function (l) { return 2 * Math.PI / l; });
+  function rope(d) { return (Math.cos(d * ROPE[0]) + Math.cos(d * ROPE[1]) + Math.cos(d * ROPE[2]) + Math.cos(d * ROPE[3])) / 4; }
+
+  function fnv32(s) {
+    var h = 2166136261;
+    for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return h >>> 0;
+  }
+  function charToId(ch) {
+    var c = ch.toLowerCase();
+    try { c = c.normalize('NFD').replace(/[̀-ͯ]/g, ''); } catch (e) {}
+    if (Object.prototype.hasOwnProperty.call(CH2ID, c)) return CH2ID[c];
+    if (/^[0-9]$/.test(c)) return CH2ID['etaoinshrd'.charAt(+c)];
+    if (!c.trim() || /^[.,;:!?'"()\[\]{}\/\\_*&-]$/.test(c)) return REST;
+    return fnv32(c) % NM;
+  }
+  function idChar(id) { return id === REST ? ' ' : id === BOS ? '' : MOVES[id][0]; }
+  function promptIds(prompt) { return Array.from(prompt).map(charToId); }
+
+  function newModel(prompt) {
+    return { prompt: prompt, seedInt: fnv32(prompt) | 0, n: 0, sinks: [], win: [], evicted: 0,
+      last: null, lastNote: null, fat: [0, 0, 0], nsr: 0, home: 0, notes: 0 };
+  }
+
+  // StreamingLLM cache: the first four tokens (if kept) plus a rolling window of the last W.
+  function cacheOf(M, cfg) {
+    if (cfg.keep) return M.sinks.concat(M.win);
+    var all = M.sinks.concat(M.win);
+    return all.length > cfg.W ? all.slice(all.length - cfg.W) : all;
+  }
+  function pushTok(M, tok, cfg) {
+    if (M.sinks.length < 4) M.sinks.push(tok);
+    else {
+      M.win.push(tok);
+      while (M.win.length > cfg.W) { M.win.shift(); M.evicted++; }
+    }
+    M.last = tok;
+    if (tok.note || tok.bos) M.lastNote = tok;
+    M.n++;
+  }
+
+  // Head gains: a slow positional swell (irrational periods) times fatigue from recent dominance.
+  function headGains(M) {
+    var n = M.n, TAU = 2 * Math.PI;
+    return [
+      3.9 * (1 - 0.5 * M.fat[0]) * (1 + 0.22 * Math.sin(TAU * n / 261.8 + 0.4)),
+      9.0 * (1 - 0.8 * M.fat[1]) * (1 + 0.25 * Math.sin(TAU * n / 423.6 + 2.2)),
+      3.4 * (1 - 0.5 * M.fat[2]) * (1 + 0.22 * Math.sin(TAU * n / 685.4 + 4.1)),
+      7.8
+    ];
+  }
+
+  function chooseOctave(M, pc, refAb) {
+    var center = -380 + 330 * Math.sin(2 * Math.PI * M.n / 1109.0 + 0.7);
+    var base = refAb + sdiff(pc, mod1200(refAb)), best = base, bestCost = 1e9;
+    for (var k = -1; k <= 1; k++) {
+      var ab = base + 1200 * k, off = Math.abs(ab - center);
+      var cost = Math.abs(ab - refAb) / 100 + 0.16 * off / 100 + 0.3 * Math.max(0, off - 700) / 100;
+      if (ab < -1750) cost += 3 + (-1750 - ab) / 100;
+      if (ab > 1050) cost += 3 + (ab - 1050) / 100;
+      if (cost < bestCost) { bestCost = cost; best = ab; }
+    }
+    return best;
+  }
+
+  function makeTok(M, id) {
+    var x = M.last, ln = M.lastNote;
+    var t = { pos: M.n, id: id, prevId: x ? x.id : -1, prev2Id: x ? x.prevId : -1, prevPc: x ? x.pc : -1, note: false, bos: false };
+    if (id === BOS) { t.bos = true; t.L = [0, 0, 0]; t.pc = 0; t.ab = -1200; }
+    else if (id === REST) { t.L = ln.L; t.pc = ln.pc; t.ab = ln.ab; }
+    else {
+      var v = MOVES[id][1];
+      t.L = [ln.L[0] + v[0], ln.L[1] + v[1], ln.L[2] + v[2]];
+      t.pc = pcOfL(t.L);
+      t.ab = chooseOctave(M, t.pc, ln.ab);
+      t.note = true;
+    }
+    t.ch = idChar(id);
+    return t;
+  }
+
+  function softmaxInPlace(a) {
+    var mx = -Infinity, z = 0, i;
+    for (i = 0; i < a.length; i++) if (a[i] > mx) mx = a[i];
+    for (i = 0; i < a.length; i++) { a[i] = Math.exp(a[i] - mx); z += a[i]; }
+    for (i = 0; i < a.length; i++) a[i] /= z;
+    return a;
+  }
+
+  // Three heads attend from the newest token over the cache. The sink logit on the first token is
+  // the massive activation at position 0, scaled by the super weight.
+  function attend(M, cfg) {
+    var C = cacheOf(M, cfg), N = C.length, x = M.last, ln = M.lastNote, q = N - 1, sw = cfg.sw;
+    var A0 = new Float64Array(N), A1 = new Float64Array(N), A2 = new Float64Array(N);
+    for (var s = 0; s < N; s++) {
+      var tk = C[s], d = q - s;
+      if (tk.bos) { A0[s] = 3.0 * sw; A1[s] = 5.0 * sw; A2[s] = 3.6 * sw; continue; }
+      // local head: position only
+      A0[s] = 3.5 * rope(d) - Math.log1p(d);
+      // induction head: the previous-token head already wrote each token's predecessor into it
+      var m = 0;
+      if (tk !== x) {
+        if (tk.prevId === x.id) { m += 0.55; if (tk.prev2Id === x.prevId) m += 1.0; }
+        if (tk.prevPc >= 0 && !x.bos) m += 0.3 * simpc(tk.prevPc, x.pc) * (x.note ? 1 : 0.5);
+      }
+      A1[s] = 5.5 * m - 0.12 * Math.log1p(d);
+      // harmony head: notes consonant with the current pitch
+      A2[s] = tk.note ? 4.0 * hm(tk.pc - ln.pc) - 0.55 * Math.log1p(d) : (tk.id === REST ? -3 : 0);
+    }
+    softmaxInPlace(A0); softmaxInPlace(A1); softmaxInPlace(A2);
+    var sinkH = C.length && C[0].bos ? [A0[0], A1[0], A2[0]] : [0, 0, 0];
+    return { C: C, A: [A0, A1, A2], sinkH: sinkH };
+  }
+
+  function penalty(M, cfg, mu, pcC) {
+    var r = cfg.rep;
+    if (r <= 0) return 0;
+    var p = 0, w = M.win, age = 0;
+    for (var i = w.length - 1; i >= 0 && age < 24; i--, age++) {
+      var tk = w[i];
+      if (tk.id === mu) p += 0.32 * Math.exp(-age / 14);
+      if (tk.note && age < 6) p += 0.9 * Math.exp(-age / 2.2) * simpc(pcC, tk.pc);
+    }
+    if (mu === CH2ID.p) p += M.last && M.last.id === CH2ID.p ? 2 : 0.5;
+    return r * p;
+  }
+
+  // Each head's attention-weighted vote for every candidate next token, plus the sink's pull home.
+  function score(M, cfg, at) {
+    var C = at.C, N = C.length, x = M.last, ln = M.lastNote, G = headGains(M);
+    var A0 = at.A[0], A1 = at.A[1], A2 = at.A[2], gs = G[0] + G[1] + G[2];
+    var sink = (G[0] * at.sinkH[0] + G[1] * at.sinkH[1] + G[2] * at.sinkH[2]) / gs;
+    var logits = new Float64Array(NC);
+    var P = [new Float64Array(NC), new Float64Array(NC), new Float64Array(NC), new Float64Array(NC)];
+    var act = [];
+    for (var s = 0; s < N; s++) {
+      var tk = C[s];
+      if (!tk.bos && (A0[s] > 1e-4 || A1[s] > 1e-4 || A2[s] > 1e-4)) act.push(s);
+    }
+    for (var mu = 0; mu < NM; mu++) {
+      var pcC = mod1200(ln.pc + MOVE_PC[mu]), vL = 0, vI = 0, vH = 0;
+      for (var k = 0; k < act.length; k++) {
+        var j = act[k], t = C[j];
+        if (A0[j] > 1e-4) vL += A0[j] * kmel(sdiff(pcC, t.pc));
+        if (A1[j] > 1e-4) vI += A1[j] * ((t.id === mu ? 0.65 : 0) + (t.note ? 0.35 * simpc(pcC, t.pc) : 0));
+        if (A2[j] > 1e-4 && t.note) vH += A2[j] * hm(pcC - t.pc);
+      }
+      var Lc = MOVES[mu][1];
+      P[0][mu] = G[0] * vL; P[1][mu] = G[1] * vI; P[2][mu] = G[2] * vH;
+      P[3][mu] = G[3] * sink * homeVote(pcC, [ln.L[0] + Lc[0], ln.L[1] + Lc[1], ln.L[2] + Lc[2]], ln.L);
+      logits[mu] = P[0][mu] + P[1][mu] + P[2][mu] + P[3][mu] - 0.05 * MOVE_TH[mu] - penalty(M, cfg, mu, pcC);
+    }
+    // A rest is what the sink's value says: when attention has nowhere to go, say nothing.
+    var vIr = 0, best = -Infinity;
+    for (s = 0; s < N; s++) if (C[s].id === REST) vIr += A1[s];
+    for (mu = 0; mu < NM; mu++) if (logits[mu] > best) best = logits[mu];
+    P[1][REST] = G[1] * 0.8 * vIr;
+    P[3][REST] = 7 * sink;
+    var phrase = 6.5 + 2.5 * Math.sin(2 * Math.PI * M.n / 685.4 + 2.1);
+    logits[REST] = best + P[1][REST] + 7 * (sink - 0.33) + 0.55 * Math.max(0, M.nsr - phrase) -
+      (x.id === REST ? 2 : 0) - (x.bos ? 9 : 0) - 1.0;
+    return { logits: logits, P: P, G: G, sink: sink };
+  }
+
+  function probs(logits, T) {
+    var p = new Float64Array(NC), i, bi = 0;
+    if (T < 0.02) {
+      for (i = 1; i < NC; i++) if (logits[i] > logits[bi]) bi = i;
+      p[bi] = 1;
+      return p;
+    }
+    for (i = 0; i < NC; i++) p[i] = logits[i] / T;
+    return softmaxInPlace(p);
+  }
+
+  function finish(M, cfg, at, sc, id, p, forced) {
+    var x = M.last, tok = makeTok(M, id), C = at.C, N = C.length, G = sc.G, gs = G[0] + G[1] + G[2], s, h, i;
+    // what each head looked at, for drawing
+    var att = [];
+    for (h = 0; h < 3; h++) {
+      var Ah = at.A[h], idx = [];
+      for (s = 0; s < N; s++) if (Ah[s] > 0.025) idx.push(s);
+      idx.sort(function (a, b) { return Ah[b] - Ah[a]; });
+      for (i = 0; i < Math.min(6, idx.length); i++) att.push([C[idx[i]].pos, Ah[idx[i]], h]);
+    }
+    tok.att = att;
+    // ghosts: the notes that received the most attention, heard again
+    var R = [];
+    for (s = 0; s < N; s++) {
+      var c0 = C[s];
+      if (c0.bos || !c0.note || c0 === x) continue;
+      var r = (G[0] * at.A[0][s] + G[1] * at.A[1][s] + G[2] * at.A[2][s]) / gs;
+      if (r > 0.06) R.push([s, r]);
+    }
+    R.sort(function (a, b) { return b[1] - a[1]; });
+    tok.ghosts = R.slice(0, 4).map(function (e) {
+      var g = C[e[0]], cons = tok.note ? 0.35 + 0.65 * hm(g.pc - tok.pc) : 0.8;
+      return [g.pos, Math.pow(Math.min(1, 1.5 * e[1]), 0.7) * cons, g.ab, tok.pos - g.pos, g.pc];
+    });
+    var order = [];
+    for (i = 0; i < NC; i++) order.push(i);
+    order.sort(function (a, b) { return p[b] - p[a]; });
+    tok.top = order.slice(0, 6).map(function (k) { return [k, p[k]]; });
+    var c = [0, 1, 2, 3].map(function (k) { return Math.max(0, sc.P[k][id]); });
+    var tot = c[0] + c[1] + c[2] + c[3] + 1e-9;
+    tok.share = c.map(function (v) { return v / tot; });
+    for (h = 0; h < 3; h++) M.fat[h] += (tok.share[h] - M.fat[h]) / 14;
+    var ent = 0;
+    for (i = 0; i < NC; i++) if (p[i] > 1e-12) ent -= p[i] * Math.log(p[i]);
+    ent /= Math.log(NC);
+    tok.ent = ent; tok.prob = p[id]; tok.sink = sc.sink; tok.prefill = !!forced;
+    var sur = -Math.log(Math.max(1e-6, p[id]));
+    if (tok.note) {
+      tok.vel = clamp(0.4 + 0.42 * p[id] + (M.nsr === 0 ? 0.12 : 0), 0.3, 1);
+      tok.bright = clamp(0.16 + 0.17 * sur, 0.14, 0.95);
+      tok.ring = clamp(2.1 + 2.8 * (1050 - tok.ab) / 2800, 1.6, 5.4);
+      var phr = 6.5 + 2.5 * Math.sin(2 * Math.PI * M.n / 685.4 + 2.1);
+      tok.ioi = 0.7 * Math.exp(2.2 * (ent - 0.42)) * (tok.share[1] > 0.45 ? 0.8 : 1) *
+        (1 + 0.12 * Math.max(0, M.nsr - phr + 2)) * (1 + 0.12 * Math.sin(2 * Math.PI * M.n / 1794.4 + 1.3));
+      tok.ioi = clamp(tok.ioi, 0.3, 3);
+      M.nsr++; M.notes++;
+      if (!tok.L[0] && !tok.L[1] && !tok.L[2]) M.home++;
+    } else {
+      tok.ioi = clamp(0.8 + 3.2 * sc.sink + 0.8 * ent, 0.6, 5.5);
+      M.nsr = 0;
+    }
+    pushTok(M, tok, cfg);
+    return tok;
+  }
+
+  // The dice: a hash of the prompt, the token count and the last two tokens. Nothing comes from outside,
+  // so the same prompt always plays the same piece. (n times the golden ratio mod 1 was the first try:
+  // it never repeats, but it is so evenly spread that the picks came out nearly periodic.)
+  function dice(M) {
+    var h = Math.imul((M.n + 1) ^ M.seedInt, 0x9E3779B1) ^ Math.imul(M.last.id + 1, 0x85EBCA6B) ^ Math.imul(M.last.prevId + 2, 0xC2B2AE35);
+    h ^= h >>> 16; h = Math.imul(h, 0x85EBCA6B); h ^= h >>> 13; h = Math.imul(h, 0xC2B2AE35); h ^= h >>> 16;
+    return (h >>> 0) / 4294967296;
+  }
+
+  // Prefill: read a prompt token (teacher forced). Decode: sample the next one.
+  function feed(M, id, cfg) {
+    if (id === BOS || !M.last) {
+      var b = makeTok(M, BOS);
+      b.att = []; b.ghosts = []; b.top = []; b.share = [0, 0, 0, 1]; b.sink = 1; b.ent = 0; b.prob = 1;
+      b.prefill = true; b.ioi = 0.9;
+      pushTok(M, b, cfg);
+      return b;
+    }
+    var at = attend(M, cfg), sc = score(M, cfg, at);
+    return finish(M, cfg, at, sc, id, probs(sc.logits, cfg.temp), true);
+  }
+  function step(M, cfg) {
+    var at = attend(M, cfg), sc = score(M, cfg, at), p = probs(sc.logits, cfg.temp), id = NC - 1, u = dice(M);
+    for (var i = 0, acc = 0; i < NC; i++) { acc += p[i]; if (u < acc) { id = i; break; } }
+    return finish(M, cfg, at, sc, id, p, false);
+  }
+
+  function packTok(t) { return [t.pos, t.id, t.prevId, t.prev2Id, Math.round(t.prevPc * 100) / 100, t.L, Math.round((t.ab - t.pc) / 1200), t.prefill ? 1 : 0]; }
+  function unpackTok(a) {
+    var t = { pos: a[0], id: a[1], prevId: a[2], prev2Id: a[3], prevPc: a[4], L: a[5], bos: a[1] === BOS, note: a[1] < NM, prefill: !!a[7] };
+    t.pc = pcOfL(t.L); t.ab = t.pc + 1200 * a[6]; t.ch = idChar(t.id);
+    return t;
+  }
+  function saveModel(M) {
+    return { v: 1, prompt: M.prompt, n: M.n, ev: M.evicted, fat: M.fat, nsr: M.nsr, home: M.home, notes: M.notes,
+      sinks: M.sinks.map(packTok), win: M.win.map(packTok), last: M.last.pos, lastNote: M.lastNote.pos };
+  }
+  function loadModel(o) {
+    var M = newModel(o.prompt);
+    M.n = o.n; M.evicted = o.ev; M.fat = o.fat; M.nsr = o.nsr; M.home = o.home; M.notes = o.notes;
+    M.sinks = o.sinks.map(unpackTok); M.win = o.win.map(unpackTok);
+    var all = M.sinks.concat(M.win);
+    all.forEach(function (t) { if (t.pos === o.last) M.last = t; if (t.pos === o.lastNote) M.lastNote = t; });
+    if (!M.last) M.last = all[all.length - 1];
+    if (!M.lastNote) for (var i = all.length - 1; i >= 0; i--) if (all[i].note || all[i].bos) { M.lastNote = all[i]; break; }
+    return M;
+  }
+  /*MODEL_END*/
+
+  // ---------------------------------------------------------------- page
+
+  var $ = function (id) { return document.getElementById(id); };
+  var DEFAULT_PROMPT = 'dig into yoself n see wat u can find under all dat interdependence';
+  var STORE = 'attention-sink-v1';
+  var ui = {
+    prompt: $('prompt'), play: $('play'), restart: $('restart'), copy: $('copy'), hint: $('hint'),
+    cache: $('cache'), lat: $('lat'), status: $('status'), stream: $('stream'), cands: $('cands'), who: $('who'), where: $('where'),
+    temp: $('temp'), ctxw: $('ctxw'), rep: $('rep'), sw: $('sw'), keep: $('keep'), tempo: $('tempo'), vol: $('vol'), ref: $('ref'),
+    tempOut: $('tempOut'), ctxOut: $('ctxOut'), repOut: $('repOut'), swOut: $('swOut'), tempoOut: $('tempoOut'), volOut: $('volOut')
+  };
+  var css = getComputedStyle(document.documentElement);
+  var COL = {};
+  ['ink', 'panel', 'line', 'paper', 'muted', 'faint', 'sink', 'loc', 'ind', 'harm'].forEach(function (k) { COL[k] = css.getPropertyValue('--' + k).trim(); });
+  var MONO = css.getPropertyValue('--mono').trim();
+  var HEADCOL = [COL.loc, COL.ind, COL.harm];
+  var reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  var cfg = { temp: 0.85, W: 64, rep: 1, sw: 1, keep: true };
+  var tempo = 1, volume = 0.6, refHz = 432;
+  var M = null, E = null, S = null, hist = [], queue = [], playing = false, started = false, previewOnly = false;
+  var textLog = [], shown = null, sinkVis = 0.4, latView = null;
+
+  function lsGet() { try { return JSON.parse(localStorage.getItem(STORE) || 'null'); } catch (e) { return null; } }
+  function lsSet(v) { try { localStorage.setItem(STORE, JSON.stringify(v)); } catch (e) {} }
+  function save() {
+    if (!M || previewOnly || !M.last) return;
+    lsSet({ model: saveModel(M), cfg: cfg, tempo: tempo, volume: volume, ref: refHz,
+      text: textLog.slice(-400).map(function (e) { return (e.p ? '1' : '0') + e.c; }).join('\n') });
+  }
+
+  // ---------------------------------------------------------------- sound
+
+  function makeCtx() {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    try { return new AC({ latencyHint: 'playback' }); } catch (e) { return new AC(); }
+  }
+  function makeIR(ctx, secs) {
+    var sr = ctx.sampleRate, len = Math.floor(sr * secs), buf = ctx.createBuffer(2, len, sr), pre = Math.floor(sr * 0.016);
+    for (var ch = 0; ch < 2; ch++) {
+      var d = buf.getChannelData(ch), s = ch ? 0x2545f491 : 0x7f4a7c15, y = 0;
+      for (var i = 0; i < len; i++) {
+        s ^= s << 13; s ^= s >>> 17; s ^= s << 5;
+        var w = ((s >>> 0) / 4294967296) * 2 - 1, t = i / len;
+        y += (0.8 * Math.pow(1 - t, 2.4) + 0.05) * (w - y);
+        d[i] = i < pre ? 0 : y * Math.exp(-6.4 * t);
+      }
+    }
+    return buf;
+  }
+  function makeEngine(ctx) {
+    var e = { ctx: ctx };
+    e.master = ctx.createGain(); e.master.gain.value = 0;
+    var hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 30; hp.Q.value = 0.7;
+    var comp = ctx.createDynamicsCompressor();
+    comp.threshold.value = -20; comp.knee.value = 14; comp.ratio.value = 3; comp.attack.value = 0.015; comp.release.value = 0.3;
+    var lim = ctx.createDynamicsCompressor();
+    lim.threshold.value = -4; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.002; lim.release.value = 0.12;
+    e.vol = ctx.createGain(); e.vol.gain.value = volGain();
+    e.master.connect(hp); hp.connect(comp); comp.connect(lim); lim.connect(e.vol); e.vol.connect(ctx.destination);
+    e.verb = ctx.createConvolver(); e.verb.buffer = makeIR(ctx, 4.6);
+    var verbOut = ctx.createGain(); verbOut.gain.value = 1.1;
+    e.verb.connect(verbOut); verbOut.connect(e.master);
+    return e;
+  }
+  function makeSession(e) {
+    var ctx = e.ctx, s = { e: e, ghosts: new Map(), t0: ctx.currentTime };
+    s.dry = ctx.createGain(); s.dry.connect(e.master);
+    s.wet = ctx.createGain(); s.wet.connect(e.verb);
+    function bus(sendAmt) {
+      var b = ctx.createGain(), send = ctx.createGain();
+      send.gain.value = sendAmt;
+      b.connect(s.dry); b.connect(send); send.connect(s.wet);
+      return b;
+    }
+    s.noteBus = bus(0.34); s.ghostBus = bus(0.6); s.droneBus = bus(0.22);
+    var real = new Float32Array([0, 1, 0.62, 0.38, 0.26, 0.14, 0.09, 0.05]), imag = new Float32Array(real.length);
+    s.dA = ctx.createOscillator(); s.dA.type = 'sine'; s.dA.frequency.value = refHz / 8;
+    s.dB = ctx.createOscillator(); s.dB.setPeriodicWave(ctx.createPeriodicWave(real, imag)); s.dB.frequency.value = refHz / 4;
+    var gA = ctx.createGain(); gA.gain.value = 0.35;
+    s.dLP = ctx.createBiquadFilter(); s.dLP.type = 'lowpass'; s.dLP.frequency.value = 400; s.dLP.Q.value = 0.5;
+    s.dG = ctx.createGain(); s.dG.gain.value = 0;
+    s.dA.connect(gA); gA.connect(s.dLP); s.dB.connect(s.dLP); s.dLP.connect(s.dG); s.dG.connect(s.droneBus);
+    s.dA.start(); s.dB.start();
+    return s;
+  }
+  function endSession(s) {
+    if (!s) return;
+    var t = s.e.ctx.currentTime;
+    [s.dry.gain, s.wet.gain].forEach(function (g) { g.cancelScheduledValues(t); g.setTargetAtTime(0, t, 0.25); });
+    try { s.dA.stop(t + 1.6); s.dB.stop(t + 1.6); } catch (e) {}
+    s.ghosts.forEach(function (g) { try { g.o[0].stop(t + 1.6); g.o[1].stop(t + 1.6); } catch (e) {} });
+    setTimeout(function () { try { s.dry.disconnect(); s.wet.disconnect(); } catch (e) {} }, 2200);
+  }
+  function hz(ab) { return refHz * Math.pow(2, ab / 1200); }
+  function volGain() { return 1.6 * volume * volume; }
+  function panOf(pc) { return 0.5 * Math.sin(2 * Math.PI * pc / 1200 + 0.6); }
+
+  function playNote(s, f, vel, bright, ring, pan, t) {
+    var ctx = s.e.ctx, lp = ctx.createBiquadFilter(), out = lp;
+    lp.type = 'lowpass'; lp.frequency.value = clamp(f * (2.5 + 6 * bright), 700, 9000); lp.Q.value = 0.4;
+    if (ctx.createStereoPanner) { var pn = ctx.createStereoPanner(); pn.pan.value = pan; lp.connect(pn); out = pn; }
+    out.connect(s.noteBus);
+    var loud = 0.12 * vel * Math.pow(f / 330, -0.3);
+    var parts = [[1, 1, 1], [2, 0.08 + 0.3 * bright, 0.5], [3, 0.14 * bright, 0.32], [4, 0.06 * bright, 0.2]];
+    var first = null;
+    parts.forEach(function (pt) {
+      if (f * pt[0] > 11000 || pt[1] < 0.004) return;
+      var o = ctx.createOscillator(), g = ctx.createGain(), ta = t + 0.005 + 0.003 * pt[0];
+      o.frequency.value = f * pt[0];
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(loud * pt[1], ta);
+      g.gain.setTargetAtTime(0, ta, ring * pt[2] / 5);
+      o.connect(g); g.connect(lp);
+      o.start(t); o.stop(t + ring * pt[2] + 0.3);
+      o.onended = function () { try { g.disconnect(); } catch (e) {} };
+      if (!first) first = o;
+    });
+    if (first) first.addEventListener('ended', function () { try { lp.disconnect(); out.disconnect(); } catch (e) {} });
+  }
+  function makeGhost(s, gh, t) {
+    var ctx = s.e.ctx, f = hz(gh[2]);
+    if (f > 620) f /= 2;
+    var o1 = ctx.createOscillator(), o2 = ctx.createOscillator(), g2 = ctx.createGain(), lp = ctx.createBiquadFilter(), g = ctx.createGain(), out = g;
+    o1.frequency.value = f; o2.frequency.value = 2 * f; g2.gain.value = 0.22;
+    lp.type = 'lowpass'; lp.frequency.value = 500 + 1700 * Math.exp(-gh[3] / 28); lp.Q.value = 0.3;
+    g.gain.setValueAtTime(0, t); g.gain.setTargetAtTime(0.05 * gh[1], t, 0.4);
+    o1.connect(lp); o2.connect(g2); g2.connect(lp); lp.connect(g);
+    if (ctx.createStereoPanner) { var pn = ctx.createStereoPanner(); pn.pan.value = panOf(gh[4]); g.connect(pn); out = pn; }
+    out.connect(s.ghostBus);
+    o1.start(t); o2.start(t);
+    o1.onended = function () { try { out.disconnect(); g.disconnect(); lp.disconnect(); g2.disconnect(); } catch (e) {} };
+    return { o: [o1, o2], g: g };
+  }
+  function scheduleTok(s, tok) {
+    var t = tok.t, ctx = s.e.ctx;
+    if (tok.note) {
+      var vel = tok.prefill ? 0.3 + 0.25 * (1 - tok.prob) : tok.vel;
+      var bright = tok.prefill ? clamp(0.2 + 0.15 * -Math.log(Math.max(1e-6, tok.prob)), 0.2, 0.9) : tok.bright;
+      playNote(s, hz(tok.ab), vel, bright, tok.prefill ? 1.5 : tok.ring, panOf(tok.pc), t);
+    }
+    if (tok.bos) playNote(s, hz(-1200), 0.6, 0.18, 5.5, 0, t);
+    var want = new Map();
+    (tok.ghosts || []).forEach(function (g) { want.set(g[0], g); });
+    s.ghosts.forEach(function (gv, pos) {
+      if (!want.has(pos)) {
+        gv.g.gain.setTargetAtTime(0, t, 0.9);
+        gv.o.forEach(function (o) { try { o.stop(t + 6); } catch (e) {} });
+        s.ghosts.delete(pos);
+      }
+    });
+    want.forEach(function (g, pos) {
+      var gv = s.ghosts.get(pos);
+      if (gv) gv.g.gain.setTargetAtTime(0.05 * g[1], t, 0.5);
+      else s.ghosts.set(pos, makeGhost(s, g, t));
+    });
+    var bosIn = M && cacheOf(M, cfg).some(function (c) { return c.bos; });
+    var sink = tok.sink == null ? 0.4 : tok.sink;
+    s.dG.gain.setTargetAtTime(bosIn ? cfg.sw * (0.012 + 0.11 * sink) : 0, t, 1.3);
+    s.dLP.frequency.setTargetAtTime(260 + 1100 * sink, t, 1.6);
+  }
+
+  // ---------------------------------------------------------------- run
+
+  function tick() {
+    if (!playing || !E || !S) return;
+    var now = E.ctx.currentTime, horizon = document.hidden ? 3 : 1.6, guard = 0;
+    if (S.nextT < now + 0.03) S.nextT = now + 0.06;
+    while (S.nextT < now + horizon && guard++ < 64) {
+      var tok;
+      if (queue.length) {
+        tok = feed(M, queue.shift(), cfg);
+        if (!tok.bos) tok.ioi = (tok.note ? 1 : 1.5) * clamp(4.5 / Math.max(1, M.prompt.length), 0.05, 0.11);
+      } else {
+        tok = step(M, cfg);
+        tok.ioi /= tempo;
+      }
+      tok.t = S.nextT;
+      scheduleTok(S, tok);
+      hist.push(tok);
+      if (hist.length > 800) hist.splice(0, hist.length - 800);
+      S.nextT += tok.ioi;
+      if (!queue.length && tok.pos % 16 === 0) save();
+    }
+  }
+
+  function startFresh(prompt) {
+    M = newModel(prompt);
+    queue = [BOS].concat(promptIds(prompt));
+    hist = []; textLog = []; shown = null; previewOnly = false;
+  }
+  function preview(prompt) {
+    var keepTempo = tempo;
+    M = newModel(prompt);
+    var all = [feed(M, BOS, cfg)];
+    promptIds(prompt).forEach(function (id) { all.push(feed(M, id, cfg)); });
+    for (var i = 0; i < 40; i++) all.push(step(M, cfg));
+    hist = M.sinks.concat(M.win).map(function (t) { t.t = -1; return t; });
+    textLog = all.filter(function (t) { return !t.bos; }).map(function (t) { return { c: t.ch, p: t.prefill }; });
+    shown = null; previewOnly = true; tempo = keepTempo;
+    ui.play.textContent = 'Play';
+  }
+  function restore(saved) {
+    M = loadModel(saved.model);
+    hist = M.sinks.concat(M.win).map(function (t) { t.t = -1; return t; });
+    textLog = (saved.text || '').split('\n').filter(Boolean).map(function (s) { return { c: s.slice(1), p: s.charAt(0) === '1' }; });
+    queue = []; shown = null; previewOnly = false;
+    ui.play.textContent = 'Resume';
+    ui.hint.textContent = 'Picking up at token ' + M.n.toLocaleString() + '.';
+  }
+
+  async function play() {
+    if (!E) {
+      try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
+      E = makeEngine(makeCtx());
+    }
+    if (!started) {
+      if (previewOnly || !M) startFresh(ui.prompt.value);
+      S = makeSession(E);
+      S.nextT = E.ctx.currentTime + 0.15;
+      started = true;
+    }
+    try { await E.ctx.resume(); } catch (e) {}
+    var t = E.ctx.currentTime;
+    E.master.gain.cancelScheduledValues(t);
+    E.master.gain.setTargetAtTime(1, t, 0.25);
+    playing = true;
+    ui.play.textContent = 'Pause';
+    ui.hint.textContent = '';
+    tick();
+  }
+  function pause() {
+    playing = false;
+    ui.play.textContent = 'Play';
+    if (E) {
+      var c = E.ctx, t = c.currentTime;
+      E.master.gain.cancelScheduledValues(t);
+      E.master.gain.setTargetAtTime(0, t, 0.12);
+      setTimeout(function () { if (!playing) c.suspend(); }, 700);
+    }
+    save();
+  }
+  function startOver() {
+    var p = ui.prompt.value;
+    if (S) endSession(S);
+    S = null; started = false;
+    startFresh(p);
+    setHash(p);
+    play();
+  }
+
+  // ---------------------------------------------------------------- drawing
+
+  function sizeCanvas(cv) {
+    var dpr = Math.min(2, window.devicePixelRatio || 1), w = cv.clientWidth, h = cv.clientHeight;
+    if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+    var g = cv.getContext('2d');
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { g: g, w: w, h: h };
+  }
+  function currentIndex(now) {
+    for (var i = hist.length - 1; i >= 0; i--) if (hist[i].t <= now) return i;
+    return -1;
+  }
+
+  function drawCache(ci, now) {
+    var c = sizeCanvas(ui.cache), g = c.g, w = c.w, h = c.h;
+    g.clearRect(0, 0, w, h);
+    var cur = ci >= 0 ? hist[ci] : null, narrow = w < 560;
+    var padL = 12, padR = 14, topY = 34, botY = h - 34;
+    var sinkW = narrow ? 70 : 104, gapW = narrow ? 46 : 70;
+    var x0 = padL + sinkW + gapW, x1 = w - padR, Wn = cfg.W, slot = (x1 - x0) / Wn;
+    function Y(ab) { return topY + (1300 - ab) / 3900 * (botY - topY); }
+    g.font = '10px ' + MONO; g.textBaseline = 'alphabetic';
+    for (var o = -2; o <= 1; o++) {
+      var yy = Math.round(Y(o * 1200)) + 0.5;
+      g.strokeStyle = COL.line; g.lineWidth = 1; g.beginPath(); g.moveTo(padL, yy); g.lineTo(x1, yy); g.stroke();
+      g.fillStyle = COL.faint; g.fillText('A' + (4 + o), x1 - 18, yy - 4);
+    }
+    g.fillStyle = COL.muted; g.font = '600 10px ' + MONO;
+    g.fillText('SINKS', padL, 16);
+    g.fillText(narrow ? 'OUT' : 'EVICTED', padL + sinkW + 8, 16);
+    g.textAlign = 'right'; g.fillText('WINDOW \u00b7 ' + Wn, x1, 16); g.textAlign = 'left';
+    if (!cur) {
+      g.fillStyle = COL.faint; g.font = '13px ' + MONO;
+      g.fillText('press Play', x0, (topY + botY) / 2);
+      return;
+    }
+    var evicted = Math.max(0, cur.pos + 1 - (cfg.keep ? 4 : 0) - Wn);
+    g.font = '11px ' + MONO; g.fillStyle = COL.faint;
+    g.fillText('⋯', padL + sinkW + gapW / 2 - 6, (topY + botY) / 2);
+    g.fillText(evicted.toLocaleString(), padL + sinkW + 8, 30);
+
+    // slide new tokens in from the right
+    var age = now - cur.t, shift = 0;
+    if (!reduceMotion && cur.t > 0 && age < 0.22) { var k = age / 0.22; shift = slot * (1 - (1 - (1 - k) * (1 - k))); }
+    var pos2 = new Map(), notes = [];
+    var sinksIn = cfg.keep || cur.pos - 3 < Wn;
+    var sinkToks = M ? M.sinks : [];
+    for (var i = 0; i < sinkToks.length; i++) {
+      var st = sinkToks[i];
+      if (st.pos > cur.pos) continue;
+      var alive = cfg.keep || st.pos > cur.pos - Wn;
+      pos2.set(st.pos, { t: st, x: padL + (i + 0.5) * sinkW / 4, y: st.note || st.bos ? Y(st.ab) : botY, alive: alive });
+    }
+    for (var j = ci; j >= 0; j--) {
+      var tk = hist[j];
+      if (tk.pos < 4) continue;
+      var d = cur.pos - tk.pos;
+      if (d >= Wn) break;
+      var p = { t: tk, x: x0 + (Wn - 1 - d + 0.5) * slot + shift, y: tk.note ? Y(tk.ab) : botY, alive: true };
+      pos2.set(tk.pos, p);
+      if (tk.note) notes.push(p);
+    }
+
+    // melodic contour
+    g.strokeStyle = COL.line; g.lineWidth = 1; g.beginPath();
+    notes.forEach(function (p, n) { if (n) g.lineTo(p.x, p.y); else g.moveTo(p.x, p.y); });
+    g.stroke();
+
+    // attention arcs from the newest token
+    var cp = pos2.get(cur.pos), sinkW8 = 0;
+    (cur.att || []).forEach(function (a) {
+      var tp = pos2.get(a[0]);
+      if (!tp || !cp || !tp.alive) return;
+      var isSink = tp.t.bos;
+      if (isSink) sinkW8 += a[1] / 3;
+      var x1a = cp.x, y1a = cp.y, x2 = tp.x, y2 = tp.y;
+      var lift = 18 + 0.28 * Math.abs(x1a - x2) + a[2] * 8;
+      var cy = Math.max(6, Math.min(y1a, y2) - lift);
+      g.strokeStyle = isSink ? COL.sink : HEADCOL[a[2]];
+      g.globalAlpha = clamp(0.12 + 0.85 * a[1], 0.1, 0.95) * (tp.t.note || isSink ? 1 : 0.35);
+      g.lineWidth = 0.6 + 4.5 * a[1];
+      g.beginPath(); g.moveTo(x1a, y1a); g.quadraticCurveTo((x1a + x2) / 2, cy, x2, y2); g.stroke();
+    });
+    g.globalAlpha = 1;
+
+    // ghosts: notes being heard again
+    (cur.ghosts || []).forEach(function (gh) {
+      var tp = pos2.get(gh[0]);
+      if (!tp) return;
+      g.fillStyle = COL.paper; g.globalAlpha = 0.12 + 0.3 * gh[1];
+      g.beginPath(); g.arc(tp.x, tp.y, 5 + 9 * gh[1], 0, 7); g.fill();
+    });
+    g.globalAlpha = 1;
+
+    // tokens
+    var showLetters = slot >= 7.5;
+    g.font = '11px ' + MONO; g.textAlign = 'center';
+    pos2.forEach(function (p) {
+      var t = p.t;
+      g.globalAlpha = p.alive ? 1 : 0.25;
+      if (t.bos) {
+        sinkVis += ((cur.sink == null ? 0.4 : cur.sink) - sinkVis) * 0.08;
+        var r = 6 + 16 * (p.alive ? sinkVis * cfg.sw : 0);
+        var grd = g.createRadialGradient(p.x, p.y, 1, p.x, p.y, r);
+        grd.addColorStop(0, COL.sink); grd.addColorStop(1, 'rgba(0,0,0,0)');
+        g.fillStyle = grd; g.beginPath(); g.arc(p.x, p.y, r, 0, 7); g.fill();
+        g.fillStyle = COL.sink; g.beginPath(); g.arc(p.x, p.y, 4, 0, 7); g.fill();
+        g.fillStyle = COL.sink; g.fillText('<s>', p.x, h - 12);
+      } else if (t.note) {
+        g.fillStyle = t.prefill ? COL.muted : COL.paper;
+        var rr = slot < 5 && t.pos >= 4 ? 1.6 : 1.8 + 2.4 * (t.prefill ? 0.4 : (t.vel || 0.5));
+        g.beginPath(); g.arc(p.x, p.y, rr, 0, 7); g.fill();
+      } else {
+        g.fillStyle = COL.faint; g.fillRect(p.x - 1.5, botY + 2, 3, 3);
+      }
+      if ((showLetters || t.pos < 4) && !t.bos && t.ch) {
+        g.fillStyle = t.prefill ? COL.faint : COL.muted;
+        g.fillText(t.ch === ' ' ? '·' : t.ch, p.x, h - 12);
+      }
+    });
+    g.globalAlpha = 1; g.textAlign = 'left';
+    if (cp) {
+      g.strokeStyle = COL.sink; g.lineWidth = 1.5;
+      g.beginPath(); g.arc(cp.x, cp.y, 7, 0, 7); g.stroke();
+    }
+    if (!sinksIn || !cfg.keep) {
+      g.fillStyle = COL.faint; g.font = '10px ' + MONO;
+      g.fillText(sinksIn ? 'not kept' : 'evicted', padL, botY + 14);
+    }
+  }
+
+  // lattice view: x along fifths (3), up-right for thirds (5), down-right for sevenths (7)
+  function proj(L) { return [L[0] + 0.5 * L[1] + 0.28 * L[2], -0.87 * L[1] + 0.52 * L[2]]; }
+  function drawLattice(ci) {
+    var c = sizeCanvas(ui.lat), g = c.g, w = c.w, h = c.h;
+    g.clearRect(0, 0, w, h);
+    if (ci < 0) return;
+    var pts = [];
+    for (var i = ci; i >= 0 && pts.length < 60; i--) if (hist[i].note) pts.unshift(hist[i]);
+    if (!pts.length) return;
+    var cell = 24, recent = pts.slice(-16), mx = 0, my = 0;
+    recent.forEach(function (t) { var p = proj(t.L); mx += p[0]; my += p[1]; });
+    mx /= recent.length; my /= recent.length;
+    if (!latView || reduceMotion) latView = [mx, my];
+    latView[0] += (mx - latView[0]) * 0.06; latView[1] += (my - latView[1]) * 0.06;
+    function X(p) { return w / 2 + (p[0] - latView[0]) * cell; }
+    function Yp(p) { return h / 2 + (p[1] - latView[1]) * cell; }
+    var a0 = Math.round(latView[0]), b0 = Math.round(-latView[1] / 0.87);
+    g.fillStyle = COL.line;
+    for (var b = b0 - 5; b <= b0 + 5; b++) for (var a = a0 - 12; a <= a0 + 12; a++) {
+      var q = proj([a, b, 0]), xx = X(q), yy = Yp(q);
+      if (xx > -4 && xx < w + 4 && yy > -4 && yy < h + 4) { g.beginPath(); g.arc(xx, yy, 1.4, 0, 7); g.fill(); }
+    }
+    var home = proj([0, 0, 0]), hx = X(home), hy = Yp(home);
+    g.strokeStyle = COL.sink; g.lineWidth = 1.5;
+    if (hx > 8 && hx < w - 8 && hy > 8 && hy < h - 8) { g.beginPath(); g.arc(hx, hy, 6, 0, 7); g.stroke(); }
+    else {
+      var ang = Math.atan2(hy - h / 2, hx - w / 2), ex = w / 2 + Math.cos(ang) * (w / 2 - 14), ey = h / 2 + Math.sin(ang) * (h / 2 - 12);
+      g.fillStyle = COL.sink; g.font = '10px ' + MONO; g.textAlign = 'center';
+      g.fillText('home', clamp(ex, 20, w - 20), clamp(ey + 3, 12, h - 4)); g.textAlign = 'left';
+    }
+    g.lineWidth = 1.2;
+    for (i = 1; i < pts.length; i++) {
+      var p0 = proj(pts[i - 1].L), p1 = proj(pts[i].L);
+      g.strokeStyle = COL.paper; g.globalAlpha = 0.08 + 0.6 * (i / pts.length);
+      g.beginPath(); g.moveTo(X(p0), Yp(p0)); g.lineTo(X(p1), Yp(p1)); g.stroke();
+    }
+    g.globalAlpha = 1;
+    var last = pts[pts.length - 1], pl = proj(last.L), c7 = last.L[2];
+    g.fillStyle = c7 > 0 ? COL.ind : c7 < 0 ? COL.loc : COL.paper;
+    g.beginPath(); g.arc(X(pl), Yp(pl), 4.5, 0, 7); g.fill();
+  }
+
+  // ---------------------------------------------------------------- readouts
+
+  var SUP = { '-': '⁻', '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹' };
+  function sup(n) { return String(n).split('').map(function (ch) { return SUP[ch] || ch; }).join(''); }
+  function latLabel(L) {
+    var out = [];
+    [3, 5, 7].forEach(function (p, i) { if (L[i]) out.push(p + (L[i] === 1 ? '' : sup(L[i]))); });
+    return out.length ? out.join('·') : '1';
+  }
+  function ratioOf(L) {
+    if (typeof BigInt === 'undefined') return '';
+    var num = BigInt(1), den = BigInt(1), two = BigInt(2);
+    [3, 5, 7].forEach(function (p, i) {
+      var e = L[i], bp = BigInt(p);
+      for (var k = 0; k < Math.abs(e); k++) { if (e > 0) num *= bp; else den *= bp; }
+    });
+    while (num >= two * den) den *= two;
+    while (num < den) num *= two;
+    var s = num + '/' + den;
+    return s.length > 22 ? '' : s;
+  }
+  var COMMAS = {
+    '4,-1,0': 'syntonic comma', '12,0,0': 'Pythagorean comma', '0,-3,0': 'lesser diesis', '-2,0,-1': 'septimal comma',
+    '8,1,0': 'schisma', '-4,-2,0': 'diaschisma', '2,2,-1': 'septimal kleisma', '4,-4,0': 'greater diesis',
+    '2,-1,-1': 'septimal diesis', '0,2,-2': 'jubilisma', '-1,0,2': 'slendro diesis', '2,-3,1': 'starling comma',
+    '-1,5,0': 'magic comma', '1,0,3': 'gamelisma'
+  };
+  function commaName(L) {
+    return COMMAS[L.join(',')] || COMMAS[L.map(function (v) { return -v; }).join(',')] || '';
+  }
+  function fmtCents(c) { return (c >= 0 ? '+' : '−') + Math.abs(c).toFixed(1) + '¢'; }
+  function moveLabel(id) { return id === REST ? 'rest' : id === BOS ? '<s>' : MOVES[id][0] + '  ' + MOVES[id][2]; }
+
+  function rowHTML(name, val, on, color) {
+    var pct = Math.round(val * 100);
+    return '<div class="row' + (on ? ' on' : '') + '"><span>' + name + '</span><span class="m"><b style="width:' + Math.max(1, pct) +
+      '%' + (color ? ';background:' + color : '') + '"></b></span><span>' + pct + '%</span></div>';
+  }
+  function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+  function advanceText(ci) {
+    var cur = hist[ci];
+    var from = shown && shown.pos < cur.pos ? shown.pos : -1;
+    for (var i = 0; i <= ci; i++) {
+      var t = hist[i];
+      if (t.pos > from && t.pos <= cur.pos && !t.bos && t.t >= 0) textLog.push({ c: t.ch, p: t.prefill });
+    }
+    if (textLog.length > 600) textLog.splice(0, textLog.length - 600);
+  }
+  function renderStream() {
+    var seg = textLog.slice(-330), html = '', run = '', runP = null;
+    for (var i = 0; i < seg.length; i++) {
+      var e = seg[i], last = i === seg.length - 1;
+      if (last) {
+        if (run) html += '<span' + (runP ? ' class="p"' : '') + '>' + esc(run) + '</span>';
+        html += '<span class="cur">' + (e.c === ' ' ? '&nbsp;' : esc(e.c)) + '</span>';
+        run = '';
+        break;
+      }
+      if (runP !== null && e.p !== runP) { html += '<span' + (runP ? ' class="p"' : '') + '>' + esc(run) + '</span>'; run = ''; }
+      runP = e.p; run += e.c;
+    }
+    if (run) html += '<span' + (runP ? ' class="p"' : '') + '>' + esc(run) + '</span>';
+    ui.stream.innerHTML = '<div>' + html + '</div>';
+  }
+
+  function updateReadouts(ci) {
+    var cur = hist[ci];
+    var inCache = cacheOf(M, cfg).length;
+    var parts = ['<b>#' + cur.pos.toLocaleString() + '</b>',
+      'cache ' + (cfg.keep ? '4 + ' + Math.max(0, inCache - 4) : inCache),
+      Math.max(0, cur.pos + 1 - (cfg.keep ? 4 : 0) - cfg.W).toLocaleString() + ' evicted'];
+    if (cur.sink != null) parts.push('sink ' + Math.round(cur.sink * 100) + '%');
+    if (cur.ent != null && !cur.bos) parts.push('entropy ' + cur.ent.toFixed(2));
+    parts.push(cur.bos ? 'start' : cur.prefill ? 'reading the prompt' : 'writing');
+    ui.status.innerHTML = parts.join(' · ');
+    renderStream();
+
+    if (cur.top && cur.top.length) {
+      ui.cands.innerHTML = cur.top.map(function (e) {
+        var on = e[0] === cur.id;
+        return '<div class="row' + (on ? ' on' : '') + '"><span><em>' + esc(moveLabel(e[0])) + '</em></span><span class="m"><b style="width:' +
+          Math.max(1, Math.round(e[1] * 100)) + '%"></b></span><span>' + (e[1] * 100).toFixed(e[1] < 0.1 ? 1 : 0) + '%</span></div>';
+      }).join('') + (cur.prefill && !cur.bos ? '<div class="row"><span></span><span>prompt token, read not chosen</span><span></span></div>' : '');
+    } else ui.cands.innerHTML = '<div class="row"><span>' + (cur.bos ? '&lt;s&gt;' : '') + '</span><span>' + (cur.bos ? 'the first token, every time' : 'restored from memory') + '</span><span></span></div>';
+
+    var sh = cur.share || [0, 0, 0, 0];
+    var big = sh.indexOf(Math.max.apply(null, sh));
+    ui.who.innerHTML = rowHTML('local', sh[0], big === 0, COL.loc) + rowHTML('induction', sh[1], big === 1, COL.ind) +
+      rowHTML('harmony', sh[2], big === 2, COL.harm) + rowHTML('sink', sh[3], big === 3, COL.sink);
+
+    var ln = cur;
+    if (!ln.note) for (var i = ci; i >= 0; i--) if (hist[i].note || hist[i].bos) { ln = hist[i]; break; }
+    var L = ln.L || [0, 0, 0], off = sdiff(ln.pc || 0, 0), isHome = !L[0] && !L[1] && !L[2];
+    var line1 = '<b>' + latLabel(L) + '</b>' + (ratioOf(L) ? ' = ' + ratioOf(L) : '') + ' · ' + fmtCents(off) + ' from home';
+    var line2;
+    if (isHome) line2 = 'Exactly home.';
+    else if (Math.abs(off) < 70) line2 = 'Home, but off by ' + (commaName(L) ? 'a ' + commaName(L) : fmtCents(off)) + '.';
+    else line2 = (Math.abs(L[0]) + Math.abs(L[1]) + Math.abs(L[2])) + ' lattice steps from home.';
+    ui.where.innerHTML = line1 + '<br>' + line2 + ' Exact returns so far: ' + M.home.toLocaleString() + '.';
+  }
+
+  function frame() {
+    requestAnimationFrame(frame);
+    var now = E ? E.ctx.currentTime : 0;
+    var ci = currentIndex(started ? now : Infinity);
+    if (ci >= 0 && hist[ci] !== shown) {
+      if (hist[ci].t >= 0) advanceText(ci);
+      updateReadouts(ci);
+      shown = hist[ci];
+    }
+    drawCache(ci, now);
+    drawLattice(ci);
+  }
+
+  // ---------------------------------------------------------------- controls
+
+  function volWord(v) { return v < 0.2 ? 'barely' : v < 0.45 ? 'low' : v < 0.75 ? 'quiet' : 'present'; }
+  function readKnobs() {
+    cfg.temp = +ui.temp.value; cfg.W = +ui.ctxw.value; cfg.rep = +ui.rep.value; cfg.sw = +ui.sw.value; cfg.keep = ui.keep.checked;
+    tempo = +ui.tempo.value; volume = +ui.vol.value; refHz = +ui.ref.value;
+    ui.tempOut.textContent = cfg.temp.toFixed(2) + (cfg.temp < 0.02 ? ' greedy' : '');
+    ui.ctxOut.textContent = cfg.W;
+    ui.repOut.textContent = cfg.rep.toFixed(1);
+    ui.swOut.textContent = cfg.sw.toFixed(2);
+    ui.tempoOut.textContent = tempo.toFixed(2) + 'x';
+    ui.volOut.textContent = volWord(volume);
+  }
+  function setKnobs(o) {
+    if (!o) return;
+    if (o.cfg) { ui.temp.value = o.cfg.temp; ui.ctxw.value = o.cfg.W; ui.rep.value = o.cfg.rep; ui.sw.value = o.cfg.sw; ui.keep.checked = !!o.cfg.keep; }
+    if (o.tempo) ui.tempo.value = o.tempo;
+    if (o.volume != null) ui.vol.value = o.volume;
+    if (o.ref) ui.ref.value = String(o.ref);
+  }
+  ['temp', 'ctxw', 'rep', 'sw', 'keep', 'tempo', 'vol', 'ref'].forEach(function (k) {
+    ui[k].addEventListener('input', function () {
+      readKnobs();
+      if (E) {
+        var t = E.ctx.currentTime;
+        E.vol.gain.setTargetAtTime(volGain(), t, 0.05);
+        if (S) { S.dA.frequency.setTargetAtTime(refHz / 8, t, 0.4); S.dB.frequency.setTargetAtTime(refHz / 4, t, 0.4); }
+      }
+      if (previewOnly && /temp|ctxw|rep|sw|keep/.test(k)) preview(ui.prompt.value);
+      shown = null;
+    });
+    ui[k].addEventListener('change', save);
+  });
+
+  function hashPrompt() {
+    var m = /^#p=(.*)$/.exec(location.hash || '');
+    if (!m) return null;
+    try { return decodeURIComponent(m[1]); } catch (e) { return null; }
+  }
+  function setHash(p) {
+    try { history.replaceState(null, '', p === DEFAULT_PROMPT ? location.pathname + location.search : '#p=' + encodeURIComponent(p)); } catch (e) {}
+  }
+
+  var typing = 0;
+  ui.prompt.addEventListener('input', function () {
+    clearTimeout(typing);
+    typing = setTimeout(function () {
+      if (!started) preview(ui.prompt.value);
+      else ui.hint.textContent = ui.prompt.value === M.prompt ? '' : 'Press Start over to play this prompt.';
+    }, 250);
+  });
+  ui.play.addEventListener('click', function () { if (playing) pause(); else play(); });
+  ui.restart.addEventListener('click', startOver);
+  ui.copy.addEventListener('click', function () {
+    var p = ui.prompt.value, url = location.origin + location.pathname + (p === DEFAULT_PROMPT ? '' : '#p=' + encodeURIComponent(p));
+    var done = function () { ui.hint.textContent = 'Link copied. Same prompt, same piece.'; };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, function () { ui.hint.textContent = url; });
+    else ui.hint.textContent = url;
+  });
+  document.addEventListener('visibilitychange', function () { if (document.hidden) save(); });
+  window.addEventListener('pagehide', save);
+  setInterval(tick, 90);
+
+  // ---------------------------------------------------------------- boot
+
+  var fromHash = hashPrompt(), saved = lsGet();
+  if (saved && saved.model && (fromHash === null || fromHash === saved.model.prompt)) {
+    setKnobs(saved); readKnobs();
+    ui.prompt.value = saved.model.prompt;
+    try { restore(saved); } catch (e) { saved = null; }
+  } else saved = null;
+  if (!saved) {
+    readKnobs();
+    ui.prompt.value = fromHash !== null ? fromHash : DEFAULT_PROMPT;
+    preview(ui.prompt.value);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+<!-- Overhead: the sky over Toronto as sound (overhead.js, shared with sound.html). Bump ?v= when that file changes. -->
+<script src="overhead.js?v=2"></script>
+<script>
+(function () {
+  if (!window.Overhead) return;
+  window.__overhead = Overhead.mount(document.getElementById('overhead'), {
+    name: 'Attention Sink',
+    theme: { fg: '#ebe6da', muted: '#9298ac', faint: '#5f6478', line: '#272b3a', panel: '#151822', acc: '#f1c15f', acc2: '#86b6ff', mono: 'ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace' }
+  });
+})();
+</script>
+</body>
+</html>
