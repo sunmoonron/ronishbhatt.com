@@ -28,8 +28,10 @@ body{margin:0;height:100%;height:100dvh;overflow:hidden;color:var(--ink,#a8845c)
 #arc{position:fixed;inset:0;color:inherit;cursor:pointer;outline:none;-webkit-tap-highlight-color:transparent}
 #arc:focus-visible{background:currentColor;opacity:.07}
 @media (hover:hover){#arc:hover{background:currentColor;opacity:.07}}
-/* the sun and its glow, kept out of that link: draw() keeps this over the sun, and a tap on it focuses the box */
-#sun{position:fixed;left:0;top:0;width:88px;height:88px;margin:-44px 0 0 -44px;border-radius:50%;cursor:text;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+/* the sun is the way home too, like the moon: a link the size of its glow that draw() keeps over it, above the sound link */
+#sun{position:fixed;left:0;top:0;width:88px;height:88px;margin:-44px 0 0 -44px;border-radius:50%;cursor:pointer;outline:none;-webkit-tap-highlight-color:transparent}
+#sun:focus-visible{background:radial-gradient(circle,rgba(255,236,190,.24),rgba(255,236,190,0) 70%)}
+@media (hover:hover){#sun:hover{background:radial-gradient(circle,rgba(255,236,190,.24),rgba(255,236,190,0) 70%)}}
 #field{display:flex;justify-content:center;align-items:baseline;max-width:30rem;margin:0 auto;padding:.4em .1em;border-bottom:1px solid var(--line,rgba(168,132,92,.25))}
 #field:focus-within{border-bottom-color:var(--line-on,rgba(168,132,92,.5))}
 /* the "!" in front of the box: DuckDuckGo while it is there, Google once it is deleted */
@@ -59,8 +61,8 @@ html[data-engine=ddg] #bang{display:block}
 // lit by Toronto's real sky right now, so it is never brighter than outside.
 // Every trip is also sealed to the site key right here and queued; a later visit wraps it
 // (NIP-59, with the relay's proof of work) for my relay, so only the site key can read the log.
-// Type /log to read it. Tap the moon, while it is up, to go home to ronishbhatt.com, and tap the sky
-// under the sun's path for the day (drawn as dots while the sun is up) for Earthbell and Attention Sink.
+// Type /log to read it. Tap the sun or the moon, while it is up, to go home to ronishbhatt.com, and tap
+// the sky under the sun's path for the day (drawn as dots while the sun is up) for the sound page.
 (() => {
   // A window facing south from Toronto: east on the left, west on the right.
   const LAT = 43.6532, LON = -79.3832;
@@ -203,8 +205,8 @@ html[data-engine=ddg] #bang{display:block}
       }
     }
 
-    // The sun sits on its own path, so it gets its own patch of sky, the size of its glow: a tap on it
-    // focuses the box like the rest of the sky instead of opening the sound page.
+    // The sun, like the moon, is the way home: a link the size of its glow sits over it. It has to sit
+    // above the sound link, because the sun is on its own path, the top edge of that link's shape.
     const spot = document.getElementById('sun'), sunUp = inWindow(s) && w > 0 && h > 0;
     if (spot) spot.hidden = !sunUp;
     if (inWindow(s)) { // the sun, warmer near the horizon
@@ -431,7 +433,7 @@ html[data-engine=ddg] #bang{display:block}
 <span id="fit" aria-hidden="true"></span>
 </form>
 <a id="arc" href="/sound.html" hidden aria-label="Earthbell and Attention Sink" title="Earthbell and Attention Sink"></a>
-<label for="q" id="sun" hidden aria-hidden="true"></label>
+<a id="sun" href="/" hidden aria-label="ronishbhatt.com" title="ronishbhatt.com"></a>
 <a id="moon" href="/" hidden aria-label="ronishbhatt.com" title="ronishbhatt.com"></a>
 <section id="log" hidden aria-label="search log">
 <header><b>trips</b><span id="logstate"></span><button type="button" id="lock">lock</button><button type="button" id="close">close</button></header>
