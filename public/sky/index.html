@@ -24,6 +24,10 @@ body{margin:0;height:100%;height:100dvh;overflow:hidden;color:var(--ink,#a8845c)
 #moon{position:fixed;left:0;top:0;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;cursor:pointer;outline:none;-webkit-tap-highlight-color:transparent}
 #moon:focus-visible{background:radial-gradient(circle,rgba(236,230,214,.22),rgba(236,230,214,0) 70%)}
 @media (hover:hover){#moon:hover{background:radial-gradient(circle,rgba(236,230,214,.22),rgba(236,230,214,0) 70%)}}
+/* by day, the sky under the rest of the sun's dotted path is the way to the sound page; draw() clips this link to it */
+#arc{position:fixed;inset:0;color:inherit;cursor:pointer;outline:none;-webkit-tap-highlight-color:transparent}
+#arc:focus-visible{background:currentColor;opacity:.07}
+@media (hover:hover){#arc:hover{background:currentColor;opacity:.07}}
 #field{display:flex;justify-content:center;align-items:baseline;max-width:30rem;margin:0 auto;padding:.4em .1em;border-bottom:1px solid var(--line,rgba(168,132,92,.25))}
 #field:focus-within{border-bottom-color:var(--line-on,rgba(168,132,92,.5))}
 /* the "!" in front of the box: DuckDuckGo while it is there, Google once it is deleted */
@@ -53,7 +57,8 @@ html[data-engine=ddg] #bang{display:block}
 // lit by Toronto's real sky right now, so it is never brighter than outside.
 // Every trip is also sealed to the site key right here and queued; a later visit wraps it
 // (NIP-59, with the relay's proof of work) for my relay, so only the site key can read the log.
-// Type /log to read it. Tap the moon, while it is up, to go home to ronishbhatt.com.
+// Type /log to read it. Tap the moon, while it is up, to go home to ronishbhatt.com, and by day
+// tap the sky under the sun's dotted path for Earthbell and Attention Sink.
 (() => {
   // A window facing south from Toronto: east on the left, west on the right.
   const LAT = 43.6532, LON = -79.3832;
@@ -170,11 +175,24 @@ html[data-engine=ddg] #bang{display:block}
     }
 
     // The rest of today's daylight: a dot per quarter hour, a bigger one on each hour.
+    const path = [];
     if (s.alt > 0) for (let u = Math.ceil(t / 9e5) * 9e5; u < t + 864e5; u += 9e5) {
       const p = place(sun(days(u)), days(u));
       if (p.alt < 0) break;
-      const hour = new Date(u).getMinutes() === 0;
-      g.fillStyle = css(ink, hour ? 0.42 : 0.24); dot(x(p.az), y(p.alt), hour ? 1.7 : 1.1);
+      const hour = new Date(u).getMinutes() === 0, px = x(p.az), py = y(p.alt);
+      g.fillStyle = css(ink, hour ? 0.42 : 0.24); dot(px, py, hour ? 1.7 : 1.1);
+      path.push([px, py]);
+    }
+    // The sky under that path, from the sun down to the horizon, is the way to the sound page:
+    // the link is clipped to it, in percent of the same box the canvas fills.
+    const arc = document.getElementById('arc');
+    if (arc) {
+      const pts = path.length && w > 0 && h > 0 ? [[x(s.az), base], [x(s.az), y(s.alt)], ...path, [path[path.length - 1][0], base]] : null;
+      arc.hidden = !pts;
+      if (pts) {
+        const poly = 'polygon(' + pts.map(([px, py]) => (px / w * 100).toFixed(2) + '% ' + (py / h * 100).toFixed(2) + '%').join(',') + ')';
+        arc.style.clipPath = poly; arc.style.webkitClipPath = poly;
+      }
     }
 
     if (inWindow(s)) { // the sun, warmer near the horizon
@@ -399,6 +417,7 @@ html[data-engine=ddg] #bang{display:block}
 <div id="field"><label for="q" id="bang" aria-hidden="true">!</label><input id="q" name="q" type="text" inputmode="search" enterkeyhint="go" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="where to?" aria-label="Search or type an address"></div>
 <span id="fit" aria-hidden="true"></span>
 </form>
+<a id="arc" href="/sound.html" hidden aria-label="Earthbell and Attention Sink" title="Earthbell and Attention Sink"></a>
 <a id="moon" href="/" hidden aria-label="ronishbhatt.com" title="ronishbhatt.com"></a>
 <section id="log" hidden aria-label="search log">
 <header><b>trips</b><span id="logstate"></span><button type="button" id="lock">lock</button><button type="button" id="close">close</button></header>
