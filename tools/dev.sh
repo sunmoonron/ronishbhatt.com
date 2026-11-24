@@ -12,7 +12,7 @@ PUB=$(node -pe 'require("./.dev/key.json").pub')
 rsync -a --delete --exclude 'projects/data' --exclude '*.pdf' --exclude 'demos/plant-a-thought.html' public/ .dev/public/
 sed -i '' -e "s/content=\"0bfcddd3[0-9a-f]*\"/content=\"$PUB\"/" \
   -e 's#content="wss://relay.ronishbhatt.com"#content="ws://127.0.0.1:7777"#' \
-  -e 's#content="wss://relay.damus.io,wss://nos.lol,wss://relay.primal.net"#content="ws://127.0.0.1:7778"#' \
+  -e 's#content="wss://purplerelay.com,wss://nos.lol,wss://relay.primal.net"#content="ws://127.0.0.1:7778"#' \
   -e "s#connect-src 'self' [^;]*;#connect-src 'self' ws://127.0.0.1:7777 ws://127.0.0.1:7778;#" .dev/public/index.html
 echo "dev site key: $(cat .dev/key.json)"
 trap 'kill 0' EXIT

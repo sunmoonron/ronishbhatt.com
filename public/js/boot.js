@@ -46,7 +46,6 @@ for (const b of document.querySelectorAll('.pills button.lnk, footer button.lnk'
 const wild = /[?&]wild/.test(location.search) || (localStorage.getItem('rb.wild') !== '0' && !/[?&]calm/.test(location.search));
 document.addEventListener('click', e => { if (e.target.closest?.('#wildpill')) { localStorage.setItem('rb.wild', wild ? '0' : '1'); location.href = location.pathname; } }); // delegated: survives the app re-rendering the header
 if (wild) import('./wild.js').then(m => m.start()).catch(e => console.error('wild failed', e));
-for (const ev of ['focusin', 'pointerdown']) $('#garden')?.addEventListener(ev, () => upgrade({ reason: 'garden' }), { once: true });
 
 // papers: the thumbnail opens the PDF right there; without this script it is a plain link
 document.addEventListener('click', e => {

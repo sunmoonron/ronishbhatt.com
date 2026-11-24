@@ -4,8 +4,7 @@
 import { render } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
 import { html, Page, Toasts, bindNotify } from './ui.js';
-import { Garden } from './garden.js';
-import { env, init, sel, onChange, notify, loadSnapshot, loadCache, keepCache, connect, reverify, owner, storedKey, restore, decodeIcon, subscribeWraps, progress, apply } from './store.js';
+import { env, init, sel, onChange, notify, loadSnapshot, loadCache, keepCache, connect, reverify, owner, storedKey, restore, decodeIcon, progress, apply } from './store.js';
 import { Chat, chat, chatConfigure, send as chatSend, setNick } from './chat.js';
 
 const meta = n => document.querySelector(`meta[name="${n}"]`)?.content?.trim() || '';
@@ -28,7 +27,7 @@ function App() {
   useEffect(() => { chatConfigure(isOwner); }, [isOwner]);
   const edit = isOwner ? (kind, ev, preset) => html`<button class="sm edit" onClick=${e => { e.preventDefault(); e.stopPropagation(); setEditing({ kind, ev, preset }); }}>edit</button>` : null;
   const openUnlock = async () => { if (!Owner) Owner = await import('./owner.js'); setUnlockOpen(true); };
-  return html`<${Page} Chat=${Chat} chatProps=${{ live: true, ownerMode: isOwner }} Garden=${Garden} gardenProps=${{ live: true }} edit=${edit} ownerOn=${isOwner} onUnlock=${openUnlock}>
+  return html`<${Page} Chat=${Chat} chatProps=${{ live: true, ownerMode: isOwner }} edit=${edit} ownerOn=${isOwner} onUnlock=${openUnlock}>
       ${isOwner ? html`<${Owner.OwnerBar} onEdit=${(kind, ev, preset) => setEditing({ kind, ev, preset })} onConsole=${() => setConsoleOpen(true)} unread=${chat.unread} />` : null}
     </${Page}>
     ${Owner && unlockOpen ? html`<${Owner.UnlockDialog} open=${unlockOpen} onClose=${() => setUnlockOpen(false)} />` : null}
@@ -52,7 +51,7 @@ export async function start(opts = {}) {
     progress('verified', { n: pre.events.size, fresh, bad });
     pre.onEvent = (ev, url) => { const isNew = take(ev, url); progress('event', { id: ev.id, kind: ev.kind, bytes: ev.content.length, veiled: ev.kind === 30078, sample: ev.kind === 30078 ? ev.content.slice(0, 240) : '', fresh: isNew, url }); }; }
   script('/vendor/dompurify-3.4.14.min.c2f26ea4.js').then(notify).catch(() => {});
-  const goLive = since => { connect({ since }); if (sel.sections().includes('mural')) subscribeWraps(); };
+  const goLive = since => connect({ since });
   if (pre) Promise.race([pre.primaryEose, new Promise(r => setTimeout(r, 1500, null))]).then(maxAt => { progress('handoff', { since: maxAt || 0 }); goLive(maxAt || undefined); }); // history came through the early sockets; the pool subscribes for anything newer
   else goLive();
   chatConfigure(false);

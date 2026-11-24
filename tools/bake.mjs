@@ -12,10 +12,9 @@ import { render } from 'preact-render-to-string';
 import { verifyEvent, getEventHash } from 'nostr-tools/pure';
 import * as nip44 from 'nostr-tools/nip44';
 import { SimplePool } from 'nostr-tools/pool';
-import { init, env, store, apply, sel, loadSnapshot, decodeIcon, applyWrap, applyWord, veil } from '../public/js/store.js';
+import { init, env, store, apply, sel, loadSnapshot, decodeIcon, veil } from '../public/js/store.js';
 import { html, Page } from '../public/js/ui.js';
 import { Chat } from '../public/js/chat.js';
-import { Garden } from '../public/js/garden.js';
 
 const PUB = (process.argv[2] || new URL('../public', import.meta.url).pathname).replace(/\/$/, '') + '/';
 const src = fs.readFileSync(PUB + 'index.html', 'utf8');
@@ -25,8 +24,7 @@ const sri = f => `sha384-${sha('sha384', fs.readFileSync(PUB + f))}`;
 const svgIcon = fs.readFileSync(PUB + 'favicon.svg', 'utf8'), iconV = crypto.createHash('sha256').update(svgIcon).digest('hex').slice(0, 8);
 // the icon is the key, so the key rides inside the shell: the tab icon and the header mark cost no request, and app.js reads it from the link tag
 const iconData = 'data:image/svg+xml,' + encodeURIComponent(svgIcon).replace(/%20/g, ' ');
-const demos = fs.readdirSync(PUB + 'demos');
-const ASSETS = { engine: '/demos/' + demos.find(f => /^tiny_engine\.[0-9a-f]{8}\.js$/.test(f)), model: '/demos/' + demos.find(f => /^bip\.[0-9a-f]{8}\.json$/.test(f)) };
+const ASSETS = {}; // lazily loaded assets by name; the garden's model and engine were the only ones, retired in November 2026
 init({ site: meta('site-pubkey'), relay: meta('site-relay'), backups: meta('site-backups').split(',').map(s => s.trim()).filter(Boolean),
   veil: decodeIcon(svgIcon), icon: iconData, assets: ASSETS, NT: { verifyEvent, getEventHash, nip44 } });
 const snap = JSON.parse(fs.readFileSync(PUB + 'site.json', 'utf8'));
@@ -34,9 +32,6 @@ const seed = JSON.parse(fs.readFileSync(new URL('../drafts.json', import.meta.ur
 
 const pool = new SimplePool(); let fetched = [];
 try { fetched = await pool.querySync(env.RELAYS, { authors: [env.SITE], kinds: [1, 5, 30078], limit: 500 }, { maxWait: 8000 }); } catch (e) { console.error('relay query failed:', e.message); }
-// experiments: the mural wants only ids, the garden the planted words; both from my relay only
-try { for (const e of await pool.querySync([env.PRIMARY], { kinds: [1059], '#p': [env.SITE], limit: 300 }, { maxWait: 6000 })) applyWrap(e); } catch {}
-try { for (const e of await pool.querySync([env.PRIMARY], { kinds: [1], '#t': ['plant'], limit: 60 }, { maxWait: 6000 })) if (verifyEvent(e)) applyWord(e); } catch {}
 pool.destroy();
 const good = fetched.filter(e => e.pubkey === env.SITE && verifyEvent(e));
 const useNew = good.length > 0 || !(snap.events || []).length;
@@ -48,11 +43,11 @@ const baked_at = Math.floor(Date.now() / 1000);
 fs.writeFileSync(PUB + 'site.json', JSON.stringify({ site: env.SITE, baked_at, events, drafts: seed.map(d => veil(JSON.stringify(d))) }, null, 1)); // seeds veiled like every block
 
 const cfg = sel.config(), p = sel.profileData();
-const body = render(html`<${Page} Chat=${Chat} chatProps=${{ live: false }} Garden=${Garden} gardenProps=${{ live: false }} />`);
+const body = render(html`<${Page} Chat=${Chat} chatProps=${{ live: false }} />`);
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 // First-party modules get content-hashed copies (imports rewritten to match): the
 // HTML, never cached, always names the exact bytes it was baked with.
-const ORDER = ['pow-worker', 'store', 'ui', 'chat', 'garden', 'owner', 'presence', 'app', 'wild', 'strict', 'boot'];
+const ORDER = ['pow-worker', 'store', 'ui', 'chat', 'owner', 'presence', 'app', 'wild', 'strict', 'boot'];
 const hashed = {}, keep = new Set();
 for (const name of ORDER) {
   let code = fs.readFileSync(PUB + `js/${name}.js`, 'utf8');
@@ -63,8 +58,8 @@ for (const name of ORDER) {
 }
 for (const f of fs.readdirSync(PUB + 'js')) if (/^[a-z-]+\.[0-9a-f]{8}\.js$/.test(f) && !keep.has(f)) fs.unlinkSync(PUB + 'js/' + f);
 const VENDOR = { preact: '/vendor/preact-10.29.8.c30e721e.mjs', 'preact/hooks': '/vendor/preact-hooks-10.29.8.a6ee626f.mjs', htm: '/vendor/htm-3.1.1.mjs', marked: '/vendor/marked-18.0.11.05e41134.mjs' };
-const MODULES = [...Object.values(VENDOR), ...['app', 'store', 'ui', 'chat', 'garden', 'owner', 'presence', 'wild', 'strict'].map(n => '/js/' + hashed[n])];
-const LAZY = ['/vendor/nostr-tools-2.25.2.bundle.js', '/vendor/dompurify-3.4.14.min.c2f26ea4.js', ASSETS.engine];
+const MODULES = [...Object.values(VENDOR), ...['app', 'store', 'ui', 'chat', 'owner', 'presence', 'wild', 'strict'].map(n => '/js/' + hashed[n])];
+const LAZY = ['/vendor/nostr-tools-2.25.2.bundle.js', '/vendor/dompurify-3.4.14.min.c2f26ea4.js'];
 const importmap = JSON.stringify({ imports: VENDOR, integrity: Object.fromEntries(MODULES.map(f => [f, sri(f)])) });
 // wild mode paints first: its stylesheet rides inline in the shell and a tiny inline script sets the class
 // and starts fetching the module before the body is parsed, so the page never shows its calm face first
@@ -72,7 +67,7 @@ const wildSrc = fs.readFileSync(PUB + 'js/wild.js', 'utf8'), wildCss = (wildSrc.
 if (wildCss.includes('${')) throw new Error('wild CSS has interpolations; cannot inline');
 const wildBoot = `try{var s=location.search,d=document.documentElement,w=/[?&]wild/.test(s)||(localStorage.getItem('rb.wild')!=='0'&&!/[?&]calm/.test(s));if(w){d.classList.add('wild');if(!sessionStorage.getItem('rb.booted')){d.classList.add('booting');setTimeout(function(){d.classList.remove('booting')},7000)}import('/js/${hashed.wild}')}}catch(e){}`;
 const index = JSON.stringify({ baked_at, ids: events.map(e => e.id) });
-const out = src
+const out = src.replace(/(?:<link rel="(?:module)?preload"[^>]*>)+\n?/g, '') // the template is the last shell: its preload hints name last bake's hashes, which no longer exist
   .replace(/<title>[^<]*<\/title>/, `<title>${esc(cfg.title)}</title>`)
   .replace(/<meta name="description" content="[^"]*">/, `<meta name="description" content="${esc(p.about || '')}">`)
   .replace(/<meta name="site-sri" content="[^"]*">/, `<meta name="site-sri" content="${esc(JSON.stringify(Object.fromEntries(LAZY.map(f => [f, sri(f)]))))}">`)
@@ -94,9 +89,9 @@ const strictOut = out.replace(/(?:<link rel="(?:module)?preload"[^>]*>)+\n?/g, '
   .replace(/(<script type="application\/json" id="snapshot">)[\s\S]*?(<\/script>)/, '$1{}$2')
   .replace(/<script type="module" src="[^"]*" integrity="[^"]*">/, `<script type="module" src="/js/${hashed.strict}" integrity="${sri('/js/' + hashed.strict)}">`)
   // everything the entry will need starts downloading with the shell instead of one import hop at a time
-  .replace(/<\/script>\s*<script id="wildboot">/, `</script>\n${[...Object.values(VENDOR), ...['app', 'store', 'ui', 'chat', 'garden', 'wild'].map(n => '/js/' + hashed[n])].map(f => `<link rel="modulepreload" href="${f}" integrity="${sri(f)}">`).join('')}${LAZY.slice(0, 2).map(f => `<link rel="preload" as="script" href="${f}" integrity="${sri(f)}">`).join('')}\n<script id="wildboot">`);
+  .replace(/<\/script>\s*<script id="wildboot">/, `</script>\n${[...Object.values(VENDOR), ...['app', 'store', 'ui', 'chat', 'wild'].map(n => '/js/' + hashed[n])].map(f => `<link rel="modulepreload" href="${f}" integrity="${sri(f)}">`).join('')}${LAZY.slice(0, 2).map(f => `<link rel="preload" as="script" href="${f}" integrity="${sri(f)}">`).join('')}\n<script id="wildboot">`);
 fs.writeFileSync(PUB + 'index.html', strictOut);
 fs.writeFileSync(PUB + 'strict.html', strictOut); // alias, same bytes
 const hexsha = d => crypto.createHash('sha256').update(d).digest('hex');
 fs.writeFileSync(PUB + 'shell-manifest.json', JSON.stringify({ shell: hexsha(strictOut), static: hexsha(out), sw: hexsha(fs.readFileSync(PUB + 'sw.js')), baked_at }, null, 1));
-console.log(`baked ${PUB}: ${events.length} signed events (${good.length} fetched from ${env.RELAYS.length} relays${useNew ? '' : ', kept previous'}), ${seed.length} seed drafts (${[...store.events.values()].filter(e => e.draft).length} showing), mural ${store.wraps.size} tiles, garden ${store.words.size} words, html ${(out.length / 1024).toFixed(1)} KB`);
+console.log(`baked ${PUB}: ${events.length} signed events (${good.length} fetched from ${env.RELAYS.length} relays${useNew ? '' : ', kept previous'}), ${seed.length} seed drafts (${[...store.events.values()].filter(e => e.draft).length} showing), html ${(out.length / 1024).toFixed(1)} KB`);

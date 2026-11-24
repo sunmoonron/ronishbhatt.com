@@ -5,7 +5,7 @@
 // the relay write policy admits wraps to the owner at POW_IN bits
 // and to anyone at POW_OUT (the owner's replies). Both sides keep a self-copy.
 import { useState, useEffect, useRef } from 'preact/hooks';
-import { store, env, pool, owner, mine, publish, now, notify, tag } from './store.js';
+import { store, env, withPool, owner, mine, publish, now, notify, tag } from './store.js';
 import { html, toast, npub } from './ui.js';
 
 export const POW_IN = 16, POW_OUT = 20; // must match the relay's write policy
@@ -53,7 +53,11 @@ function onWrap(wrap) {
     if (document.hidden && globalThis.Notification?.permission === 'granted') try { new Notification(chat.mode === 'owner' ? `New message from ${thread(peer).subject || short(peer)}` : 'Ronish replied', { body: text.slice(0, 120) }); } catch {}
   }
 }
-function subscribe() { chat.sub?.close(); chat.sub = chat.me && pool ? pool.subscribe(env.RELAYS, { kinds: [1059], '#p': [chat.me] }, { label: 'dm', onevent: onWrap }) : null; }
+// The strict entry renders before the pool exists, so the subscription waits for it; the generation
+// count drops a wait that a later identity (visitor to owner, a new key) has made stale.
+let subGen = 0;
+function subscribe() { chat.sub?.close(); chat.sub = null; const me = chat.me, gen = ++subGen; if (!me) return;
+  withPool(p => { if (gen === subGen) chat.sub = p.subscribe(env.RELAYS, { kinds: [1059], '#p': [me] }, { label: 'dm', onevent: onWrap }); }); }
 
 export function chatConfigure(ownerMode) {
   const mode = ownerMode ? 'owner' : 'visitor';
