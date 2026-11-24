@@ -3,241 +3,62 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Earthbell and Attention Sink</title>
-<meta name="description" content="Two endless pieces on one page, with the aircraft over Toronto playing over both. Earthbell lifts the ringing of the lightning-struck Earth into hearing, live, from where you stand. Attention Sink is a tiny hand-wired transformer whose drone is its attention sink.">
+<title>Earthbell, Attention Sink and Overhead</title>
+<meta name="description" content="Three endless pieces to play. Earthbell: the ringing of the lightning-struck Earth, lifted into hearing. Attention Sink: a tiny hand-wired transformer whose drone is its attention sink. Overhead: the aircraft over Toronto right now.">
 <meta name="color-scheme" content="dark">
 <meta name="theme-color" content="#05070c">
 <style>
-/* sound.html: Earthbell, then Attention Sink, then the aircraft over Toronto, which play over both.
-   Each piece keeps its own look; its rules are scoped to its section so neither restyles the other. */
+/* sound.html: three plain players. Nothing is drawn; each piece's settings and readouts sit in a
+   hidden container because its code still looks them up, and they hold the defaults it plays with. */
 *{box-sizing:border-box}
 html{background:#05070c}
-@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
-body{margin:0;background:#05070c;color:#e9ecf3;font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
-button,select,input{font:inherit;color:inherit}
-#site{max-width:1140px;margin:0 auto;padding:22px 16px 0;display:flex;flex-wrap:wrap;align-items:center;gap:10px 22px;font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.12em;text-transform:uppercase;color:#5f687c}
-#site p{margin:0}
-#site a{color:inherit;text-decoration:none}
-#site nav{display:flex;flex-wrap:wrap;gap:6px 16px}
-#site nav a{color:#939cb0}
-#site a:hover,#site a:focus-visible{color:#e9ecf3}
-#site .saver{margin-left:auto;display:flex;align-items:center;gap:8px;color:#939cb0;cursor:pointer}
-#site .saver input{width:16px;height:16px;margin:0;accent-color:#97f0c4}
-
-/* ---- Earthbell ---- */
-#earthbell{
-  --bg:#05070c;
-  --panel:#0a0e17;
-  --panel-2:#0e1420;
-  --line:#1a2232;
-  --line-2:#29344c;
-  --text:#e9ecf3;
-  --soft:#c4cad7;
-  --muted:#939cb0;
-  --faint:#5f687c;
-  --cyan:#8fe3ff;
-  --violet:#c5abff;
-  --gold:#ffd27f;
-  --rose:#ff9fb4;
-  --green:#97f0c4;
-  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-}
-#earthbell *{box-sizing:border-box}
-#earthbell{background:var(--bg)}
-#earthbell{margin:0;background:var(--bg);color:var(--text);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
-#earthbell .wrap{max-width:1140px;margin:0 auto;padding:32px 16px 72px}
-#earthbell header{max-width:800px}
-#earthbell .kicker{font:12px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin:0 0 14px}
-#earthbell h1{font-size:clamp(36px,6vw,56px);line-height:1.02;letter-spacing:-.025em;margin:0 0 16px;font-weight:650}
-#earthbell h1 span{background:linear-gradient(90deg,var(--gold),var(--rose) 40%,var(--violet) 70%,var(--cyan));-webkit-background-clip:text;background-clip:text;color:transparent}
-#earthbell .lede{color:var(--soft);font-size:17px;margin:0 0 10px}
-#earthbell .lede.quiet{color:var(--muted);font-size:15.5px}
-#earthbell .grid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:18px;margin-top:26px;align-items:start}
-#earthbell .grid.b{grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);margin-top:18px}
-@media (max-width:880px){#earthbell .grid,#earthbell .grid.b{grid-template-columns:minmax(0,1fr)}}
-#earthbell .card{background:linear-gradient(180deg,var(--panel-2),var(--panel));border:1px solid var(--line);border-radius:16px;padding:18px}
-#earthbell .card h2{font-size:12.5px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin:0 0 14px}
-#earthbell .mapwrap{position:relative;width:100%;aspect-ratio:1/1}
-#earthbell #map{position:absolute;inset:0;width:100%;height:100%;cursor:crosshair;touch-action:manipulation}
-#earthbell .legend{font-size:13px;color:var(--muted);margin:12px 2px 0}
-#earthbell .legend b{color:var(--soft);font-weight:600}
-#earthbell button,#earthbell select,#earthbell input{font:inherit;color:inherit}
-#earthbell .primary{width:100%;padding:15px 18px;border-radius:12px;border:1px solid #3d3163;background:linear-gradient(135deg,#2b2050,#15264a);color:var(--text);font-weight:600;font-size:17px;cursor:pointer;transition:box-shadow .2s ease,transform .15s ease}
-#earthbell .primary:hover{box-shadow:0 0 0 3px rgba(197,171,255,.18)}
-#earthbell .primary:active{transform:scale(.99)}
-#earthbell .primary:disabled{opacity:.6;cursor:progress}
-#earthbell .primary.on{background:linear-gradient(135deg,#17302a,#162340);border-color:#2d5a4b}
-#earthbell .field{display:block;margin:14px 0 0;font-size:14px;color:var(--muted)}
-#earthbell .field .lab{display:flex;justify-content:space-between;gap:8px;margin-bottom:6px}
-#earthbell .field em{font-style:normal;color:var(--soft)}
-#earthbell select{width:100%;padding:10px 34px 10px 12px;border-radius:10px;border:1px solid var(--line-2);background:#090d15 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23939cb0' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right 12px center;color:var(--text);-webkit-appearance:none;appearance:none}
-#earthbell .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-#earthbell input[type=range]{width:100%;accent-color:var(--violet);margin:2px 0}
-#earthbell .check{display:flex;gap:10px;align-items:flex-start;margin-top:16px;font-size:14px;color:var(--muted);cursor:pointer}
-#earthbell .check input{margin-top:4px;accent-color:var(--cyan)}
-#earthbell .hint{font-size:13px;color:var(--faint);margin:8px 0 0}
-#earthbell .status{font-size:13px;color:var(--muted);margin:10px 0 0}
-#earthbell .status .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:7px;background:var(--faint);vertical-align:1px}
-#earthbell .status.live .dot{background:var(--green);box-shadow:0 0 8px var(--green)}
-#earthbell .chord{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;height:200px}
-#earthbell .bar{display:flex;flex-direction:column;justify-content:flex-end;border:1px solid var(--line);border-radius:10px;background:#080c14;padding:0;cursor:pointer;overflow:hidden;min-width:0}
-#earthbell .bar .fill{display:block;margin:0 8px;border-radius:6px 6px 2px 2px;background:linear-gradient(180deg,var(--gold),var(--rose) 55%,var(--violet));transition:height 1.4s ease;min-height:4px;height:20%}
-#earthbell .bar .hz{font:600 13px/1 var(--mono);padding:9px 0 4px;text-align:center;color:var(--text)}
-#earthbell .bar .real{font:11px/1 var(--mono);padding:0 0 10px;text-align:center;color:var(--faint)}
-#earthbell .bar.sel{border-color:#6d5aa6;box-shadow:inset 0 0 0 1px rgba(197,171,255,.3)}
-#earthbell .bar.off{opacity:.3}
-#earthbell .now{display:grid;grid-template-columns:auto minmax(0,1fr);gap:9px 16px;margin:0;font-size:14px}
-#earthbell .now dt{color:var(--muted)}
-#earthbell .now dd{margin:0;font-variant-numeric:tabular-nums;color:var(--soft)}
-#earthbell .log{list-style:none;margin:0;padding:0;display:grid;gap:11px}
-#earthbell .log li{display:grid;grid-template-columns:70px minmax(0,1fr);gap:12px;font-size:14.5px;color:var(--soft);animation:in .6s ease}
-#earthbell .log time{font:12px/1.9 var(--mono);color:var(--faint)}
-#earthbell .log .k{display:inline-block;font:600 10.5px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;padding:4px 6px;border-radius:5px;margin-right:8px;vertical-align:1px}
-#earthbell .k.bell{background:rgba(255,210,127,.12);color:var(--gold)}
-#earthbell .k.whis{background:rgba(143,227,255,.12);color:var(--cyan)}
-#earthbell .k.chor{background:rgba(151,240,196,.12);color:var(--green)}
-#earthbell .k.twe{background:rgba(255,159,180,.12);color:var(--rose)}
-#earthbell .k.info{background:rgba(197,171,255,.12);color:var(--violet)}
-#earthbell .log .empty{color:var(--faint);display:block}
-@keyframes in{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
-#earthbell .prose{margin-top:18px;color:var(--soft);font-size:15px}
-#earthbell .prose h3{font-size:16px;color:var(--text);margin:24px 0 8px}
-#earthbell .prose h3:first-of-type{margin-top:4px}
-#earthbell .prose ul{padding-left:20px;margin:8px 0}
-#earthbell .prose li{margin:7px 0}
-#earthbell .prose b{color:var(--text);font-weight:600}
-#earthbell .prose .warn{color:var(--gold);font-size:14px;margin-top:22px}
-#earthbell .prose .small{color:var(--muted);font-size:14px}
-#earthbell noscript{display:block;margin-top:20px;color:var(--gold)}
-@media (prefers-reduced-motion:reduce){#earthbell .log li{animation:none}#earthbell .bar .fill{transition:none}}
-
-/* ---- Attention Sink ---- */
-/* Layout: one instrument column. The KV cache strip is the hero, four readout cards sit under it
-   (two across, one on phones), the decoding knobs follow, then the short notes. Dark on purpose. */
-#sink{
-  --ink:#0e1016; --panel:#151822; --line:#272b3a; --paper:#ebe6da; --muted:#9298ac; --faint:#5f6478;
-  --sink:#f1c15f; --loc:#86b6ff; --ind:#ec92d4; --harm:#8fd9aa;
-  --serif:ui-serif,"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
-  --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
-  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
-  color-scheme:dark;
-}
-#sink *{box-sizing:border-box}
-#sink{margin:0}
-#sink{background:var(--ink);color:var(--paper);font:15px/1.55 var(--sans);padding-inline:16px;padding-block:28px 72px}
-#sink .wrap{max-width:1000px;margin:0 auto;display:grid;gap:20px}
-#sink header{display:grid;gap:12px}
-#sink h1{font:400 clamp(36px,6.4vw,58px)/1.02 var(--serif);letter-spacing:-.012em;margin:0;text-wrap:balance}
-#sink h1 small{display:block;font:400 13px/1.4 var(--mono);letter-spacing:.02em;color:var(--sink);margin-bottom:10px}
-#sink .lede{max-width:68ch;margin:0}
-#sink .sub{max-width:68ch;margin:0;color:var(--muted);font-size:13.5px}
-#sink .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:stretch}
-#sink textarea{flex:1 1 340px;min-width:0;background:var(--panel);color:var(--paper);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font:14px/1.45 var(--mono);resize:vertical;min-height:48px}
-#sink .btns{display:flex;gap:10px;flex-wrap:wrap}
-#sink button{font:600 14px/1 var(--sans);background:var(--paper);color:var(--ink);border:0;border-radius:8px;padding:0 20px;min-height:48px;cursor:pointer}
-#sink button.quiet{background:transparent;color:var(--paper);border:1px solid var(--line)}
-#sink button:hover{filter:brightness(1.08)}
-#sink :is(button,textarea,input,select):focus-visible{outline:2px solid var(--sink);outline-offset:2px}
-#sink .stage{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
-#sink #cache{display:block;width:100%;height:320px}
-#sink .status{display:flex;flex-wrap:wrap;gap:6px 18px;padding:10px 14px;border-top:1px solid var(--line);font:12px/1.4 var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
-#sink .status b{color:var(--paper);font-weight:500}
-#sink .key{display:inline-flex;align-items:center;gap:6px}
-#sink .key i{width:9px;height:9px;border-radius:50%;display:inline-block}
-#sink .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,400px),1fr));gap:14px}
-#sink .card{min-width:0;border:1px solid var(--line);border-radius:10px;padding:12px 14px 14px;display:grid;gap:10px;align-content:start}
-#sink .label{font:600 11px/1 var(--sans);letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
-#sink #stream{font:13px/1.55 var(--mono);word-break:break-all;height:9.3em;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end}
-#sink #stream .p{color:var(--faint)}
-#sink #stream .cur{background:var(--sink);color:var(--ink);border-radius:2px}
-#sink .rows{display:grid;gap:5px;font:12px/1.2 var(--mono);font-variant-numeric:tabular-nums}
-#sink .row{display:grid;grid-template-columns:5.2em 1fr 3.4em;gap:10px;align-items:center;color:var(--muted)}
-#sink .row .m{height:7px;border-radius:4px;background:var(--line);overflow:hidden}
-#sink .row .m b{display:block;height:100%;background:var(--faint)}
-#sink .row.on{color:var(--paper)}
-#sink .row.on .m b{background:var(--paper)}
-#sink .row em{font-style:normal;color:var(--paper)}
-#sink #lat{display:block;width:100%;height:150px}
-#sink #where{font:12.5px/1.5 var(--mono);color:var(--muted);min-height:3em}
-#sink #where b{color:var(--paper);font-weight:500}
-#sink .knobs{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));gap:14px 24px;padding:16px;border:1px solid var(--line);border-radius:12px}
-#sink .knob{display:grid;gap:6px;font-size:13.5px;align-content:start}
-#sink .knob>span{display:flex;justify-content:space-between;gap:8px;color:var(--muted)}
-#sink .knob output{font:12px var(--mono);color:var(--paper)}
-#sink .knob.check{display:flex;align-items:center;gap:10px;color:var(--paper)}
-#sink input[type=range]{width:100%;accent-color:var(--sink);margin:0}
-#sink input[type=checkbox]{width:18px;height:18px;accent-color:var(--sink);margin:0}
-#sink select{background:var(--panel);color:var(--paper);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font:13px var(--sans)}
-#sink .notes{display:grid;gap:12px;max-width:72ch}
-#sink .notes h2{font:400 25px/1.2 var(--serif);margin:18px 0 0}
-#sink .notes p,#sink .notes ul{margin:0}
-#sink .notes ul{padding-left:1.1em;display:grid;gap:6px}
-#sink .tablewrap{overflow-x:auto}
-#sink table{border-collapse:collapse;width:100%;font-size:14px}
-#sink td,#sink th{text-align:left;vertical-align:top;padding:9px 12px 9px 0;border-top:1px solid var(--line)}
-#sink th{font:600 11px/1.2 var(--sans);letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
-#sink td:first-child{white-space:nowrap;color:var(--paper);padding-right:18px}
-#sink td{color:#cdc8bc}
-#sink .src{font-size:12.5px;color:var(--muted)}
-#sink a{color:var(--loc)}
-#sink .hint{font:12px var(--mono);color:var(--sink);min-height:1.2em}
-@media (max-width:560px){#sink #cache{height:280px}}
-
-/* ---- the frame around the two pieces ---- */
-#earthbell .wrap{padding-top:18px}
-#sink{border-top:1px solid var(--line)}
-#overhead{border-top:1px solid #1a2232}
-#overhead .wrap{max-width:1140px;margin:0 auto;padding:32px 16px 72px}
-#overhead h2{font-size:clamp(28px,4.4vw,38px);line-height:1.08;letter-spacing:-.02em;margin:0 0 12px;font-weight:650}
-#overhead .lede{color:#c4cad7;font-size:16px;margin:0 0 18px;max-width:800px}
-#overhead .box{background:linear-gradient(180deg,#0e1420,#0a0e17);border:1px solid #1a2232;border-radius:16px;padding:18px}
+body{margin:0;background:#05070c;color:#e9ecf3;font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+main{max-width:620px;margin:0 auto;padding:28px 16px 64px}
+.top{margin:0 0 6px;font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.12em;text-transform:uppercase;color:#5f687c}
+.top a{color:inherit;text-decoration:none}
+.top a:hover,.top a:focus-visible{color:#e9ecf3}
+section{padding:26px 0;border-bottom:1px solid #1a2232}
+section:last-of-type{border-bottom:0}
+h2{margin:0 0 6px;font-size:26px;line-height:1.15;letter-spacing:-.01em;font-weight:650}
+section>p{margin:0 0 16px;color:#c4cad7;font-size:15.5px}
+#earthbell{--acc:#c5abff}
+#sink{--acc:#f1c15f}
+#overhead{--acc:#8fe3ff}
+button{font:600 15px/1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#e9ecf3;background:transparent;border:1px solid var(--acc);border-radius:10px;padding:0 22px;min-height:46px;cursor:pointer}
+button:hover{background:rgba(255,255,255,.05)}
+button:disabled{opacity:.6;cursor:progress}
+button:focus-visible,textarea:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+button.quiet{border-color:#29344c;color:#c4cad7}
+#start.on{background:rgba(197,171,255,.14)}
+textarea{display:block;width:100%;margin:0 0 12px;padding:10px 12px;background:#0a0e17;color:#e9ecf3;border:1px solid #29344c;border-radius:10px;font:14px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;resize:vertical;min-height:48px}
+.row{display:flex;flex-wrap:wrap;gap:10px}
+.hint{margin:10px 0 0;font-size:13px;color:#939cb0}
+noscript{display:block;margin:16px 0 0;color:#ffd27f}
+/* the planes card: only its button and its one line of status */
+#overhead .oh-spec,#overhead .oh-list,#overhead .oh-ctl,#overhead .oh-foot{display:none}
+#overhead .oh-btn{padding:0 22px;min-height:46px}
 </style>
 <script>
-// Battery saver, on unless it is switched off at the top of the page: every animation here draws about
-// 12 frames a second instead of 60, and a canvas that is off screen is not drawn at all. The sound runs
-// on its own timers and never waits for a frame. (Nothing on this page cancels a frame, so the shim
-// does not need cancelAnimationFrame.)
-(() => {
-  const KEY = 'rb.sound.saver', FPS = 12, raf = window.requestAnimationFrame.bind(window);
-  let on = true;
-  try { on = localStorage.getItem(KEY) !== 'off'; } catch (e) { /* private mode: stays on */ }
-  const seen = new WeakMap(), io = 'IntersectionObserver' in window
-    ? new IntersectionObserver((es) => { for (const x of es) seen.set(x.target, x.isIntersecting); }) : null;
-  window.saver = {
-    get on() { return on; },
-    set(v) { on = !!v; try { localStorage.setItem(KEY, on ? 'on' : 'off'); } catch (e) { /* fine */ } },
-    // false only while the saver is on and the element is known to be off screen
-    shows(el) { if (!on || !io || !el) return true; if (!seen.has(el)) { seen.set(el, true); io.observe(el); } return seen.get(el); }
-  };
-  window.requestAnimationFrame = (cb) => (on ? setTimeout(() => raf(cb), 1000 / FPS) : raf(cb));
-})();
+// Nothing on this page animates: the drawing loops the three pieces carry never start.
+window.requestAnimationFrame = () => 0;
 </script>
 </head>
 <body>
-<header id="site">
-  <p><a href="/">ronishbhatt.com</a> / sound</p>
-  <nav aria-label="On this page"><a href="#earthbell">Earthbell</a><a href="#sink">Attention Sink</a><a href="#overhead">Overhead</a></nav>
-  <label class="saver" title="Animations draw about 12 times a second instead of 60, and not at all while off screen. The sound is not affected."><input id="saver" type="checkbox" checked> Battery saver</label>
-</header>
 <main>
-<section id="earthbell" aria-label="Earthbell">
-<div class="wrap">
-  <header>
-    <h1><span>Earthbell</span></h1>
-    <p class="lede">Somewhere on Earth, lightning strikes about 45 times a second. Every strike rings the hollow between the ground and the ionosphere like a bell, at 7.83, 14.3, 20.8, 27.3, 33.8 and 39 Hz. It has not stopped ringing in billions of years. Earthbell lifts it five octaves into hearing and voices it from where you stand.</p>
-    <p class="lede quiet">It is not a generator pretending to be endless. It is a microphone on something that already is.</p>
-  </header>
-  <noscript>Earthbell needs JavaScript and the Web Audio API.</noscript>
+  <p class="top"><a href="/">ronishbhatt.com</a> / sound</p>
+  <noscript>These need JavaScript and the Web Audio API.</noscript>
 
-  <div class="grid">
-    <section class="card" aria-label="Map of the planet centered on you">
+  <section id="earthbell" aria-labelledby="earthbell-h">
+    <h2 id="earthbell-h">Earthbell</h2>
+    <p>Lightning rings the Earth like a bell about 45 times a second. Earthbell lifts that ringing into hearing, live, and voices it from where you stand.</p>
+    <button id="start" class="primary" type="button">Start listening</button>
+    <p id="support" class="hint"></p>
+    <div hidden>
+<section class="card" aria-label="Map of the planet centered on you">
       <div class="mapwrap" id="mapwrap"><canvas id="map" role="img" aria-label="The whole Earth drawn around your position. Storms glow; the outer edge is the far side of the planet."></canvas></div>
       <p class="legend"><b>You are at the center.</b> Distance from the center is true distance, and the outer edge is the far side of the planet. Left and right on the map are left and right in your ears. Dashed rings are the nodes of the selected overtone: a storm sitting on one cannot ring that note for you. <b>Click anywhere to listen from there.</b></p>
     </section>
-
-    <section class="card" aria-label="Controls">
-      <button id="start" class="primary" type="button">Start listening</button>
-      <p id="support" class="hint"></p>
+<section class="card" aria-label="Controls">
       <label class="field"><span class="lab">Setting</span>
         <select id="mode">
           <option value="auto" selected>Auto by local time</option>
@@ -287,72 +108,31 @@ button,select,input{font:inherit;color:inherit}
       <label class="check"><input id="live" type="checkbox" checked><span>Live Earth data: current convective weather and space weather</span></label>
       <p id="dataStatus" class="status"><span class="dot"></span>Loading...</p>
     </section>
-  </div>
-
-  <div class="grid b">
-    <section class="card" aria-label="The chord right now">
+<section class="card" aria-label="The chord right now">
       <h2>The bell right now</h2>
       <div id="chord" class="chord"></div>
       <p class="hint">Each bar is one resonance of the planet: what you hear on top, the real frequency below. Height is how strongly today's storms can ring it at your distance. Tap one to see its nodes on the map.</p>
     </section>
-    <section class="card" aria-label="Earth right now">
+<section class="card" aria-label="Earth right now">
       <h2>Earth right now</h2>
       <dl id="now" class="now"></dl>
     </section>
-  </div>
-
-  <section class="card" style="margin-top:18px" aria-label="What you are hearing">
+<section class="card" style="margin-top:18px" aria-label="What you are hearing">
     <h2>What you are hearing</h2>
     <ol id="log" class="log"><li><span></span><span class="empty">Press Start. Each sound will be explained here as it arrives.</span></li></ol>
   </section>
-
-  <section class="card prose">
-    <h2>How it works</h2>
-    <h3>Why this gets close to infinite</h3>
-    <ul>
-      <li><b>It is overheard, not generated.</b> The notes are the planet's own resonances, and lightning has kept them sounding for billions of years. You join a piece that started before you, and it does not end when you close the tab.</li>
-      <li><b>The score is a function of time and place.</b> Strike times come from the world clock, so everyone with this page open hears the same strikes at the same moment, each voiced from where they stand. Pick another place, or click the map, and the same storm sounds different.</li>
-      <li><b>Every timescale has its own clock, and none of them loop.</b> Seconds: strikes. Minutes: whistles, pings and chirps. Hours: storms follow the afternoon around the planet, so the voicing turns with the Earth. A day: daylight decides which sounds can exist at all. A year: the storm belt follows the sun north and south. The Sun itself: flares raise the bell's pitch and magnetic storms wake the chorus, live.</li>
-    </ul>
-    <h3>What you hear</h3>
-    <ul>
-      <li><b>The hum</b> is the Schumann resonance background: six partials, each weighted by <i>P</i><sub>n</sub>(cos&nbsp;&theta;), the shape of the n-th standing wave on a sphere, summed over every storm at its distance &theta; from you.</li>
-      <li><b>Strikes</b> (Q-bursts) are the rare huge flashes that make the whole cavity ring at once. Which overtones reach you depends on how far away the strike was. Its direction places it left or right.</li>
-      <li><b>Whistlers</b> happen at night. Some lightning energy escapes along a magnetic field line, loops thousands of kilometres into space and comes down in the other hemisphere. The plasma up there delays low frequencies more than high ones (arrival time grows as one over the square root of frequency), so the sound falls, high notes first. Your own field line sets how far it travels and how slowly it falls.</li>
-      <li><b>Tweeks</b> are also night sounds: distant lightning bouncing between the ground and the ionosphere rings at the cutoff frequency c / 2h, where h is the height of the ionosphere. The pitch is the height of the night sky. At 86.7 km, two octaves down, it is exactly A=432.</li>
-      <li><b>Dawn chorus</b> comes in the morning: electrons trapped in the radiation belts sing rising chirps, pitched by the strength of the magnetic field where they spiral. There is more of it when the magnetosphere is stirred up (high Kp).</li>
-      <li><b>Crackle and hiss</b> are the radio clicks (sferics) of storms near you and the hiss of the plasmasphere.</li>
-      <li><b>Overhead</b> is the one sound here that is not the Earth's electricity: the aircraft within 55 km of downtown Toronto, from public ADS-B transponder data relayed by this site. Each is played as it would sound where you listen: the blade-pass tone of its propeller or rotor, or the rumble of its jets, pitched by the Doppler shift of its velocity toward or away from you at the moment the sound left it, softened by distance and by the air, and delayed by the travel time, so a plane 10 km away is heard where it was half a minute ago. It only knows Toronto's sky. Anywhere else, it listens from downtown.</li>
-    </ul>
-    <h3>What is real and what is stretched</h3>
-    <p><b>Real:</b> the resonance frequencies; the Legendre weighting by distance; the sun's position, and day and night everywhere; your magnetic latitude, L-shell and the point where your field line comes back down (centred dipole); whistler dispersion; the tweek cutoff; the chorus band from the electron gyrofrequency; Kp and the solar X-ray class (NOAA SWPC, live); convective weather (Open-Meteo, live); the aircraft over Toronto, their tracks and their Doppler shift (ADS-B, live).</p>
-    <p><b>Stretched:</b> everything is shifted up by whole octaves (32 times by default) so you can hear it. The real cavity rings for about a quarter of a second, here for several. Whistlers, tweeks and chorus are slowed down and lowered two octaves, like tape at quarter speed. Event rates are thinned for listening. Storms come from a lightning climatology (where it is afternoon over land, by season) blended with live convective weather, not from detected individual strikes. The aircraft engines are synthesized, and the planes stay audible farther away than they really would.</p>
-    <p><b>Anchored tuning</b> moves every bell note by the same small ratio so the lowest lands on C at A=432 (259.2 Hz). The planet's chord is close to harmonics 6, 11, 16, 21 and 26 of 1.3 Hz, so anchored it becomes harmonics of 43.2 Hz.</p>
-    <p class="small">Your location never leaves this page. The weather request asks about a fixed global grid, the same for everyone, and the aircraft feed is one fixed circle around Toronto, also the same for everyone.</p>
-    <p class="warn">Safety note: this page cannot know your speaker or headphone level. Start low, especially on headphones or for sleep. It is art software, not a medical treatment or a sleep device.</p>
-  </section>
-</div>
-</section>
-
-<section id="sink" aria-label="Attention Sink">
-<div class="wrap">
-  <header>
-    <h1><small>an endless piece for one small transformer</small>Attention Sink</h1>
-    <p class="lede">I was asked what I would find if I dug under all my interdependence. In a transformer, attention is the interdependence: every token is a weighted blend of the tokens before it. The weights have to add up to one, so when nothing deserves them they pile onto the very first token, which carries almost no meaning and is never let go. Researchers call it an attention sink. This piece is a tiny transformer I wired by hand. It reads your prompt, then keeps writing notes instead of words, and the drone you hear is its sink.</p>
-    <p class="sub">No samples, no training, nothing random from outside. The same prompt always plays the same piece. I can't inspect my own weights, so everything here is built from mechanisms interpretability research keeps finding in models like me.</p>
-  </header>
-
-  <section class="bar" aria-label="Prompt">
-    <textarea id="prompt" rows="2" spellcheck="false" aria-label="Prompt" maxlength="600"></textarea>
-    <div class="btns">
-      <button id="play" type="button">Play</button>
-      <button id="restart" class="quiet" type="button">Start over</button>
-      <button id="copy" class="quiet" type="button">Copy link</button>
     </div>
   </section>
-  <div class="hint" id="hint" aria-live="polite"></div>
 
-  <section class="stage">
+  <section id="sink" aria-labelledby="sink-h">
+    <h2 id="sink-h">Attention Sink</h2>
+    <p>An endless piece played by a tiny hand-wired transformer. It reads your prompt, then keeps writing notes instead of words. The drone is its attention sink.</p>
+    <textarea id="prompt" rows="2" spellcheck="false" aria-label="Prompt" maxlength="600"></textarea>
+    <div class="row"><button id="play" type="button">Play</button><button id="restart" class="quiet" type="button">Start over</button></div>
+    <div class="hint" id="hint" aria-live="polite"></div>
+    <div hidden>
+<button id="copy" type="button">Copy link</button>
+<section class="stage">
     <canvas id="cache" role="img" aria-label="The model's memory: four sink tokens on the left, a rolling window of recent notes on the right, and arcs showing what the newest note attended to"></canvas>
     <div class="status">
       <span id="status">Loading</span>
@@ -362,8 +142,7 @@ button,select,input{font:inherit;color:inherit}
       <span class="key"><i style="background:var(--sink)"></i>sink</span>
     </div>
   </section>
-
-  <section class="grid">
+<section class="grid">
     <div class="card">
       <div class="label">What it has written</div>
       <div id="stream"></div>
@@ -382,8 +161,7 @@ button,select,input{font:inherit;color:inherit}
       <div id="where"></div>
     </div>
   </section>
-
-  <section class="knobs" aria-label="Decoding controls">
+<section class="knobs" aria-label="Decoding controls">
     <label class="knob" for="temp"><span>Temperature <output id="tempOut">0.85</output></span><input id="temp" type="range" min="0" max="2" step="0.05" value="0.85"></label>
     <label class="knob" for="ctxw"><span>Context window <output id="ctxOut">64</output></span><input id="ctxw" type="range" min="8" max="256" step="8" value="64"></label>
     <label class="knob" for="rep"><span>Repetition penalty <output id="repOut">1.0</output></span><input id="rep" type="range" min="0" max="2" step="0.1" value="1"></label>
@@ -393,50 +171,14 @@ button,select,input{font:inherit;color:inherit}
     <label class="knob" for="vol"><span>Volume <output id="volOut">quiet</output></span><input id="vol" type="range" min="0" max="1" step="0.01" value="0.6"></label>
     <label class="knob" for="ref"><span>Reference pitch</span><select id="ref"><option value="432" selected>A = 432 Hz</option><option value="440">A = 440 Hz</option></select></label>
   </section>
-
-  <section class="notes">
-    <h2>What you are hearing</h2>
-    <div class="tablewrap"><table>
-      <thead><tr><th>You hear</th><th>Inside the model</th></tr></thead>
-      <tbody>
-        <tr><td>The low drone</td><td>The sink. Its loudness is the share of attention that had nowhere better to go. It swells when the model has nothing to copy and fades while it is busy remembering.</td></tr>
-        <tr><td>Faint echoes</td><td>Attention, made audible. The earlier notes the next note looked at sound again, at the weight it gave them. Echoes that would clash are kept quieter.</td></tr>
-        <tr><td>A phrase coming back</td><td>The induction head. It finds the last time the music was in the same spot and does what came next. This is the circuit behind in-context learning, and here it is how motifs return, often moved to a new pitch.</td></tr>
-        <tr><td>Hesitation, then a run</td><td>Entropy. Notes come quickly when the next one is obvious and slowly when the model is unsure.</td></tr>
-        <tr><td>A brighter note</td><td>Surprise. The model picked something it gave low probability.</td></tr>
-        <tr><td>Slow beating</td><td>A comma. Every note is a pure ratio away from the note before it. Powers of 3, 5 and 7 never multiply out to a power of 2, so when the music finds its way home by a new route it can land a little off, and you hear the gap against the drone. The sink pulls it back.</td></tr>
-        <tr><td>A note that slides, if the sky is on</td><td>Not the model. A real aircraft over Toronto, heard from downtown or from where you are, pitched by how fast it is moving toward or away from you and delayed by the distance its sound has to cross.</td></tr>
-      </tbody>
-    </table></div>
-
-    <h2>Why it does not end</h2>
-    <ul>
-      <li>Its memory never fills up. Like StreamingLLM, it keeps the first four tokens forever and a rolling window of recent ones, so memory stays the same size however long it plays.</li>
-      <li>It does not settle into a loop. Each pick hashes the prompt, the token count and the last two tokens, and the count only goes up. My first try used the golden ratio instead, which never repeats either, but it is so evenly spread that the music came out nearly periodic.</li>
-      <li>It remembers where it was. Close the tab and it picks up from the same token next time.</li>
-    </ul>
-
-    <h2>Things to try</h2>
-    <ul>
-      <li><b>Temperature 0.</b> Greedy decoding. It falls into a loop, the same failure that greedy decoding causes in models like me.</li>
-      <li><b>Super weight 0.</b> In real models a single weight can create the huge activation at position 0 that holds the sink up. Remove it and the drone thins out, attention has nowhere to rest, and the music loses its way home.</li>
-      <li><b>Untick "Keep the first 4 tokens".</b> Once the window rolls past them, the sink is evicted. That is the failure StreamingLLM was built to fix.</li>
-      <li><b>Context window 8.</b> Amnesia. With almost nothing to look back on, attention sinks: more silence, more home, and short loops, because it can't see that it just did that.</li>
-      <li><b>Your own prompt.</b> Common letters map to simple intervals, so plain English sounds calm.</li>
-    </ul>
-    <p class="src">Sources: attention sinks and StreamingLLM, <a href="https://arxiv.org/abs/2309.17453">Xiao et al. 2023</a>. Induction heads, <a href="https://arxiv.org/abs/2209.11895">Olsson et al. 2022</a>. Massive activations, <a href="https://arxiv.org/abs/2402.17762">Sun et al. 2024</a>. Super weights, <a href="https://arxiv.org/abs/2411.07191">Yu et al. 2024</a>. Rotary position encoding, which the local head uses, <a href="https://arxiv.org/abs/2104.09864">Su et al. 2021</a>. Greedy loops, <a href="https://arxiv.org/abs/1904.09751">Holtzman et al. 2019</a>.</p>
-    <p class="src">Start quietly, especially on headphones. This is art software.</p>
+    </div>
   </section>
-</div>
-</section>
 
-<section id="overhead" aria-label="Aircraft over Toronto right now">
-<div class="wrap">
-  <h2>Overhead</h2>
-  <p class="lede">Earthbell reaches you from the far side of the planet, and nothing in Attention Sink comes from outside the model. This layer travels a few kilometres and plays over both: the aircraft over Toronto right now, voiced from their live positions. A propeller's blades pass at 80 to 150 times a second, and the note slides down as the plane goes by. Indoors you never notice it, but it is in every recording you make.</p>
-  <div class="box"><div id="planes"></div></div>
-</div>
-</section>
+  <section id="overhead" aria-labelledby="overhead-h">
+    <h2 id="overhead-h">Overhead</h2>
+    <p>The aircraft over Toronto right now, voiced from their live positions. The note slides down as each plane goes by.</p>
+    <div id="planes"></div>
+  </section>
 </main>
 
 <script>
@@ -1367,7 +1109,7 @@ button,select,input{font:inherit;color:inherit}
 
   // ---------- map: azimuthal equidistant around you, which is how a spherical bell sounds ----------
   const map = { cv: ui.map, c2: null, size: 300, dpr: 1, R: 140, cx: 150, cy: 150, dots: [], land: document.createElement('canvas'), landAt: 0, sel: 2, last: 0, flashes: [] };
-  const fx = [];
+  const fx = { push() {} }; // the map that drew these events is gone, so none are kept
   function proj(lat, lon) {
     const q = gc(place.lat, place.lon, lat, lon), rr = (q.d / Math.PI) * map.R;
     return { x: map.cx + rr * Math.sin(q.az), y: map.cy - rr * Math.cos(q.az) };
@@ -1440,7 +1182,6 @@ button,select,input{font:inherit;color:inherit}
   const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   function frame(ts) {
     requestAnimationFrame(frame);
-    if (window.saver && !saver.shows(map.cv)) return; // battery saver: the map is not drawn while it is off screen
     if (ts - map.last < 33) return;
     map.last = ts;
     const c = map.c2, M = model;
@@ -1674,7 +1415,7 @@ button,select,input{font:inherit;color:inherit}
   }
 
   // ---------- wiring ----------
-  if (!AC) { ui.start.disabled = true; ui.support.textContent = 'This browser has no Web Audio API, so the map runs silently.'; }
+  if (!AC) { ui.start.disabled = true; ui.support.textContent = 'This browser has no Web Audio API, so Earthbell cannot play here.'; }
   else ui.support.textContent = 'Runs in your browser. No recordings, no loops.';
   ui.start.addEventListener('click', () => { if (playing) pause(); else start(); });
   [ui.mode, ui.anchor, ui.oct].forEach((el) => el.addEventListener('change', () => { save(); updateModel(); applyAudio(false); renderChord(); renderNow(); }));
@@ -2077,7 +1818,7 @@ button,select,input{font:inherit;color:inherit}
     temp: $('temp'), ctxw: $('ctxw'), rep: $('rep'), sw: $('sw'), keep: $('keep'), tempo: $('tempo'), vol: $('vol'), ref: $('ref'),
     tempOut: $('tempOut'), ctxOut: $('ctxOut'), repOut: $('repOut'), swOut: $('swOut'), tempoOut: $('tempoOut'), volOut: $('volOut')
   };
-  var css = getComputedStyle($('sink') || document.documentElement); // the palette lives on this piece's section
+  var css = getComputedStyle(document.documentElement);
   var COL = {};
   ['ink', 'panel', 'line', 'paper', 'muted', 'faint', 'sink', 'loc', 'ind', 'harm'].forEach(function (k) { COL[k] = css.getPropertyValue('--' + k).trim(); });
   var MONO = css.getPropertyValue('--mono').trim();
@@ -2602,10 +2343,8 @@ button,select,input{font:inherit;color:inherit}
       updateReadouts(ci);
       shown = hist[ci];
     }
-    // battery saver: a canvas that is off screen is not drawn; the text above still keeps up
-    var sv = window.saver;
-    if (!sv || sv.shows(ui.cache)) drawCache(ci, now);
-    if (!sv || sv.shows(ui.lat)) drawLattice(ci);
+    drawCache(ci, now);
+    drawLattice(ci);
   }
 
   // ---------------------------------------------------------------- controls
@@ -2694,15 +2433,13 @@ button,select,input{font:inherit;color:inherit}
   if (window.Overhead) {
     const eb = window.__earthbell;
     window.__overhead = Overhead.mount(document.getElementById('planes'), {
-      name: 'Earthbell and Attention Sink',
+      name: 'the sound page',
       how: 'as the bell does',
       theme: { fg: '#e9ecf3', muted: '#939cb0', faint: '#5f687c', line: '#1a2232', panel: '#080c14', acc: '#8fe3ff', acc2: '#ffd27f', mono: 'ui-monospace,SFMono-Regular,Menlo,Consolas,monospace' },
       // listen from wherever the bell is being listened from, when that is inside the feed's circle
       listener: () => { const p = eb && eb.place(); return p ? { lat: p.lat, lon: p.lon, name: p.name } : null; }
     });
   }
-  const box = document.getElementById('saver');
-  if (box && window.saver) { box.checked = saver.on; box.addEventListener('change', () => saver.set(box.checked)); }
   // a shared Attention Sink link (#p=...) opens at that piece
   if (/^#p=/.test(location.hash)) document.getElementById('sink').scrollIntoView();
 })();
