@@ -24,7 +24,7 @@ body{margin:0;height:100%;height:100dvh;overflow:hidden;color:var(--ink,#a8845c)
 #moon{position:fixed;left:0;top:0;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;cursor:pointer;outline:none;-webkit-tap-highlight-color:transparent}
 #moon:focus-visible{background:radial-gradient(circle,rgba(236,230,214,.22),rgba(236,230,214,0) 70%)}
 @media (hover:hover){#moon:hover{background:radial-gradient(circle,rgba(236,230,214,.22),rgba(236,230,214,0) 70%)}}
-/* by day, the sky under the rest of the sun's dotted path is the way to the sound page; draw() clips this link to it */
+/* day or night, the sky under the sun's whole path for the day is the way to the sound page; draw() clips this link to it */
 #arc{position:fixed;inset:0;color:inherit;cursor:pointer;outline:none;-webkit-tap-highlight-color:transparent}
 #arc:focus-visible{background:currentColor;opacity:.07}
 @media (hover:hover){#arc:hover{background:currentColor;opacity:.07}}
@@ -57,8 +57,8 @@ html[data-engine=ddg] #bang{display:block}
 // lit by Toronto's real sky right now, so it is never brighter than outside.
 // Every trip is also sealed to the site key right here and queued; a later visit wraps it
 // (NIP-59, with the relay's proof of work) for my relay, so only the site key can read the log.
-// Type /log to read it. Tap the moon, while it is up, to go home to ronishbhatt.com, and by day
-// tap the sky under the sun's dotted path for Earthbell and Attention Sink.
+// Type /log to read it. Tap the moon, while it is up, to go home to ronishbhatt.com, and tap the sky
+// under the sun's path for the day (drawn as dots while the sun is up) for Earthbell and Attention Sink.
 (() => {
   // A window facing south from Toronto: east on the left, west on the right.
   const LAT = 43.6532, LON = -79.3832;
@@ -175,19 +175,25 @@ html[data-engine=ddg] #bang{display:block}
     }
 
     // The rest of today's daylight: a dot per quarter hour, a bigger one on each hour.
-    const path = [];
     if (s.alt > 0) for (let u = Math.ceil(t / 9e5) * 9e5; u < t + 864e5; u += 9e5) {
       const p = place(sun(days(u)), days(u));
       if (p.alt < 0) break;
-      const hour = new Date(u).getMinutes() === 0, px = x(p.az), py = y(p.alt);
-      g.fillStyle = css(ink, hour ? 0.42 : 0.24); dot(px, py, hour ? 1.7 : 1.1);
-      path.push([px, py]);
+      const hour = new Date(u).getMinutes() === 0;
+      g.fillStyle = css(ink, hour ? 0.42 : 0.24); dot(x(p.az), y(p.alt), hour ? 1.7 : 1.1);
     }
-    // The sky under that path, from the sun down to the horizon, is the way to the sound page:
-    // the link is clipped to it, in percent of the same box the canvas fills.
+    // The sky under the sun's whole path, down to the horizon, is the way to the sound page, day or night:
+    // today's path while today's daylight lasts, tomorrow's once the sun has set. Only the rest of today's
+    // path is drawn; the link is clipped to the whole shape, in percent of the same box the canvas fills.
     const arc = document.getElementById('arc');
     if (arc) {
-      const pts = path.length && w > 0 && h > 0 ? [[x(s.az), base], [x(s.az), y(s.alt)], ...path, [path[path.length - 1][0], base]] : null;
+      let run = [], day = null;
+      for (let u = Math.floor(t / 9e5) * 9e5 - 864e5; u < t + 2 * 864e5 && !day; u += 9e5) {
+        const p = place(sun(days(u)), days(u));
+        if (p.alt >= 0) run.push([x(p.az), y(p.alt)]);
+        else if (run.length) { if (u > t) day = run; run = []; } // a daylight that ended before now is skipped
+      }
+      day = day || (run.length ? run : null);
+      const pts = day && w > 0 && h > 0 ? [[day[0][0], base], ...day, [day[day.length - 1][0], base]] : null;
       arc.hidden = !pts;
       if (pts) {
         const poly = 'polygon(' + pts.map(([px, py]) => (px / w * 100).toFixed(2) + '% ' + (py / h * 100).toFixed(2) + '%').join(',') + ')';
