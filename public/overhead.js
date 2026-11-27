@@ -1,8 +1,9 @@
-/* overhead.js — the sky over Toronto, as sound. v2, 2026-11-02.
+/* overhead.js: the sky over Toronto, as sound. v2, 2026-11-02 (comments brought up to date 2026-11-27).
  *
- * Shared by sound.html (Earthbell) and sink.html (Attention Sink). Each page
+ * Loaded by the sky page (/sky/) the first time its sound panel opens. It
  * calls Overhead.mount(container, options) and gets a card: a button, a
- * spectrogram, the list of aircraft within earshot, and a few controls.
+ * spectrogram, the list of aircraft within earshot, and a few controls (the
+ * sky page shows only the button and the status line).
  *
  * What it does. Every few seconds it reads /overhead/now.json, which the box
  * publishes from public ADS-B transponder data: every aircraft within 55 km
@@ -29,8 +30,8 @@
  * Two pages open at once: the first one to start keeps the planes, the other
  * mutes its copy and says so (BroadcastChannel), so the sky is never doubled.
  *
- * Deploy: scp next to the pages. Bump ?v= on both script tags when this file
- * changes; Cloudflare caches .js for hours.
+ * Deploy: scp to the web root. Bump ?v= where the sky page loads it (bootSound
+ * in sky/index.html) when this file changes; Cloudflare caches .js for hours.
  */
 (function (global) {
   'use strict';

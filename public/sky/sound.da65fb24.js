@@ -1,187 +1,14 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Earthbell, Attention Sink and Overhead</title>
-<meta name="description" content="Three endless pieces to play. Earthbell: the ringing of the lightning-struck Earth, lifted into hearing. Attention Sink: a tiny hand-wired transformer whose drone is its attention sink. Overhead: the aircraft over Toronto right now.">
-<meta name="color-scheme" content="dark">
-<meta name="theme-color" content="#05070c">
-<style>
-/* sound.html: three plain players. Nothing is drawn; each piece's settings and readouts sit in a
-   hidden container because its code still looks them up, and they hold the defaults it plays with. */
-*{box-sizing:border-box}
-html{background:#05070c}
-body{margin:0;background:#05070c;color:#e9ecf3;font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
-main{max-width:620px;margin:0 auto;padding:28px 16px 64px}
-.top{margin:0 0 6px;font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.12em;text-transform:uppercase;color:#5f687c}
-.top a{color:inherit;text-decoration:none}
-.top a:hover,.top a:focus-visible{color:#e9ecf3}
-section{padding:26px 0;border-bottom:1px solid #1a2232}
-section:last-of-type{border-bottom:0}
-h2{margin:0 0 6px;font-size:26px;line-height:1.15;letter-spacing:-.01em;font-weight:650}
-section>p{margin:0 0 16px;color:#c4cad7;font-size:15.5px}
-#earthbell{--acc:#c5abff}
-#sink{--acc:#f1c15f}
-#overhead{--acc:#8fe3ff}
-button{font:600 15px/1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#e9ecf3;background:transparent;border:1px solid var(--acc);border-radius:10px;padding:0 22px;min-height:46px;cursor:pointer}
-button:hover{background:rgba(255,255,255,.05)}
-button:disabled{opacity:.6;cursor:progress}
-button:focus-visible,textarea:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
-button.quiet{border-color:#29344c;color:#c4cad7}
-#start.on{background:rgba(197,171,255,.14)}
-textarea{display:block;width:100%;margin:0 0 12px;padding:10px 12px;background:#0a0e17;color:#e9ecf3;border:1px solid #29344c;border-radius:10px;font:14px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;resize:vertical;min-height:48px}
-.row{display:flex;flex-wrap:wrap;gap:10px}
-.hint{margin:10px 0 0;font-size:13px;color:#939cb0}
-noscript{display:block;margin:16px 0 0;color:#ffd27f}
-/* the planes card: only its button and its one line of status */
-#overhead .oh-spec,#overhead .oh-list,#overhead .oh-ctl,#overhead .oh-foot{display:none}
-#overhead .oh-btn{padding:0 22px;min-height:46px}
-</style>
-<script>
-// Nothing on this page animates: the drawing loops the three pieces carry never start.
+/* sky/sound.<hash>.js: the sound panel's pieces, loaded by the sky page (/sky/) the first time the panel
+ * opens. Earthbell and Attention Sink as they were on sound.html and sink.html (dc4155b), with nothing
+ * drawn: requestAnimationFrame is a no-op below, so their drawing loops never start, and their settings
+ * and readouts sit hidden in the panel, so they play on their defaults. Changed from those pages:
+ * Earthbell's event list keeps nothing (only its map loop ever emptied it) and its log is #eblog (the sky
+ * page has its own #log); Attention Sink keeps the text in its box in localStorage from visit to visit
+ * and leaves the address alone. The aircraft come from /overhead.js, which the sky page loads after this.
+ * The file name carries a hash of its bytes: Cloudflare caches .js for hours, so a change is a new name.
+ */
 window.requestAnimationFrame = () => 0;
-</script>
-</head>
-<body>
-<main>
-  <p class="top"><a href="/">ronishbhatt.com</a> / sound</p>
-  <noscript>These need JavaScript and the Web Audio API.</noscript>
 
-  <section id="earthbell" aria-labelledby="earthbell-h">
-    <h2 id="earthbell-h">Earthbell</h2>
-    <p>Lightning rings the Earth like a bell about 45 times a second. Earthbell lifts that ringing into hearing, live, and voices it from where you stand.</p>
-    <button id="start" class="primary" type="button">Start listening</button>
-    <p id="support" class="hint"></p>
-    <div hidden>
-<section class="card" aria-label="Map of the planet centered on you">
-      <div class="mapwrap" id="mapwrap"><canvas id="map" role="img" aria-label="The whole Earth drawn around your position. Storms glow; the outer edge is the far side of the planet."></canvas></div>
-      <p class="legend"><b>You are at the center.</b> Distance from the center is true distance, and the outer edge is the far side of the planet. Left and right on the map are left and right in your ears. Dashed rings are the nodes of the selected overtone: a storm sitting on one cannot ring that note for you. <b>Click anywhere to listen from there.</b></p>
-    </section>
-<section class="card" aria-label="Controls">
-      <label class="field"><span class="lab">Setting</span>
-        <select id="mode">
-          <option value="auto" selected>Auto by local time</option>
-          <option value="dawn">First hour / others asleep</option>
-          <option value="isolation">Midday isolation</option>
-          <option value="guests">Guests over</option>
-          <option value="night">End of night</option>
-          <option value="sleep">Sleep-safe quiet bed</option>
-        </select>
-      </label>
-      <label class="field"><span class="lab">Listen from</span>
-        <select id="place">
-          <option value="home">Here</option>
-          <option value="gps">My precise location (asks permission)</option>
-          <option value="catatumbo">Catatumbo, Venezuela: the everlasting storm</option>
-          <option value="kinshasa">Kinshasa, under the Congo storms</option>
-          <option value="singapore">Singapore, on the equator</option>
-          <option value="reykjavik">Reykjavik, under the auroral zone</option>
-          <option value="southpole">The South Pole</option>
-          <option value="nemo">Point Nemo, farthest from any land</option>
-          <option value="antipode">Your antipode</option>
-        </select>
-      </label>
-      <div class="row2">
-        <label class="field"><span class="lab">Tuning</span>
-          <select id="anchor">
-            <option value="true" selected>Planet true</option>
-            <option value="432">Anchored to A=432</option>
-            <option value="440">Anchored to A=440</option>
-          </select>
-        </label>
-        <label class="field"><span class="lab">Octaves up</span>
-          <select id="oct">
-            <option value="auto" selected>Auto (5, sleep 4)</option>
-            <option value="4">4</option>
-            <option value="5">5</option>
-            <option value="6">6</option>
-          </select>
-        </label>
-      </div>
-      <label class="field"><span class="lab">Volume <em id="volText"></em></span>
-        <input id="volume" type="range" min="0" max="1" step="0.01" value="0.72">
-      </label>
-      <label class="field"><span class="lab">Activity <em id="densText"></em></span>
-        <input id="density" type="range" min="0" max="1" step="0.01" value="0.5">
-      </label>
-      <label class="check"><input id="live" type="checkbox" checked><span>Live Earth data: current convective weather and space weather</span></label>
-      <p id="dataStatus" class="status"><span class="dot"></span>Loading...</p>
-    </section>
-<section class="card" aria-label="The chord right now">
-      <h2>The bell right now</h2>
-      <div id="chord" class="chord"></div>
-      <p class="hint">Each bar is one resonance of the planet: what you hear on top, the real frequency below. Height is how strongly today's storms can ring it at your distance. Tap one to see its nodes on the map.</p>
-    </section>
-<section class="card" aria-label="Earth right now">
-      <h2>Earth right now</h2>
-      <dl id="now" class="now"></dl>
-    </section>
-<section class="card" style="margin-top:18px" aria-label="What you are hearing">
-    <h2>What you are hearing</h2>
-    <ol id="log" class="log"><li><span></span><span class="empty">Press Start. Each sound will be explained here as it arrives.</span></li></ol>
-  </section>
-    </div>
-  </section>
-
-  <section id="sink" aria-labelledby="sink-h">
-    <h2 id="sink-h">Attention Sink</h2>
-    <p>An endless piece played by a tiny hand-wired transformer. It reads your prompt, then keeps writing notes instead of words. The drone is its attention sink.</p>
-    <textarea id="prompt" rows="2" spellcheck="false" aria-label="Prompt" maxlength="600"></textarea>
-    <div class="row"><button id="play" type="button">Play</button><button id="restart" class="quiet" type="button">Start over</button></div>
-    <div class="hint" id="hint" aria-live="polite"></div>
-    <div hidden>
-<button id="copy" type="button">Copy link</button>
-<section class="stage">
-    <canvas id="cache" role="img" aria-label="The model's memory: four sink tokens on the left, a rolling window of recent notes on the right, and arcs showing what the newest note attended to"></canvas>
-    <div class="status">
-      <span id="status">Loading</span>
-      <span class="key"><i style="background:var(--loc)"></i>local head</span>
-      <span class="key"><i style="background:var(--ind)"></i>induction head</span>
-      <span class="key"><i style="background:var(--harm)"></i>harmony head</span>
-      <span class="key"><i style="background:var(--sink)"></i>sink</span>
-    </div>
-  </section>
-<section class="grid">
-    <div class="card">
-      <div class="label">What it has written</div>
-      <div id="stream"></div>
-    </div>
-    <div class="card">
-      <div class="label">The next note, before it chose</div>
-      <div id="cands" class="rows"></div>
-    </div>
-    <div class="card">
-      <div class="label">What drove that note</div>
-      <div id="who" class="rows"></div>
-    </div>
-    <div class="card">
-      <div class="label">Where it is on the tuning lattice</div>
-      <canvas id="lat" role="img" aria-label="Recent notes as a path on the lattice of pure intervals; the gold ring is home"></canvas>
-      <div id="where"></div>
-    </div>
-  </section>
-<section class="knobs" aria-label="Decoding controls">
-    <label class="knob" for="temp"><span>Temperature <output id="tempOut">0.85</output></span><input id="temp" type="range" min="0" max="2" step="0.05" value="0.85"></label>
-    <label class="knob" for="ctxw"><span>Context window <output id="ctxOut">64</output></span><input id="ctxw" type="range" min="8" max="256" step="8" value="64"></label>
-    <label class="knob" for="rep"><span>Repetition penalty <output id="repOut">1.0</output></span><input id="rep" type="range" min="0" max="2" step="0.1" value="1"></label>
-    <label class="knob" for="sw"><span>Super weight <output id="swOut">1.00</output></span><input id="sw" type="range" min="0" max="1" step="0.05" value="1"></label>
-    <label class="knob check" for="keep"><input id="keep" type="checkbox" checked> Keep the first 4 tokens</label>
-    <label class="knob" for="tempo"><span>Tempo <output id="tempoOut">1.0x</output></span><input id="tempo" type="range" min="0.5" max="1.6" step="0.05" value="1"></label>
-    <label class="knob" for="vol"><span>Volume <output id="volOut">quiet</output></span><input id="vol" type="range" min="0" max="1" step="0.01" value="0.6"></label>
-    <label class="knob" for="ref"><span>Reference pitch</span><select id="ref"><option value="432" selected>A = 432 Hz</option><option value="440">A = 440 Hz</option></select></label>
-  </section>
-    </div>
-  </section>
-
-  <section id="overhead" aria-labelledby="overhead-h">
-    <h2 id="overhead-h">Overhead</h2>
-    <p>The aircraft over Toronto right now, voiced from their live positions. The note slides down as each plane goes by.</p>
-    <div id="planes"></div>
-  </section>
-</main>
-
-<script>
 (() => {
   'use strict';
 
@@ -480,7 +307,7 @@ window.requestAnimationFrame = () => 0;
   const ui = {
     start: $('start'), support: $('support'), mode: $('mode'), place: $('place'), anchor: $('anchor'), oct: $('oct'),
     volume: $('volume'), density: $('density'), volText: $('volText'), densText: $('densText'), live: $('live'),
-    status: $('dataStatus'), chord: $('chord'), now: $('now'), log: $('log'), map: $('map')
+    status: $('dataStatus'), chord: $('chord'), now: $('now'), log: $('eblog'), map: $('map')
   };
   const store = {
     get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
@@ -1109,7 +936,7 @@ window.requestAnimationFrame = () => 0;
 
   // ---------- map: azimuthal equidistant around you, which is how a spherical bell sounds ----------
   const map = { cv: ui.map, c2: null, size: 300, dpr: 1, R: 140, cx: 150, cy: 150, dots: [], land: document.createElement('canvas'), landAt: 0, sel: 2, last: 0, flashes: [] };
-  const fx = { push() {} }; // the map that drew these events is gone, so none are kept
+  const fx = { push() {} }; // the map that drew these events is not on the sky page, so none are kept
   function proj(lat, lon) {
     const q = gc(place.lat, place.lon, lat, lon), rr = (q.d / Math.PI) * map.R;
     return { x: map.cx + rr * Math.sin(q.az), y: map.cy - rr * Math.cos(q.az) };
@@ -1448,9 +1275,7 @@ window.requestAnimationFrame = () => 0;
 
   window.__earthbell = { get E() { return E; }, get model() { return model; }, place: () => place, schedule, planSecond, stormsAt, placeName, legendre, conjugate, magLat, lShell, sunAt, LIVE };
 })();
-</script>
 
-<script>
 (function () {
   'use strict';
 
@@ -1832,6 +1657,9 @@ window.requestAnimationFrame = () => 0;
 
   function lsGet() { try { return JSON.parse(localStorage.getItem(STORE) || 'null'); } catch (e) { return null; } }
   function lsSet(v) { try { localStorage.setItem(STORE, JSON.stringify(v)); } catch (e) {} }
+  var TYPED = 'attention-sink-prompt'; // the text in the box, kept from visit to visit
+  function typedGet() { try { return localStorage.getItem(TYPED); } catch (e) { return null; } }
+  function typedSet(v) { try { localStorage.setItem(TYPED, v); } catch (e) {} }
   function save() {
     if (!M || previewOnly || !M.last) return;
     lsSet({ model: saveModel(M), cfg: cfg, tempo: tempo, volume: volume, ref: refHz,
@@ -2386,12 +2214,11 @@ window.requestAnimationFrame = () => 0;
     if (!m) return null;
     try { return decodeURIComponent(m[1]); } catch (e) { return null; }
   }
-  function setHash(p) {
-    try { history.replaceState(null, '', p === DEFAULT_PROMPT ? location.pathname + location.search : '#p=' + encodeURIComponent(p)); } catch (e) {}
-  }
+  function setHash(p) {} // the box keeps the prompt now (localStorage), and the address belongs to the sky page
 
   var typing = 0;
   ui.prompt.addEventListener('input', function () {
+    typedSet(ui.prompt.value);
     clearTimeout(typing);
     typing = setTimeout(function () {
       if (!started) preview(ui.prompt.value);
@@ -2412,37 +2239,19 @@ window.requestAnimationFrame = () => 0;
 
   // ---------------------------------------------------------------- boot
 
-  var fromHash = hashPrompt(), saved = lsGet();
-  if (saved && saved.model && (fromHash === null || fromHash === saved.model.prompt)) {
+  // The box shows what was last typed in it; the default prompt is only for a first visit.
+  var fromHash = hashPrompt(), saved = lsGet(), typed = typedGet();
+  var want = fromHash !== null ? fromHash : typed;
+  if (saved && saved.model && (want === null || want === saved.model.prompt)) {
     setKnobs(saved); readKnobs();
     ui.prompt.value = saved.model.prompt;
     try { restore(saved); } catch (e) { saved = null; }
   } else saved = null;
   if (!saved) {
     readKnobs();
-    ui.prompt.value = fromHash !== null ? fromHash : DEFAULT_PROMPT;
+    ui.prompt.value = want !== null ? want : DEFAULT_PROMPT;
     preview(ui.prompt.value);
   }
+  typedSet(ui.prompt.value);
   requestAnimationFrame(frame);
 })();
-</script>
-<!-- Overhead: the sky over Toronto as sound (overhead.js). Bump ?v= when that file changes. -->
-<script src="overhead.js?v=2"></script>
-<script>
-(() => {
-  if (window.Overhead) {
-    const eb = window.__earthbell;
-    window.__overhead = Overhead.mount(document.getElementById('planes'), {
-      name: 'the sound page',
-      how: 'as the bell does',
-      theme: { fg: '#e9ecf3', muted: '#939cb0', faint: '#5f687c', line: '#1a2232', panel: '#080c14', acc: '#8fe3ff', acc2: '#ffd27f', mono: 'ui-monospace,SFMono-Regular,Menlo,Consolas,monospace' },
-      // listen from wherever the bell is being listened from, when that is inside the feed's circle
-      listener: () => { const p = eb && eb.place(); return p ? { lat: p.lat, lon: p.lon, name: p.name } : null; }
-    });
-  }
-  // a shared Attention Sink link (#p=...) opens at that piece
-  if (/^#p=/.test(location.hash)) document.getElementById('sink').scrollIntoView();
-})();
-</script>
-</body>
-</html>

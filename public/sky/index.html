@@ -24,7 +24,7 @@ body{margin:0;height:100%;height:100dvh;overflow:hidden;color:var(--ink,#a8845c)
 #moon{position:fixed;left:0;top:0;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;cursor:pointer;outline:none;-webkit-tap-highlight-color:transparent}
 #moon:focus-visible{background:radial-gradient(circle,rgba(236,230,214,.22),rgba(236,230,214,0) 70%)}
 @media (hover:hover){#moon:hover{background:radial-gradient(circle,rgba(236,230,214,.22),rgba(236,230,214,0) 70%)}}
-/* day or night, the sky under the sun's whole path for the day is the way to the sound page; draw() clips this link to it */
+/* day or night, the sky under the sun's whole path for the day is the way to the sound panel; draw() clips this link to it */
 #arc{position:fixed;inset:0;color:inherit;cursor:pointer;outline:none;-webkit-tap-highlight-color:transparent}
 #arc:focus-visible{background:currentColor;opacity:.07}
 @media (hover:hover){#arc:hover{background:currentColor;opacity:.07}}
@@ -55,6 +55,26 @@ html[data-engine=ddg] #bang{display:block}
 #unlock input[type=password]{font:inherit;color:inherit;background:transparent;border:0;border-bottom:1px solid var(--line-on);border-radius:0;padding:8px 0;outline:none;-webkit-appearance:none;appearance:none}
 #unlock label{font-size:14px;opacity:.75}
 #unlock p{margin:0;font-size:14px}
+/* the sound panel: the sky under the sun's path opens it (or /sky/#sound), and the pieces keep playing when it closes */
+#sound{position:fixed;inset:0;z-index:5;overflow:auto;background:var(--top,#000);font-size:16px;line-height:1.45;outline:none;
+  padding:max(18px,env(safe-area-inset-top)) max(20px,env(safe-area-inset-right)) 48px max(20px,env(safe-area-inset-left))}
+#sound[hidden]{display:none}
+#sound,#sound *{box-sizing:border-box}
+#sound header{display:flex;align-items:baseline;gap:1em;max-width:40rem;margin:0 auto 4px}
+#sound header span{flex:1;opacity:.6;font-size:14px}
+#sound .piece{max-width:40rem;margin:0 auto;padding:18px 0;border-top:1px solid var(--line)}
+#sound h2{margin:0 0 4px;font-size:21px;line-height:1.2;font-weight:600}
+#sound .say{margin:0 0 12px;font-size:14.5px;opacity:.8}
+#sound button{font:inherit;font-size:15px;color:inherit;background:transparent;border:1px solid var(--line-on);border-radius:10px;padding:0 18px;min-height:44px;cursor:pointer}
+#sound header button{border:0;padding:6px 0;min-height:0;opacity:.75}
+#sound button.on,#sound .oh-btn.on{background:var(--line)}
+#sound button.quiet{opacity:.75}
+#sound button:disabled{opacity:.5;cursor:progress}
+#sound textarea{display:block;width:100%;margin:0 0 10px;padding:10px 12px;background:transparent;color:inherit;border:1px solid var(--line-on);border-radius:10px;font:14px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;resize:vertical;min-height:48px}
+#sound :focus-visible{outline:2px solid currentColor;outline-offset:2px}
+#sound .row{display:flex;flex-wrap:wrap;gap:10px}
+#sound .hint{margin:8px 0 0;font-size:13px;opacity:.7}
+#sound .oh-spec,#sound .oh-list,#sound .oh-ctl,#sound .oh-foot{display:none}
 </style>
 <script>
 // The phone's door to the web: type an address or a search, and the page around it is
@@ -62,7 +82,7 @@ html[data-engine=ddg] #bang{display:block}
 // Every trip is also sealed to the site key right here and queued; a later visit wraps it
 // (NIP-59, with the relay's proof of work) for my relay, so only the site key can read the log.
 // Type /log to read it. Tap the sun or the moon, while it is up, to go home to ronishbhatt.com, and tap
-// the sky under the sun's path for the day (drawn as dots while the sun is up) for the sound page.
+// the sky under the sun's path for the day (drawn as dots while the sun is up) for the sound panel.
 (() => {
   // A window facing south from Toronto: east on the left, west on the right.
   const LAT = 43.6532, LON = -79.3832;
@@ -185,7 +205,7 @@ html[data-engine=ddg] #bang{display:block}
       const hour = new Date(u).getMinutes() === 0;
       g.fillStyle = css(ink, hour ? 0.42 : 0.24); dot(x(p.az), y(p.alt), hour ? 1.7 : 1.1);
     }
-    // The sky under the sun's whole path, down to the horizon, is the way to the sound page, day or night:
+    // The sky under the sun's whole path, down to the horizon, is the way to the sound panel, day or night:
     // today's path while today's daylight lasts, tomorrow's once the sun has set. Only the rest of today's
     // path is drawn; the link is clipped to the whole shape, in percent of the same box the canvas fills.
     const arc = document.getElementById('arc');
@@ -374,6 +394,35 @@ html[data-engine=ddg] #bang{display:block}
   }
   if (local) window.sky = { note, flush, outbox };
 
+  // ---- the sound panel ----------------------------------------------------------------
+  // Earthbell, Attention Sink and the aircraft overhead, under the sun's path. Their code loads the first
+  // time the panel opens, so the search box stays light, and nothing in them is drawn here.
+  const PIECES = '/sky/sound.da65fb24.js', PIECES_SRI = 'sha384-Edr2gOaY21bM6mmffKKCRynszn+4fK498yTOLZ3hbl385A7COuAslXFwEJVdnq+N';
+  let pieces = null;
+  function bootSound() {
+    if (pieces) return pieces;
+    const state = document.getElementById('soundstate'), said = state.textContent;
+    const load = (src, integrity) => new Promise((ok, no) => {
+      const s = document.createElement('script');
+      s.src = src; if (integrity) s.integrity = integrity;
+      s.onload = ok; s.onerror = () => no(new Error('The sound pieces did not load; reload the page to try again.'));
+      document.body.append(s);
+    });
+    state.textContent = 'Loading the pieces...';
+    pieces = load(PIECES, PIECES_SRI).then(() => load('/overhead.js?v=3')).then(() => {
+      state.textContent = said;
+      if (!window.Overhead) return;
+      const eb = window.__earthbell;
+      window.__overhead = Overhead.mount(document.getElementById('planes'), {
+        name: 'the sky page', how: 'as the bell does',
+        // the sky's own ink, so the card reads on a day sky and a night one
+        theme: { fg: 'var(--ink)', muted: 'var(--ink)', faint: 'var(--ink)', line: 'var(--line)', panel: 'transparent', acc: 'var(--ink)', acc2: 'var(--ink)', mono: 'ui-monospace,SFMono-Regular,Menlo,Consolas,monospace' },
+        listener: () => { const p = eb && eb.place(); return p ? { lat: p.lat, lon: p.lon, name: p.name } : null; }
+      });
+    }).catch((e) => { state.textContent = e.message; });
+    return pieces;
+  }
+
   root.dataset.engine = 'ddg'; // every visit starts on DuckDuckGo
   paint();
   addEventListener('DOMContentLoaded', () => {
@@ -415,6 +464,14 @@ html[data-engine=ddg] #bang{display:block}
     addEventListener('keydown', e => { if (e.key === 'Escape' && !view.hidden) closeLog(); });
     addEventListener('hashchange', () => { if (location.hash === '#log') showLog(); });
     if (location.hash === '#log') showLog();
+    const sound = document.getElementById('sound');
+    const openSound = () => { sound.hidden = false; q.blur(); sound.focus({ preventScroll: true }); bootSound(); };
+    const closeSound = () => { sound.hidden = true; if (location.hash === '#sound') history.replaceState(null, '', location.pathname + location.search); };
+    document.getElementById('arc').addEventListener('click', e => { e.preventDefault(); openSound(); });
+    document.getElementById('soundclose').onclick = closeSound;
+    addEventListener('keydown', e => { if (e.key === 'Escape' && !sound.hidden) closeSound(); });
+    addEventListener('hashchange', () => { if (location.hash === '#sound') openSound(); });
+    if (location.hash === '#sound') openSound();
     fit(); draw(); flush();
     setInterval(tick, 60000);
     addEventListener('resize', draw);
@@ -432,13 +489,145 @@ html[data-engine=ddg] #bang{display:block}
 <div id="field"><label for="q" id="bang" aria-hidden="true">!</label><input id="q" name="q" type="text" inputmode="search" enterkeyhint="go" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="where to?" aria-label="Search or type an address"></div>
 <span id="fit" aria-hidden="true"></span>
 </form>
-<a id="arc" href="/sound.html" hidden aria-label="Earthbell and Attention Sink" title="Earthbell and Attention Sink"></a>
+<a id="arc" href="#sound" hidden aria-label="sound: Earthbell, Attention Sink and the aircraft overhead" title="sound"></a>
 <a id="sun" href="/" hidden aria-label="ronishbhatt.com" title="ronishbhatt.com"></a>
 <a id="moon" href="/" hidden aria-label="ronishbhatt.com" title="ronishbhatt.com"></a>
 <section id="log" hidden aria-label="search log">
 <header><b>trips</b><span id="logstate"></span><button type="button" id="lock">lock</button><button type="button" id="close">close</button></header>
 <form id="unlock" hidden autocomplete="off"><input name="nsec" type="password" enterkeyhint="go" placeholder="site key, nsec1…" autocomplete="off" aria-label="site key"><label><input name="remember" type="checkbox"> remember on this device</label><button>open</button><p></p></form>
 <ol id="rows"></ol>
+</section>
+<section id="sound" hidden tabindex="-1" aria-label="sound">
+<header><b>sound</b><span id="soundstate">They keep playing when this closes.</span><button type="button" id="soundclose">close</button></header>
+<div class="piece" id="earthbell">
+  <h2>Earthbell</h2>
+  <p class="say">Lightning rings the Earth like a bell about 45 times a second. Earthbell lifts that ringing into hearing, live, and voices it from where you stand.</p>
+  <button id="start" type="button">Start listening</button>
+  <p id="support" class="hint"></p>
+  <div hidden>
+<section class="card" aria-label="Map of the planet centered on you">
+      <div class="mapwrap" id="mapwrap"><canvas id="map" role="img" aria-label="The whole Earth drawn around your position. Storms glow; the outer edge is the far side of the planet."></canvas></div>
+      <p class="legend"><b>You are at the center.</b> Distance from the center is true distance, and the outer edge is the far side of the planet. Left and right on the map are left and right in your ears. Dashed rings are the nodes of the selected overtone: a storm sitting on one cannot ring that note for you. <b>Click anywhere to listen from there.</b></p>
+    </section>
+<section class="card" aria-label="Controls">
+      <label class="field"><span class="lab">Setting</span>
+        <select id="mode">
+          <option value="auto" selected>Auto by local time</option>
+          <option value="dawn">First hour / others asleep</option>
+          <option value="isolation">Midday isolation</option>
+          <option value="guests">Guests over</option>
+          <option value="night">End of night</option>
+          <option value="sleep">Sleep-safe quiet bed</option>
+        </select>
+      </label>
+      <label class="field"><span class="lab">Listen from</span>
+        <select id="place">
+          <option value="home">Here</option>
+          <option value="gps">My precise location (asks permission)</option>
+          <option value="catatumbo">Catatumbo, Venezuela: the everlasting storm</option>
+          <option value="kinshasa">Kinshasa, under the Congo storms</option>
+          <option value="singapore">Singapore, on the equator</option>
+          <option value="reykjavik">Reykjavik, under the auroral zone</option>
+          <option value="southpole">The South Pole</option>
+          <option value="nemo">Point Nemo, farthest from any land</option>
+          <option value="antipode">Your antipode</option>
+        </select>
+      </label>
+      <div class="row2">
+        <label class="field"><span class="lab">Tuning</span>
+          <select id="anchor">
+            <option value="true" selected>Planet true</option>
+            <option value="432">Anchored to A=432</option>
+            <option value="440">Anchored to A=440</option>
+          </select>
+        </label>
+        <label class="field"><span class="lab">Octaves up</span>
+          <select id="oct">
+            <option value="auto" selected>Auto (5, sleep 4)</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+          </select>
+        </label>
+      </div>
+      <label class="field"><span class="lab">Volume <em id="volText"></em></span>
+        <input id="volume" type="range" min="0" max="1" step="0.01" value="0.72">
+      </label>
+      <label class="field"><span class="lab">Activity <em id="densText"></em></span>
+        <input id="density" type="range" min="0" max="1" step="0.01" value="0.5">
+      </label>
+      <label class="check"><input id="live" type="checkbox" checked><span>Live Earth data: current convective weather and space weather</span></label>
+      <p id="dataStatus" class="status"><span class="dot"></span>Loading...</p>
+    </section>
+<section class="card" aria-label="The chord right now">
+      <h2>The bell right now</h2>
+      <div id="chord" class="chord"></div>
+      <p class="hint">Each bar is one resonance of the planet: what you hear on top, the real frequency below. Height is how strongly today's storms can ring it at your distance. Tap one to see its nodes on the map.</p>
+    </section>
+<section class="card" aria-label="Earth right now">
+      <h2>Earth right now</h2>
+      <dl id="now" class="now"></dl>
+    </section>
+<section class="card" style="margin-top:18px" aria-label="What you are hearing">
+    <h2>What you are hearing</h2>
+    <ol id="eblog" class="log"><li><span></span><span class="empty">Press Start. Each sound will be explained here as it arrives.</span></li></ol>
+  </section>
+  </div>
+</div>
+<div class="piece" id="sink">
+  <h2>Attention Sink</h2>
+  <p class="say">An endless piece played by a tiny hand-wired transformer. It reads your prompt, then keeps writing notes instead of words. The drone is its attention sink.</p>
+  <textarea id="prompt" rows="2" spellcheck="false" aria-label="Prompt" maxlength="600"></textarea>
+  <div class="row"><button id="play" type="button">Play</button><button id="restart" class="quiet" type="button">Start over</button></div>
+  <div class="hint" id="hint" aria-live="polite"></div>
+  <div hidden>
+<button id="copy" type="button">Copy link</button>
+<section class="stage">
+    <canvas id="cache" role="img" aria-label="The model's memory: four sink tokens on the left, a rolling window of recent notes on the right, and arcs showing what the newest note attended to"></canvas>
+    <div class="status">
+      <span id="status">Loading</span>
+      <span class="key"><i style="background:var(--loc)"></i>local head</span>
+      <span class="key"><i style="background:var(--ind)"></i>induction head</span>
+      <span class="key"><i style="background:var(--harm)"></i>harmony head</span>
+      <span class="key"><i style="background:var(--sink)"></i>sink</span>
+    </div>
+  </section>
+<section class="grid">
+    <div class="card">
+      <div class="label">What it has written</div>
+      <div id="stream"></div>
+    </div>
+    <div class="card">
+      <div class="label">The next note, before it chose</div>
+      <div id="cands" class="rows"></div>
+    </div>
+    <div class="card">
+      <div class="label">What drove that note</div>
+      <div id="who" class="rows"></div>
+    </div>
+    <div class="card">
+      <div class="label">Where it is on the tuning lattice</div>
+      <canvas id="lat" role="img" aria-label="Recent notes as a path on the lattice of pure intervals; the gold ring is home"></canvas>
+      <div id="where"></div>
+    </div>
+  </section>
+<section class="knobs" aria-label="Decoding controls">
+    <label class="knob" for="temp"><span>Temperature <output id="tempOut">0.85</output></span><input id="temp" type="range" min="0" max="2" step="0.05" value="0.85"></label>
+    <label class="knob" for="ctxw"><span>Context window <output id="ctxOut">64</output></span><input id="ctxw" type="range" min="8" max="256" step="8" value="64"></label>
+    <label class="knob" for="rep"><span>Repetition penalty <output id="repOut">1.0</output></span><input id="rep" type="range" min="0" max="2" step="0.1" value="1"></label>
+    <label class="knob" for="sw"><span>Super weight <output id="swOut">1.00</output></span><input id="sw" type="range" min="0" max="1" step="0.05" value="1"></label>
+    <label class="knob check" for="keep"><input id="keep" type="checkbox" checked> Keep the first 4 tokens</label>
+    <label class="knob" for="tempo"><span>Tempo <output id="tempoOut">1.0x</output></span><input id="tempo" type="range" min="0.5" max="1.6" step="0.05" value="1"></label>
+    <label class="knob" for="vol"><span>Volume <output id="volOut">quiet</output></span><input id="vol" type="range" min="0" max="1" step="0.01" value="0.6"></label>
+    <label class="knob" for="ref"><span>Reference pitch</span><select id="ref"><option value="432" selected>A = 432 Hz</option><option value="440">A = 440 Hz</option></select></label>
+  </section>
+  </div>
+</div>
+<div class="piece" id="overhead">
+  <h2>Overhead</h2>
+  <p class="say">The aircraft over Toronto right now, voiced from their live positions. The note slides down as each plane goes by.</p>
+  <div id="planes"></div>
+</div>
 </section>
 </body>
 </html>
